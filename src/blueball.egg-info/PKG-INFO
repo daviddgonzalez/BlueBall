@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: blueball
+Version: 0.1.0
+Summary: A Red Ball-inspired 2D physics platformer
+Requires-Python: >=3.11
+Requires-Dist: pygame-ce>=2.5
+Requires-Dist: pymunk>=6.6
+Requires-Dist: numpy>=1.26
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"

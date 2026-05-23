@@ -1,0 +1,6 @@
+pygame-ce>=2.5
+pymunk>=6.6
+numpy>=1.26
+
+[dev]
+pytest>=8.0
