@@ -12,19 +12,22 @@ PHYS_DT = 1.0 / PHYS_HZ
 MAX_ACCUMULATED_STEPS = 10  # avoid spiral-of-death if a frame is very slow
 
 # Gravity (Pymunk uses y-down by default if we configure it that way; we use y-down here)
-GRAVITY = (0, 1200)
+GRAVITY = (0, 700)
 
 # Ball physics
 BALL_RADIUS = 16
 BALL_MASS = 1.0
 BALL_FRICTION = 0.9
 BALL_ELASTICITY = 0.05
-MOVE_TORQUE = 2000.0
-MAX_ANGULAR_VEL = 35.0
-AIR_CONTROL = 0.3
+MOVE_TORQUE = 3500.0
+MAX_ANGULAR_VEL = 55.0
+AIR_CONTROL = 0.8
+# Direct horizontal force applied while airborne so the ball can change
+# direction midair. Torque alone only spins it.
+AIR_MOVE_FORCE = 1500.0
 
 # Jump
-JUMP_IMPULSE = 400.0
+JUMP_IMPULSE = 600.0
 JUMP_CUT_FACTOR = 0.4
 
 # Player dies if they fall this far below the screen
