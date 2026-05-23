@@ -78,6 +78,9 @@ class Player(Entity):
     def update(self, dt: float) -> None:
         if self.dead:
             return
+        if self.body.position.y > config.FALL_DEATH_Y:
+            self.die()
+            return
         self._refresh_contact_normals()
 
         observation = self._observe()
@@ -101,8 +104,11 @@ class Player(Entity):
         # Jump
         decision = self.jump_ctrl.tick(action, grounded, dt)
         if decision.fire:
-            # Apply upward impulse. Pymunk y-down -> up is negative y.
-            self.body.apply_impulse_at_local_point((0, -config.JUMP_IMPULSE))
+            # World-frame impulse so the ball's spin doesn't rotate the impulse
+            # into horizontal components. Pymunk y-down -> up is negative y.
+            self.body.apply_impulse_at_world_point(
+                (0, -config.JUMP_IMPULSE), self.body.position
+            )
         if decision.cut and self.body.velocity.y < 0:
             vx, vy = self.body.velocity
             self.body.velocity = (vx, vy * config.JUMP_CUT_FACTOR)
