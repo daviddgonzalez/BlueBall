@@ -1,9 +1,0 @@
-README.md
-pyproject.toml
-src/blueball/__init__.py
-src/blueball.egg-info/PKG-INFO
-src/blueball.egg-info/SOURCES.txt
-src/blueball.egg-info/dependency_links.txt
-src/blueball.egg-info/requires.txt
-src/blueball.egg-info/top_level.txt
-tests/test_smoke.py
