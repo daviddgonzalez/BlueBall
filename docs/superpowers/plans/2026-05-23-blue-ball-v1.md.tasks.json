@@ -1,0 +1,117 @@
+{
+  "planPath": "docs/superpowers/plans/2026-05-23-blue-ball-v1.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 0: Project scaffolding & dependencies",
+      "status": "pending",
+      "description": "**Goal:** pip-installable package that opens a PyGame window and runs a passing smoke test.\n\n**Files:** pyproject.toml, README.md, main.py, src/blueball/__init__.py, tests/__init__.py, tests/conftest.py, tests/test_smoke.py\n\n**Verify:** pytest -q -> 1 passed; python main.py opens 1280x720 sky-blue window\n\nSee plan section Task 0 for full step-by-step code.\n\n```json:metadata\n{\"files\": [\"pyproject.toml\", \"main.py\", \"src/blueball/__init__.py\", \"tests/test_smoke.py\"], \"verifyCommand\": \"pytest -q\", \"acceptanceCriteria\": [\"pip install -e .[dev] succeeds\", \"python main.py opens 1280x720 sky-blue window that closes on Esc\", \"pytest -q reports 1 passing test\"]}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 1: Config constants module",
+      "status": "pending",
+      "blockedBy": [0],
+      "description": "**Goal:** Single config.py exposing every tunable from the spec.\n\n**Files:** src/blueball/config.py, tests/test_smoke.py (extend)\n\n**Verify:** pytest -q -> passes; config.PHYS_HZ == 120\n\nSee plan section Task 1 for full constant list.\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\", \"tests/test_smoke.py\"], \"verifyCommand\": \"pytest -q\", \"acceptanceCriteria\": [\"all spec tunables present\", \"config import side-effect-free\", \"smoke test extended\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: World with fixed-timestep physics",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "**Goal:** World class with deterministic fixed-substep physics loop.\n\n**Files:** src/blueball/world.py, tests/test_world_determinism.py\n\n**Verify:** pytest -q tests/test_world_determinism.py -v -> 4 passed\n\nSee plan section Task 2.\n\n```json:metadata\n{\"files\": [\"src/blueball/world.py\", \"tests/test_world_determinism.py\"], \"verifyCommand\": \"pytest -q tests/test_world_determinism.py -v\", \"acceptanceCriteria\": [\"World.step uses fixed-substep accumulator\", \"spiral-of-death guard\", \"two same-seed worlds byte-equal\", \"World.alpha interpolation fraction\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Camera (world<->screen math)",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "**Goal:** Camera and FollowCamera (dead-zone + lerp). Pure math, no PyGame.\n\n**Files:** src/blueball/camera.py, tests/test_camera.py\n\n**Verify:** pytest -q tests/test_camera.py -v -> 4 passed\n\nSee plan section Task 3.\n\n```json:metadata\n{\"files\": [\"src/blueball/camera.py\", \"tests/test_camera.py\"], \"verifyCommand\": \"pytest -q tests/test_camera.py -v\", \"acceptanceCriteria\": [\"world_to_screen correct\", \"dead-zone stillness\", \"lerp when target exits dead-zone\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: Entity abstract base class",
+      "status": "pending",
+      "blockedBy": [2],
+      "description": "**Goal:** Abstract Entity with bodies/shapes/update/draw interface.\n\n**Files:** src/blueball/entities/__init__.py, src/blueball/entities/base.py, tests/test_entities.py\n\n**Verify:** pytest -q tests/test_entities.py -v -> 2 passed\n\nSee plan section Task 4.\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/base.py\", \"tests/test_entities.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py -v\", \"acceptanceCriteria\": [\"Entity abstract with bodies/shapes/update/draw\", \"missing draw raises TypeError\", \"World calls entity.update each substep\"]}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Agent interface, Observation/Action, HumanAgent",
+      "status": "pending",
+      "blockedBy": [0],
+      "description": "**Goal:** Agent ABC, Action IntEnum, Observation dataclass, HumanAgent.\n\n**Files:** src/blueball/agent.py\n\n**Verify:** python -c \"from blueball.agent import Action; print(Action.JUMP.value)\" -> 3\n\nSee plan section Task 5.\n\n```json:metadata\n{\"files\": [\"src/blueball/agent.py\"], \"verifyCommand\": \"python -c 'from blueball.agent import Action, HumanAgent, Observation; print(Action.JUMP)'\", \"acceptanceCriteria\": [\"Action IntEnum values 0-5\", \"Observation frozen dataclass\", \"Agent ABC with reset and act\", \"HumanAgent reads keyboard\"]}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: Input feel layer (JumpController)",
+      "status": "pending",
+      "blockedBy": [1, 5],
+      "description": "**Goal:** Pure state machine for jump buffer, coyote time, jump cut.\n\n**Files:** src/blueball/input_feel.py, tests/test_input_feel.py\n\n**Verify:** pytest -q tests/test_input_feel.py -v -> 7 passed\n\nSee plan section Task 6.\n\n```json:metadata\n{\"files\": [\"src/blueball/input_feel.py\", \"tests/test_input_feel.py\"], \"verifyCommand\": \"pytest -q tests/test_input_feel.py -v\", \"acceptanceCriteria\": [\"grounded jump fires immediately\", \"buffer fires on landing\", \"coyote allows post-walkoff jump\", \"cut on release while held\"]}\n```"
+    },
+    {
+      "id": 7,
+      "subject": "Task 7: Player entity",
+      "status": "pending",
+      "blockedBy": [4, 5, 6],
+      "description": "**Goal:** Player wires ball body, Agent, JumpController, grounded detection.\n\n**Files:** src/blueball/entities/player.py, tests/test_player.py\n\n**Verify:** pytest -q tests/test_player.py -v -> 4 passed\n\nSee plan section Task 7.\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/player.py\", \"tests/test_player.py\"], \"verifyCommand\": \"pytest -q tests/test_player.py -v\", \"acceptanceCriteria\": [\"ball body with configured mass/radius/friction\", \"right press spins clockwise\", \"jump from grounded produces upward velocity\", \"grounded via contact normals\", \"die() flips alive/dead\"]}\n```"
+    },
+    {
+      "id": 8,
+      "subject": "Task 8: Collision dispatcher",
+      "status": "pending",
+      "blockedBy": [7],
+      "description": "**Goal:** collision.register(space, world_ref) installs all v1 handlers.\n\n**Files:** src/blueball/collision.py, tests/test_collision.py\n\n**Verify:** pytest -q tests/test_collision.py -v -> 2 passed\n\nSee plan section Task 8.\n\n```json:metadata\n{\"files\": [\"src/blueball/collision.py\", \"tests/test_collision.py\"], \"verifyCommand\": \"pytest -q tests/test_collision.py -v\", \"acceptanceCriteria\": [\"CT_* constants\", \"spike kills player\", \"goal completes level\", \"collectible collects + increments count\", \"patroller stomp vs side\"]}\n```"
+    },
+    {
+      "id": 9,
+      "subject": "Task 9: Static entities (Spike, Collectible, Goal)",
+      "status": "pending",
+      "blockedBy": [4, 8],
+      "description": "**Goal:** Spike (static triangle), Collectible (sensor circle that disappears), Goal (sensor rectangle).\n\n**Files:** src/blueball/entities/{spike,collectible,goal}.py, tests/test_entities.py (extend)\n\n**Verify:** pytest -q tests/test_entities.py -v -> 5 passed total\n\nSee plan section Task 9.\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/spike.py\", \"src/blueball/entities/collectible.py\", \"src/blueball/entities/goal.py\", \"tests/test_entities.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py -v\", \"acceptanceCriteria\": [\"Spike CT_SPIKE static triangle\", \"Collectible CT_COLLECTIBLE sensor, collect() removes\", \"Goal CT_GOAL sensor rectangle\"]}\n```"
+    },
+    {
+      "id": 10,
+      "subject": "Task 10: Patroller entity",
+      "status": "pending",
+      "blockedBy": [4, 8],
+      "description": "**Goal:** Kinematic patroller walks between left_bound and right_bound.\n\n**Files:** src/blueball/entities/patroller.py, tests/test_entities.py (extend)\n\n**Verify:** pytest -q tests/test_entities.py -v -> 7 passed total\n\nSee plan section Task 10.\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/patroller.py\", \"tests/test_entities.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py -v\", \"acceptanceCriteria\": [\"reverses at bounds\", \"CT_PATROLLER\", \"die() removes from space\"]}\n```"
+    },
+    {
+      "id": 11,
+      "subject": "Task 11: FallingHazard entity",
+      "status": "pending",
+      "blockedBy": [4, 8],
+      "description": "**Goal:** FallingHazard kinematic until player crosses trigger_x, then becomes dynamic.\n\n**Files:** src/blueball/entities/falling_hazard.py, tests/test_entities.py (extend)\n\n**Verify:** pytest -q tests/test_entities.py -v -> 9 passed total\n\nSee plan section Task 11.\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/falling_hazard.py\", \"tests/test_entities.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py -v\", \"acceptanceCriteria\": [\"kinematic before trigger\", \"DYNAMIC after trigger\", \"CT_SPIKE collision_type\"]}\n```"
+    },
+    {
+      "id": 12,
+      "subject": "Task 12: Chunk system + chunk library",
+      "status": "pending",
+      "blockedBy": [9, 10, 11],
+      "description": "**Goal:** Chunk ABC, CHUNK_REGISTRY, and 8 v1 chunk types.\n\n**Files:** src/blueball/levels/__init__.py, src/blueball/levels/chunks/{__init__,base,flat,gap,stairs,bump,spike_pit,patrol_platform,falling_hazard,goal}.py, tests/test_chunks.py\n\n**Verify:** pytest -q tests/test_chunks.py -v -> 5+ passed\n\nSee plan section Task 12.\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/base.py\", \"src/blueball/levels/chunks/flat.py\", \"src/blueball/levels/chunks/gap.py\", \"src/blueball/levels/chunks/stairs.py\", \"src/blueball/levels/chunks/bump.py\", \"src/blueball/levels/chunks/spike_pit.py\", \"src/blueball/levels/chunks/patrol_platform.py\", \"src/blueball/levels/chunks/falling_hazard.py\", \"src/blueball/levels/chunks/goal.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \"pytest -q tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"Chunk ABC and CHUNK_REGISTRY\", \"8 chunk types registered\", \"each chunk's build returns width and adds expected bodies/entities\"]}\n```"
+    },
+    {
+      "id": 13,
+      "subject": "Task 13: JSON level loader",
+      "status": "pending",
+      "blockedBy": [12],
+      "description": "**Goal:** load_level(path, world) -> LevelMeta dataclass.\n\n**Files:** src/blueball/levels/loader.py, tests/test_level_loader.py\n\n**Verify:** pytest -q tests/test_level_loader.py -v -> 2 passed\n\nSee plan section Task 13.\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/loader.py\", \"tests/test_level_loader.py\"], \"verifyCommand\": \"pytest -q tests/test_level_loader.py -v\", \"acceptanceCriteria\": [\"LevelMeta with name/spawn/colors/total_width\", \"chunk params as kwargs\", \"unknown chunk type raises ValueError\"]}\n```"
+    },
+    {
+      "id": 14,
+      "subject": "Task 14: Renderer",
+      "status": "pending",
+      "blockedBy": [7, 9, 10, 11],
+      "description": "**Goal:** Renderer drawing all entities with interpolation. Flat geometric primitives.\n\n**Files:** src/blueball/render/__init__.py, src/blueball/render/renderer.py\n\n**Verify:** Manual (verified during Task 15 playtest)\n\nSee plan section Task 14.\n\n```json:metadata\n{\"files\": [\"src/blueball/render/renderer.py\"], \"verifyCommand\": \"python -c 'import pygame; pygame.init(); from blueball.render.renderer import Renderer; print(chr(111)+chr(107))'\", \"acceptanceCriteria\": [\"all draw_* methods\", \"begin_frame snapshots prev positions\", \"ball spin via rotated dark arc\", \"static segments drawn\"]}\n```"
+    },
+    {
+      "id": 15,
+      "subject": "Task 15: PlayScene + tutorial level + manual playtest",
+      "status": "pending",
+      "blockedBy": [13, 14],
+      "description": "**Goal:** Wire it all together. Playable v1 vertical slice.\n\n**Files:** src/blueball/scenes/__init__.py, src/blueball/scenes/base.py, src/blueball/scenes/play.py, src/blueball/levels/tutorial_hill.json, main.py\n\n**Verify:** python main.py opens playable level; pytest -q all pass; manual feel check\n\nSee plan section Task 15.\n\n```json:metadata\n{\"files\": [\"src/blueball/scenes/base.py\", \"src/blueball/scenes/play.py\", \"src/blueball/levels/tutorial_hill.json\", \"main.py\"], \"verifyCommand\": \"pytest -q\", \"acceptanceCriteria\": [\"playable level end-to-end\", \"movement+jumping responsive\", \"spike resets, goal completes\", \"ball spins, camera smooth\", \"manual feel pass\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-05-23T00:00:00Z"
+}
