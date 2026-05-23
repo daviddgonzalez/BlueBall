@@ -1,12 +1,19 @@
+import pymunk
 import pytest
 
 from blueball import collision
 from blueball.entities.base import Entity
 from blueball.entities.collectible import Collectible
+from blueball.entities.falling_hazard import FallingHazard
 from blueball.entities.goal import Goal
 from blueball.entities.patroller import Patroller
 from blueball.entities.spike import Spike
 from blueball.world import World
+
+
+class _BodyStub:
+    def __init__(self, x: float) -> None:
+        self.position = pymunk.Vec2d(x, 0)
 
 
 class _StubEntity(Entity):
@@ -83,3 +90,25 @@ def test_patroller_die_removes_from_space():
     p.die()
     assert p.alive is False
     assert p.body not in w.space.bodies
+
+
+def test_falling_hazard_does_not_fall_before_trigger():
+    w = World()
+    player_body = _BodyStub(x=0)
+    fh = FallingHazard(w, position=(500, 100), trigger_x=400, player_provider=lambda: player_body)
+    w.add_entity(fh)
+    y0 = fh.body.position.y
+    for _ in range(30):
+        w.step(1 / 60)
+    assert fh.body.position.y == y0
+
+
+def test_falling_hazard_falls_after_trigger():
+    w = World()
+    player_body = _BodyStub(x=500)  # already past trigger_x
+    fh = FallingHazard(w, position=(500, 100), trigger_x=400, player_provider=lambda: player_body)
+    w.add_entity(fh)
+    y0 = fh.body.position.y
+    for _ in range(30):
+        w.step(1 / 60)
+    assert fh.body.position.y > y0  # fell under gravity
