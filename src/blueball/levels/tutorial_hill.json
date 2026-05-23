@@ -1,0 +1,21 @@
+{
+  "name": "Tutorial Hill",
+  "background": "#7ec7ff",
+  "ground": "#3b8a4a",
+  "spawn": [80, 540],
+  "chunks": [
+    {"type": "flat", "width_tiles": 8},
+    {"type": "bump", "width_tiles": 2, "height": 24},
+    {"type": "flat", "width_tiles": 4},
+    {"type": "gap", "width_tiles": 2},
+    {"type": "flat", "width_tiles": 4},
+    {"type": "spike_pit", "width_tiles": 3, "spikes": 3},
+    {"type": "flat", "width_tiles": 4},
+    {"type": "patrol_platform", "length_tiles": 6, "patroller_speed": 60},
+    {"type": "stairs_up", "steps": 3, "step_height": 32},
+    {"type": "flat", "width_tiles": 4},
+    {"type": "falling_hazard", "width_tiles": 4, "hazard_height": 220},
+    {"type": "stairs_down", "steps": 3, "step_height": 32},
+    {"type": "goal"}
+  ]
+}

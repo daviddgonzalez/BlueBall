@@ -1,27 +1,29 @@
 import sys
+from pathlib import Path
+
 import pygame
 
-WIDTH, HEIGHT = 1280, 720
-SKY = (126, 199, 255)
+from blueball import config
+from blueball.scenes.play import PlayScene
 
 
 def main() -> int:
     pygame.init()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
     pygame.display.set_caption("Blue Ball")
     clock = pygame.time.Clock()
 
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                running = False
+    level_path = Path(__file__).parent / "src" / "blueball" / "levels" / "tutorial_hill.json"
+    scene = PlayScene(screen, level_path)
 
-        screen.fill(SKY)
-        pygame.display.flip()
-        clock.tick(60)
+    while scene is not None:
+        events = pygame.event.get()
+        scene = scene.handle_events(events)
+        if scene is None:
+            break
+        frame_dt = clock.tick(config.TARGET_FPS) / 1000.0
+        scene.update(frame_dt)
+        scene.draw()
 
     pygame.quit()
     return 0
