@@ -19,7 +19,7 @@ BALL_RADIUS = 16
 BALL_MASS = 1.0
 BALL_FRICTION = 0.9
 BALL_ELASTICITY = 0.05
-MOVE_TORQUE = 3850.0
+MOVE_TORQUE = 4235.0
 MAX_ANGULAR_VEL = 60.5
 AIR_CONTROL = 0.8
 # Direct horizontal force applied while airborne so the ball can change
