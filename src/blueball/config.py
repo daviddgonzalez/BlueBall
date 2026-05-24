@@ -21,6 +21,10 @@ BALL_FRICTION = 0.9
 BALL_ELASTICITY = 0.05
 MOVE_TORQUE = 4235.0
 MAX_ANGULAR_VEL = 60.5
+# Hard cap on the ball's linear-velocity magnitude. Slightly above the
+# ground-roll top speed (MAX_ANGULAR_VEL * BALL_RADIUS = 968 px/s) so normal
+# rolling doesn't feel clamped, but air force and long falls can't run away.
+MAX_LINEAR_SPEED = 1000.0
 AIR_CONTROL = 0.8
 # Direct horizontal force applied while airborne so the ball can change
 # direction midair. Torque alone only spins it.

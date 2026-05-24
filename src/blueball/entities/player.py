@@ -123,6 +123,14 @@ class Player(Entity):
             vx, vy = self.body.velocity
             self.body.velocity = (vx, vy * config.JUMP_CUT_FACTOR)
 
+        # Cap linear-velocity magnitude so air force and long falls can't
+        # accelerate the ball indefinitely.
+        v = self.body.velocity
+        speed = math.hypot(v.x, v.y)
+        if speed > config.MAX_LINEAR_SPEED:
+            scale = config.MAX_LINEAR_SPEED / speed
+            self.body.velocity = (v.x * scale, v.y * scale)
+
     def draw(self, renderer, alpha: float) -> None:
         renderer.draw_ball(self.body, alpha)
 
