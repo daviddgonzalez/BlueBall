@@ -12,14 +12,14 @@ PHYS_DT = 1.0 / PHYS_HZ
 MAX_ACCUMULATED_STEPS = 10  # avoid spiral-of-death if a frame is very slow
 
 # Gravity (Pymunk uses y-down by default if we configure it that way; we use y-down here)
-GRAVITY = (0, 800)
+GRAVITY = (0, 480)
 
 # Ball physics
 BALL_RADIUS = 16
 BALL_MASS = 1.0
 BALL_FRICTION = 0.9
 BALL_ELASTICITY = 0.05
-MOVE_TORQUE = 5506.0
+MOVE_TORQUE = 8810.0
 MAX_ANGULAR_VEL = 37.5
 # Hard cap on the ball's linear-velocity magnitude. Matched to the ground-roll
 # top speed (MAX_ANGULAR_VEL * BALL_RADIUS = 600 px/s) so the ball doesn't
