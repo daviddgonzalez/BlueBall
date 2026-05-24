@@ -38,8 +38,11 @@ def test_player_construct():
 
 def test_right_press_spins_ball_clockwise():
     w = _make_world_with_floor()
-    # 60 substeps of RIGHT covers 30 frames at PHYS_HZ=120
-    p = Player(agent=_ScriptedAgent([Action.RIGHT] * 60), spawn_xy=(100, 500))
+    # Spawn just above the floor so the ball lands almost immediately.
+    # AIR_CONTROL is 0 so torque only applies once grounded - if we spawned
+    # high in the air the ball would float through the whole test without
+    # ever spinning.
+    p = Player(agent=_ScriptedAgent([Action.RIGHT] * 60), spawn_xy=(100, 580))
     w.add_entity(p)
     for _ in range(30):
         w.step(1 / 60)

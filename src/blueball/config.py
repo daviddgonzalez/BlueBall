@@ -19,20 +19,26 @@ BALL_RADIUS = 16
 BALL_MASS = 1.0
 BALL_FRICTION = 0.9
 BALL_ELASTICITY = 0.05
-MOVE_TORQUE = 9691.0
+MOVE_TORQUE = 6784.0
 MAX_ANGULAR_VEL = 28.125
 # Hard cap on the ball's linear-velocity magnitude. Matched to the ground-roll
 # top speed (MAX_ANGULAR_VEL * BALL_RADIUS = 450 px/s) so the ball doesn't
 # spin faster than it can translate (which would look like slipping).
 MAX_LINEAR_SPEED = 450.0
-AIR_CONTROL = 0.8
+# Torque multiplier while airborne. 0 = no torque in air, so the ball's spin
+# is frozen during a jump and there's no slip-induced "kick" on landing.
+AIR_CONTROL = 0.0
 # Direct horizontal force applied while grounded - bypasses the friction
 # acceleration ceiling so reversals don't feel mushy. Torque is still applied
 # in parallel so the ball visibly spins as it rolls.
-GROUND_MOVE_FORCE = 600.0
-# Horizontal force in midair. Small non-zero value lets the player nudge their
-# trajectory slightly without making air acceleration feel like a free ride.
-AIR_MOVE_FORCE = 150.0
+GROUND_MOVE_FORCE = 420.0
+# Horizontal force in midair. Asymmetric: BRAKE is applied when the input
+# direction is opposite the current horizontal velocity (correcting a wrong
+# jump arc); ACCEL when the input matches velocity (or velocity is ~0).
+# Higher brake than accel keeps air control responsive for corrections
+# without letting the player accelerate freely in midair.
+AIR_MOVE_FORCE_BRAKE = 300.0
+AIR_MOVE_FORCE_ACCEL = 60.0
 
 # Jump
 JUMP_IMPULSE = 315.0

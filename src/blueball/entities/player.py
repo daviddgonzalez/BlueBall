@@ -88,22 +88,32 @@ class Player(Entity):
 
         # Horizontal: torque (so the ball visibly spins) plus a direct
         # horizontal force. On the ground the force bypasses the friction
-        # ceiling for snappy reversals; in the air it's typically zero so
-        # the player carries their jump momentum without midair acceleration.
+        # ceiling for snappy reversals. In the air the force is asymmetric:
+        # high when the input opposes current velocity (BRAKE / correction),
+        # low when input matches velocity (ACCEL), so the player can fix a
+        # bad jump arc but can't freely accelerate horizontally in midair.
         grounded = self.grounded
         air_factor = 1.0 if grounded else config.AIR_CONTROL
-        move_force = config.GROUND_MOVE_FORCE if grounded else config.AIR_MOVE_FORCE
+        vx = self.body.velocity.x
         if action in _MOVE_LEFT:
             self.body.torque -= config.MOVE_TORQUE * air_factor
-            if move_force > 0:
+            if grounded:
+                force = config.GROUND_MOVE_FORCE
+            else:
+                force = config.AIR_MOVE_FORCE_BRAKE if vx > 0 else config.AIR_MOVE_FORCE_ACCEL
+            if force > 0:
                 self.body.apply_force_at_world_point(
-                    (-move_force, 0), self.body.position
+                    (-force, 0), self.body.position
                 )
         if action in _MOVE_RIGHT:
             self.body.torque += config.MOVE_TORQUE * air_factor
-            if move_force > 0:
+            if grounded:
+                force = config.GROUND_MOVE_FORCE
+            else:
+                force = config.AIR_MOVE_FORCE_BRAKE if vx < 0 else config.AIR_MOVE_FORCE_ACCEL
+            if force > 0:
                 self.body.apply_force_at_world_point(
-                    (move_force, 0), self.body.position
+                    (force, 0), self.body.position
                 )
 
         # Cap angular velocity so the ball doesn't infinite-spin
