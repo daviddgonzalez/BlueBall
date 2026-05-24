@@ -31,7 +31,7 @@ AIR_CONTROL = 0.8
 AIR_MOVE_FORCE = 263.0
 
 # Jump
-JUMP_IMPULSE = 300.0
+JUMP_IMPULSE = 342.0
 JUMP_CUT_FACTOR = 0.4
 
 # Player dies if they fall this far below the screen
