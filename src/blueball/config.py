@@ -19,7 +19,7 @@ BALL_RADIUS = 16
 BALL_MASS = 1.0
 BALL_FRICTION = 0.9
 BALL_ELASTICITY = 0.05
-MOVE_TORQUE = 4235.0
+MOVE_TORQUE = 5506.0
 MAX_ANGULAR_VEL = 60.5
 # Hard cap on the ball's linear-velocity magnitude. Slightly above the
 # ground-roll top speed (MAX_ANGULAR_VEL * BALL_RADIUS = 968 px/s) so normal
