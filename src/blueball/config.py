@@ -32,7 +32,7 @@ AIR_CONTROL = 0.8
 GROUND_MOVE_FORCE = 600.0
 # Horizontal force in midair. Small non-zero value lets the player nudge their
 # trajectory slightly without making air acceleration feel like a free ride.
-AIR_MOVE_FORCE = 120.0
+AIR_MOVE_FORCE = 150.0
 
 # Jump
 JUMP_IMPULSE = 315.0
