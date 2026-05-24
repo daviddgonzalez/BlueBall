@@ -29,10 +29,10 @@ AIR_CONTROL = 0.8
 # Direct horizontal force applied while grounded - bypasses the friction
 # acceleration ceiling so reversals don't feel mushy. Torque is still applied
 # in parallel so the ball visibly spins as it rolls.
-GROUND_MOVE_FORCE = 1800.0
-# Horizontal force in midair. Zero = no airborne acceleration; player keeps
-# whatever momentum they had at takeoff.
-AIR_MOVE_FORCE = 0.0
+GROUND_MOVE_FORCE = 900.0
+# Horizontal force in midair. Small non-zero value lets the player nudge their
+# trajectory slightly without making air acceleration feel like a free ride.
+AIR_MOVE_FORCE = 50.0
 
 # Jump
 JUMP_IMPULSE = 315.0
