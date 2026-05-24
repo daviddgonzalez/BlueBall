@@ -86,22 +86,24 @@ class Player(Entity):
         observation = self._observe()
         action = self.agent.act(observation)
 
-        # Horizontal: torque (rolls the ball on the ground via friction) plus,
-        # when airborne, a direct horizontal force so the player can change
-        # direction in midair instead of just spinning in place.
+        # Horizontal: torque (so the ball visibly spins) plus a direct
+        # horizontal force. On the ground the force bypasses the friction
+        # ceiling for snappy reversals; in the air it's typically zero so
+        # the player carries their jump momentum without midair acceleration.
         grounded = self.grounded
         air_factor = 1.0 if grounded else config.AIR_CONTROL
+        move_force = config.GROUND_MOVE_FORCE if grounded else config.AIR_MOVE_FORCE
         if action in _MOVE_LEFT:
             self.body.torque -= config.MOVE_TORQUE * air_factor
-            if not grounded:
+            if move_force > 0:
                 self.body.apply_force_at_world_point(
-                    (-config.AIR_MOVE_FORCE, 0), self.body.position
+                    (-move_force, 0), self.body.position
                 )
         if action in _MOVE_RIGHT:
             self.body.torque += config.MOVE_TORQUE * air_factor
-            if not grounded:
+            if move_force > 0:
                 self.body.apply_force_at_world_point(
-                    (config.AIR_MOVE_FORCE, 0), self.body.position
+                    (move_force, 0), self.body.position
                 )
 
         # Cap angular velocity so the ball doesn't infinite-spin

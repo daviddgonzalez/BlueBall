@@ -26,9 +26,13 @@ MAX_ANGULAR_VEL = 28.125
 # spin faster than it can translate (which would look like slipping).
 MAX_LINEAR_SPEED = 450.0
 AIR_CONTROL = 0.8
-# Direct horizontal force applied while airborne so the ball can change
-# direction midair. Torque alone only spins it.
-AIR_MOVE_FORCE = 263.0
+# Direct horizontal force applied while grounded - bypasses the friction
+# acceleration ceiling so reversals don't feel mushy. Torque is still applied
+# in parallel so the ball visibly spins as it rolls.
+GROUND_MOVE_FORCE = 1800.0
+# Horizontal force in midair. Zero = no airborne acceleration; player keeps
+# whatever momentum they had at takeoff.
+AIR_MOVE_FORCE = 0.0
 
 # Jump
 JUMP_IMPULSE = 315.0
