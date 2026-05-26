@@ -119,3 +119,63 @@ def test_player_unlock_repeat_is_safe(monkeypatch, tmp_path):
     p.unlock(Ability.DOUBLE_JUMP)
     assert p.abilities == {Ability.DOUBLE_JUMP}
     assert not save_file.exists()
+
+
+def test_player_receive_boost_raises_multiplier():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    assert p._boost_multiplier == 1.0
+    assert p._aerial_since_pickup is False
+    p.receive_boost(2.0)
+    assert p._boost_multiplier == 2.0
+
+
+def test_player_receive_boost_takes_max():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.receive_boost(1.5)
+    assert p._boost_multiplier == 1.5
+    p.receive_boost(1.2)
+    assert p._boost_multiplier == 1.5  # weaker pad is a no-op
+    p.receive_boost(2.0)
+    assert p._boost_multiplier == 2.0  # stronger pad raises
+
+
+def test_player_boost_clears_on_air_to_ground_transition():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    # Pick up boost while airborne (no contact normals -> not grounded)
+    p.receive_boost(2.0)
+    assert p._boost_multiplier == 2.0
+    assert p._aerial_since_pickup is True
+    # Stay airborne for a tick — boost persists
+    p._update_boost(grounded=False)
+    assert p._boost_multiplier == 2.0
+    assert p._aerial_since_pickup is True
+    # First grounded tick after airborne — boost clears
+    p._update_boost(grounded=True)
+    assert p._boost_multiplier == 1.0
+    assert p._aerial_since_pickup is False
+
+
+def test_player_boost_persists_while_grounded_until_jump_land_cycle():
+    w = _make_world_with_floor()
+    p = Player(agent=_ScriptedAgent([Action.IDLE] * 200), spawn_xy=(100, 580))
+    w.add_entity(p)
+    # Settle on the floor so the player is grounded
+    for _ in range(20):
+        w.step(1 / 60)
+    assert p.grounded
+    # Pick up boost while grounded — should NOT immediately expire
+    p.receive_boost(2.0)
+    assert p._boost_multiplier == 2.0
+    assert p._aerial_since_pickup is False
+    # Several grounded ticks — boost persists (no jump yet)
+    for _ in range(5):
+        p._update_boost(grounded=True)
+    assert p._boost_multiplier == 2.0
+    assert p._aerial_since_pickup is False
+    # Now go airborne, then land — boost clears
+    p._update_boost(grounded=False)
+    assert p._aerial_since_pickup is True
+    assert p._boost_multiplier == 2.0
+    p._update_boost(grounded=True)
+    assert p._boost_multiplier == 1.0
+    assert p._aerial_since_pickup is False

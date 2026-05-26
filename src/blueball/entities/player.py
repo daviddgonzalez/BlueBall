@@ -49,6 +49,8 @@ class Player(Entity):
         self.jump_ctrl = JumpController(abilities=self.abilities)
         self.dead = False
         self.collectibles_collected = 0
+        self._boost_multiplier: float = 1.0
+        self._aerial_since_pickup: bool = False
         self._contact_normals: list = []
 
     def die(self) -> None:
@@ -61,6 +63,27 @@ class Player(Entity):
         happens at level-complete time so dying mid-run reverts the unlock.
         """
         self.abilities.add(ability)
+
+    def receive_boost(self, multiplier: float) -> None:
+        """Apply a boost-pad's multiplier, take-the-max'd against any active
+        boost. Arms "ends on next landing" tracking: if we're already airborne
+        when the boost lands, the next grounded tick ends it; if we're grounded
+        we have to jump and land before it ends.
+        """
+        if multiplier > self._boost_multiplier:
+            self._boost_multiplier = multiplier
+            self._aerial_since_pickup = not self.grounded
+
+    def _update_boost(self, grounded: bool) -> None:
+        """Per-tick: if a boost is active, track aerial state and clear on the
+        first airborne→grounded transition."""
+        if self._boost_multiplier <= 1.0:
+            return
+        if not grounded:
+            self._aerial_since_pickup = True
+        elif self._aerial_since_pickup:
+            self._boost_multiplier = 1.0
+            self._aerial_since_pickup = False
 
     @property
     def grounded(self) -> bool:
@@ -98,6 +121,7 @@ class Player(Entity):
             self.die()
             return
         self._refresh_contact_normals()
+        self._update_boost(self.grounded)
 
         observation = self._observe()
         action = self.agent.act(observation)
@@ -132,12 +156,15 @@ class Player(Entity):
                     (force, 0), self.body.position
                 )
 
-        # Cap angular velocity so the ball doesn't infinite-spin
+        # Cap angular velocity so the ball doesn't infinite-spin. Boost pads
+        # scale this in lockstep with the linear cap so the ball never visually
+        # slips (effective_max_ang_vel * BALL_RADIUS ≈ effective_max_speed).
+        max_ang_vel = config.MAX_ANGULAR_VEL * self._boost_multiplier
         av = self.body.angular_velocity
-        if av > config.MAX_ANGULAR_VEL:
-            self.body.angular_velocity = config.MAX_ANGULAR_VEL
-        elif av < -config.MAX_ANGULAR_VEL:
-            self.body.angular_velocity = -config.MAX_ANGULAR_VEL
+        if av > max_ang_vel:
+            self.body.angular_velocity = max_ang_vel
+        elif av < -max_ang_vel:
+            self.body.angular_velocity = -max_ang_vel
 
         # Jump
         decision = self.jump_ctrl.tick(action, grounded, dt)
@@ -152,11 +179,13 @@ class Player(Entity):
             self.body.velocity = (vx, vy * config.JUMP_CUT_FACTOR)
 
         # Cap linear-velocity magnitude so air force and long falls can't
-        # accelerate the ball indefinitely.
+        # accelerate the ball indefinitely. Boost pads raise this cap until
+        # the next airborne→grounded transition.
+        max_speed = config.MAX_LINEAR_SPEED * self._boost_multiplier
         v = self.body.velocity
         speed = math.hypot(v.x, v.y)
-        if speed > config.MAX_LINEAR_SPEED:
-            scale = config.MAX_LINEAR_SPEED / speed
+        if speed > max_speed:
+            scale = max_speed / speed
             self.body.velocity = (v.x * scale, v.y * scale)
 
     def draw(self, renderer, alpha: float) -> None:
