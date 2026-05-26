@@ -1,0 +1,33 @@
+{
+  "planPath": "docs/superpowers/plans/2026-05-26-boost-pads.md",
+  "tasks": [
+    {
+      "id": 8,
+      "subject": "Task 0: Player boost state + receive_boost + effective caps",
+      "status": "completed",
+      "description": "**Goal:** `Player` accepts boost via `receive_boost(multiplier)`, take-the-max'd. Boost ends on the first airborne→grounded transition after pickup. Linear-speed and angular-velocity caps multiplied by boost while active.\n\n**Files:**\n- Modify: `src/blueball/entities/player.py`\n- Modify: `tests/test_player.py`\n\n**Acceptance Criteria:**\n- [ ] `_boost_multiplier=1.0`, `_aerial_since_pickup=False` initialized in `__init__`.\n- [ ] `receive_boost(m)` take-the-max; `_aerial_since_pickup = not self.grounded` at pickup.\n- [ ] `_update_boost(grounded)` called after `_refresh_contact_normals()`; clears boost on first grounded tick where `_aerial_since_pickup` is True.\n- [ ] Linear/angular caps scaled by `_boost_multiplier`.\n\n**Verify:** `pytest -q tests/test_player.py -v` → all pass\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/player.py\", \"tests/test_player.py\"], \"verifyCommand\": \"pytest -q tests/test_player.py -v\", \"acceptanceCriteria\": [\"_boost_multiplier and _aerial_since_pickup initialized in __init__\", \"receive_boost take-the-max with arm-on-pickup\", \"_update_boost ends boost on air→ground transition\", \"MAX_LINEAR_SPEED and MAX_ANGULAR_VEL caps scaled by _boost_multiplier\"]}\n```"
+    },
+    {
+      "id": 9,
+      "subject": "Task 1: BoostPad entity + collision handler",
+      "status": "completed",
+      "blockedBy": [8],
+      "description": "**Goal:** New sensor entity `BoostPad` + `CT_PLAYER ↔ CT_BOOST_PAD` begin handler that calls `player.receive_boost(pad.multiplier)`. Pad NOT consumed on contact.\n\n**Files:**\n- Create: `src/blueball/entities/boost_pad.py`\n- Modify: `src/blueball/collision.py`\n- Modify: `tests/test_entities.py`\n- Modify: `tests/test_collision.py`\n\n**Acceptance Criteria:**\n- [ ] `BoostPad(world, position, width=128, multiplier=2.0)` STATIC body, sensor Poly, `collision_type == CT_BOOST_PAD`.\n- [ ] `collision.CT_BOOST_PAD == 6`.\n- [ ] Begin handler calls `player.receive_boost(entity.multiplier)`, returns False.\n- [ ] Pad remains in space after contact.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_collision.py -v` → all pass\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/boost_pad.py\", \"src/blueball/collision.py\", \"tests/test_entities.py\", \"tests/test_collision.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_collision.py -v\", \"acceptanceCriteria\": [\"BoostPad is sensor Poly with CT_BOOST_PAD=6\", \"begin handler calls player.receive_boost\", \"pad not consumed on contact (still in space)\", \"BOOST_PAD_THICKNESS module-level constant\"]}\n```"
+    },
+    {
+      "id": 10,
+      "subject": "Task 2: boost_pad chunk",
+      "status": "completed",
+      "blockedBy": [9],
+      "description": "**Goal:** New `boost_pad` chunk lays flat ground segment + BoostPad sensor on top. Registered in chunk registry.\n\n**Files:**\n- Create: `src/blueball/levels/chunks/boost_pad.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: `tests/test_chunks.py`\n\n**Acceptance Criteria:**\n- [ ] `\"boost_pad\"` in CHUNK_REGISTRY.\n- [ ] Building adds one BoostPad with correct multiplier and width.\n- [ ] Returned width == `width_tiles * TILE`.\n\n**Verify:** `pytest -q tests/test_chunks.py -v` → all pass\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/boost_pad.py\", \"src/blueball/levels/chunks/__init__.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \"pytest -q tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"boost_pad registered in CHUNK_REGISTRY\", \"chunk builds one BoostPad with correct multiplier and width\", \"returned width is width_tiles * TILE\"]}\n```"
+    },
+    {
+      "id": 11,
+      "subject": "Task 3: Renderer + config + tutorial level + manual playtest",
+      "status": "pending",
+      "blockedBy": [10],
+      "description": "**Goal:** Wire boost-pad visual into renderer, add config tunable, place chunk in tutorial level, manual playtest.\n\n**Files:**\n- Modify: `src/blueball/render/renderer.py`\n- Modify: `src/blueball/config.py`\n- Modify: `src/blueball/levels/tutorial_hill.json`\n\n**Acceptance Criteria:**\n- [ ] `draw_boost_pad(pos, width)` cyan strip + chevron.\n- [ ] `BOOST_PAD_DEFAULT_MULTIPLIER == 2.0`.\n- [ ] tutorial_hill.json has `boost_pad` between `patrol_platform` and `stairs_up`.\n- [ ] `pytest -q` green.\n- [ ] Manual playtest: pad accelerates player, ends on landing, re-applies on second pass.\n\n**Verify:** `pytest -q` → all green; then `python main.py` and observe.\n\n```json:metadata\n{\"files\": [\"src/blueball/render/renderer.py\", \"src/blueball/config.py\", \"src/blueball/levels/tutorial_hill.json\"], \"verifyCommand\": \"pytest -q\", \"acceptanceCriteria\": [\"draw_boost_pad renders cyan strip + chevron\", \"BOOST_PAD_DEFAULT_MULTIPLIER=2.0 in config\", \"tutorial_hill.json has boost_pad chunk between patrol_platform and stairs_up\", \"manual playtest: pad accelerates player, ends on landing, re-applies on second pass\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-05-26"
+}
