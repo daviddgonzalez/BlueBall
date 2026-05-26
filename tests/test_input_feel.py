@@ -1,4 +1,5 @@
 from blueball import config
+from blueball.abilities import Ability
 from blueball.agent import Action
 from blueball.input_feel import JumpController
 
@@ -75,7 +76,13 @@ def test_jump_cut_on_release_while_rising():
     assert d.cut is True
 
 
-from blueball.abilities import Ability
+def test_double_jump_available_on_first_tick_when_spawned_airborne():
+    """A player spawned mid-air with DOUBLE_JUMP unlocked should still
+    have their air jump on the very first tick."""
+    jc = JumpController(abilities={Ability.DOUBLE_JUMP})
+    # First tick: airborne, fresh press
+    d = jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is True
 
 
 def test_double_jump_disabled_when_ability_missing():

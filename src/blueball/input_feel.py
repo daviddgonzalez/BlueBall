@@ -29,13 +29,15 @@ class JumpController:
     a push. We hold the reference; reads happen each tick.
     """
 
-    def __init__(self, abilities: set | None = None) -> None:
-        self.abilities: set = abilities if abilities is not None else set()
+    def __init__(self, abilities: set[Ability] | None = None) -> None:
+        self.abilities: set[Ability] = abilities if abilities is not None else set()
         self._buffer_remaining = 0.0      # seconds until buffered jump expires
         self._coyote_remaining = 0.0      # seconds we still allow a jump after walking off
         self._was_grounded = False
         self._was_jump_held = False
-        self._air_jumps_remaining = 0     # set when leaving the ground / firing a ground jump
+        # Initialize with a full stock so a player spawned mid-air with
+        # DOUBLE_JUMP unlocked still has their air jump on tick 1.
+        self._air_jumps_remaining = self._max_air_jumps()
 
     def _max_air_jumps(self) -> int:
         return 1 if Ability.DOUBLE_JUMP in self.abilities else 0
