@@ -4,7 +4,10 @@
   "ground": "#3b8a4a",
   "spawn": [80, 540],
   "chunks": [
-    {"type": "flat", "width_tiles": 8},
+    {"type": "flat", "width_tiles": 6},
+    {"type": "ability_pickup", "width_tiles": 2, "ability": "double_jump"},
+    {"type": "gap", "width_tiles": 4},
+    {"type": "flat", "width_tiles": 2},
     {"type": "bump", "width_tiles": 2, "height": 24},
     {"type": "flat", "width_tiles": 4},
     {"type": "gap", "width_tiles": 2},

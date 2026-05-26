@@ -19,6 +19,8 @@ _GOAL_COLOR = (255, 240, 120)
 _GOAL_FLAG = (220, 60, 60)
 _GROUND_COLOR = (59, 138, 74)
 _GROUND_EDGE = (40, 90, 50)
+_ABILITY_PICKUP_DEFAULT = (220, 220, 220)
+_ABILITY_PICKUP_COLORS = {"double_jump": (255, 220, 80)}
 
 
 def _lerp(a, b, t):
@@ -80,6 +82,17 @@ class Renderer:
         )
         r = int(config.COLLECTIBLE_RADIUS * pulse)
         pygame.draw.circle(self.screen, _COLLECTIBLE_COLOR, (int(sx), int(sy)), r)
+
+    def draw_ability_pickup(self, pos, radius, ability: str) -> None:
+        x, y = pos
+        sx, sy = self._w2s((x, y))
+        pulse = 1.0 + 0.15 * math.sin(
+            pygame.time.get_ticks() / 1000.0 * 2 * math.pi * config.COLLECTIBLE_PULSE_HZ
+        )
+        r = int(radius * pulse)
+        color = _ABILITY_PICKUP_COLORS.get(ability, _ABILITY_PICKUP_DEFAULT)
+        points = [(sx, sy - r), (sx + r, sy), (sx, sy + r), (sx - r, sy)]
+        pygame.draw.polygon(self.screen, color, points)
 
     def draw_goal(self, pos, width, height):
         x, y = pos
