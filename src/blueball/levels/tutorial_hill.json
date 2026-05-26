@@ -4,7 +4,9 @@
   "ground": "#3b8a4a",
   "spawn": [80, 540],
   "chunks": [
-    {"type": "flat", "width_tiles": 6},
+    {"type": "flat", "width_tiles": 3},
+    {"type": "boost_pad", "width_tiles": 4, "multiplier": 2.0},
+    {"type": "flat", "width_tiles": 4},
     {"type": "ability_pickup", "width_tiles": 2, "ability": "double_jump"},
     {"type": "gap", "width_tiles": 4},
     {"type": "flat", "width_tiles": 2},
@@ -15,7 +17,6 @@
     {"type": "spike_pit", "width_tiles": 3, "spikes": 3},
     {"type": "flat", "width_tiles": 4},
     {"type": "patrol_platform", "length_tiles": 6, "patroller_speed": 60},
-    {"type": "boost_pad", "width_tiles": 3, "multiplier": 2.0},
     {"type": "stairs_up", "steps": 3, "step_height": 32},
     {"type": "flat", "width_tiles": 4},
     {"type": "falling_hazard", "width_tiles": 4, "hazard_height": 220},

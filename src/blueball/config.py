@@ -73,3 +73,6 @@ ABILITY_PICKUP_DEFAULT_HEIGHT = 64    # px above ground where pickups float
 # Boost pads
 BOOST_PAD_THICKNESS = 16  # px — how thick the floor strip is in world units
 BOOST_PAD_DEFAULT_MULTIPLIER = 2.0
+# Fraction of the (target - current) velocity gap closed by the immediate
+# kick at pickup time. 1.0 = snap to the new cap; 0.5 = halve the kick.
+BOOST_PAD_KICK_FACTOR = 0.5

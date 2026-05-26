@@ -61,18 +61,45 @@ class Player(Entity):
         """Add `ability` to this player's set (visible to JumpController on
         the next tick via the shared reference). In-memory only — persistence
         happens at level-complete time so dying mid-run reverts the unlock.
+
+        Idempotent: re-picking an already-unlocked ability is a no-op. New
+        unlocks also notify the JumpController so a mid-air pickup grants its
+        effect immediately rather than waiting for the next ground→air cycle.
         """
+        if ability in self.abilities:
+            return
         self.abilities.add(ability)
+        self.jump_ctrl.on_ability_added(ability)
 
     def receive_boost(self, multiplier: float) -> None:
         """Apply a boost-pad's multiplier, take-the-max'd against any active
         boost. Arms "ends on next landing" tracking: if we're already airborne
         when the boost lands, the next grounded tick ends it; if we're grounded
         we have to jump and land before it ends.
+
+        Also snaps horizontal velocity (and matching angular velocity) up to
+        the new cap in the direction of current motion, so the boost feels
+        immediate instead of waiting for ground force to push the ball up to
+        the higher cap.
         """
         if multiplier > self._boost_multiplier:
             self._boost_multiplier = multiplier
             self._aerial_since_pickup = not self.grounded
+            vx, vy = self.body.velocity
+            ang = self.body.angular_velocity
+            new_max_speed = config.MAX_LINEAR_SPEED * multiplier
+            new_max_ang = config.MAX_ANGULAR_VEL * multiplier
+            kick = config.BOOST_PAD_KICK_FACTOR
+            if vx > 0:
+                target_vx = vx + (new_max_speed - vx) * kick
+                target_ang = ang + (new_max_ang - ang) * kick
+                self.body.velocity = (max(vx, target_vx), vy)
+                self.body.angular_velocity = max(ang, target_ang)
+            elif vx < 0:
+                target_vx = vx + (-new_max_speed - vx) * kick
+                target_ang = ang + (-new_max_ang - ang) * kick
+                self.body.velocity = (min(vx, target_vx), vy)
+                self.body.angular_velocity = min(ang, target_ang)
 
     def _update_boost(self, grounded: bool) -> None:
         """Per-tick: if a boost is active, track aerial state and clear on the

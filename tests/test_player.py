@@ -179,3 +179,70 @@ def test_player_boost_persists_while_grounded_until_jump_land_cycle():
     p._update_boost(grounded=True)
     assert p._boost_multiplier == 1.0
     assert p._aerial_since_pickup is False
+
+
+def test_player_receive_boost_kicks_horizontal_velocity_toward_new_cap_when_moving_right():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.body.velocity = (200.0, 50.0)
+    p.body.angular_velocity = 10.0
+    p.receive_boost(2.0)
+    # vx interpolates BOOST_PAD_KICK_FACTOR of the way from current to new cap
+    new_max_speed = config.MAX_LINEAR_SPEED * 2.0
+    new_max_ang = config.MAX_ANGULAR_VEL * 2.0
+    expected_vx = 200.0 + (new_max_speed - 200.0) * config.BOOST_PAD_KICK_FACTOR
+    expected_ang = 10.0 + (new_max_ang - 10.0) * config.BOOST_PAD_KICK_FACTOR
+    assert p.body.velocity.x == expected_vx
+    assert p.body.velocity.y == 50.0  # vy preserved
+    assert p.body.angular_velocity == expected_ang
+
+
+def test_player_receive_boost_kicks_horizontal_velocity_when_moving_left():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.body.velocity = (-200.0, 50.0)
+    p.body.angular_velocity = -10.0
+    p.receive_boost(2.0)
+    new_max_speed = config.MAX_LINEAR_SPEED * 2.0
+    new_max_ang = config.MAX_ANGULAR_VEL * 2.0
+    expected_vx = -200.0 + (-new_max_speed - -200.0) * config.BOOST_PAD_KICK_FACTOR
+    expected_ang = -10.0 + (-new_max_ang - -10.0) * config.BOOST_PAD_KICK_FACTOR
+    assert p.body.velocity.x == expected_vx
+    assert p.body.velocity.y == 50.0
+    assert p.body.angular_velocity == expected_ang
+
+
+def test_player_receive_boost_no_bump_when_stationary():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.body.velocity = (0.0, 50.0)
+    p.body.angular_velocity = 0.0
+    p.receive_boost(2.0)
+    assert p.body.velocity.x == 0.0
+    assert p.body.velocity.y == 50.0
+    assert p.body.angular_velocity == 0.0
+    assert p._boost_multiplier == 2.0
+
+
+def test_player_receive_boost_does_not_slow_already_fast_player():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    overshoot = config.MAX_LINEAR_SPEED * 3.0
+    p.body.velocity = (overshoot, 0.0)
+    p.receive_boost(2.0)
+    assert p.body.velocity.x == overshoot
+
+
+def test_player_unlocking_double_jump_mid_air_grants_immediate_extra_jump():
+    """End-to-end: Player takes a ground jump, picks up DOUBLE_JUMP mid-air,
+    next jump press immediately fires the air jump. Reproduces the bug where
+    the pickup appeared to do nothing until landing."""
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    # Simulate: ground jump → airborne tick (no ability yet, so counter at 0)
+    p.jump_ctrl.tick(action=Action.JUMP, grounded=True, dt=config.PHYS_DT)
+    p.jump_ctrl.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    # Confirm the bug shape: pressing jump in air now would NOT fire
+    d = p.jump_ctrl.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is False
+    p.jump_ctrl.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    # Pickup happens mid-air
+    p.unlock(Ability.DOUBLE_JUMP)
+    # Next fresh airborne press should fire the air jump immediately
+    d = p.jump_ctrl.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is True
