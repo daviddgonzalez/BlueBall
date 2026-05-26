@@ -21,6 +21,8 @@ _GROUND_COLOR = (59, 138, 74)
 _GROUND_EDGE = (40, 90, 50)
 _ABILITY_PICKUP_DEFAULT = (220, 220, 220)
 _ABILITY_PICKUP_COLORS = {"double_jump": (255, 220, 80)}
+_BOOST_PAD_COLOR = (80, 220, 240)   # cyan
+_BOOST_PAD_EDGE = (30, 150, 180)    # deeper cyan
 
 
 def _lerp(a, b, t):
@@ -93,6 +95,23 @@ class Renderer:
         color = _ABILITY_PICKUP_COLORS.get(ability, _ABILITY_PICKUP_DEFAULT)
         points = [(sx, sy - r), (sx + r, sy), (sx, sy + r), (sx - r, sy)]
         pygame.draw.polygon(self.screen, color, points)
+
+    def draw_boost_pad(self, pos, width) -> None:
+        # Flat cyan strip with a forward-pointing chevron at the center.
+        x, y = pos
+        hw = width / 2
+        pad_h = 8
+        p1 = self._w2s((x - hw, y - pad_h))
+        p2 = self._w2s((x + hw, y - pad_h))
+        p3 = self._w2s((x + hw, y + pad_h))
+        p4 = self._w2s((x - hw, y + pad_h))
+        pygame.draw.polygon(self.screen, _BOOST_PAD_COLOR, [p1, p2, p3, p4])
+        cx, cy = self._w2s((x, y))
+        pygame.draw.polygon(
+            self.screen,
+            _BOOST_PAD_EDGE,
+            [(cx - 8, cy - 6), (cx + 6, cy), (cx - 8, cy + 6)],
+        )
 
     def draw_goal(self, pos, width, height):
         x, y = pos
