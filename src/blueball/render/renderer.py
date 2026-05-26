@@ -100,7 +100,7 @@ class Renderer:
         # Flat cyan strip with a forward-pointing chevron at the center.
         x, y = pos
         hw = width / 2
-        pad_h = 8
+        pad_h = config.BOOST_PAD_THICKNESS / 2
         p1 = self._w2s((x - hw, y - pad_h))
         p2 = self._w2s((x + hw, y - pad_h))
         p3 = self._w2s((x + hw, y + pad_h))
