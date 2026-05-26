@@ -73,3 +73,82 @@ def test_jump_cut_on_release_while_rising():
     # Release
     d = jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
     assert d.cut is True
+
+
+from blueball.abilities import Ability
+
+
+def test_double_jump_disabled_when_ability_missing():
+    jc = JumpController()
+    # Ground jump
+    jc.tick(action=Action.JUMP, grounded=True, dt=config.PHYS_DT)
+    # Release in air
+    jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    # Fresh airborne press — no ability, should NOT fire
+    d = jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is False
+
+
+def test_double_jump_fires_one_extra_air_jump_when_unlocked():
+    jc = JumpController(abilities={Ability.DOUBLE_JUMP})
+    # Ground jump (consumes the primary)
+    d = jc.tick(action=Action.JUMP, grounded=True, dt=config.PHYS_DT)
+    assert d.fire is True
+    # Release in air
+    jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    # First airborne fresh press → air jump fires
+    d = jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is True
+    # Release
+    jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    # Second airborne fresh press → no more air jumps
+    d = jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is False
+
+
+def test_double_jump_resets_on_landing():
+    jc = JumpController(abilities={Ability.DOUBLE_JUMP})
+    # First cycle: ground jump, air jump
+    jc.tick(action=Action.JUMP, grounded=True, dt=config.PHYS_DT)
+    jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    d = jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is True
+    # Land
+    jc.tick(action=Action.IDLE, grounded=True, dt=config.PHYS_DT)
+    # Second cycle: ground jump fires, air jump fires again
+    d = jc.tick(action=Action.JUMP, grounded=True, dt=config.PHYS_DT)
+    assert d.fire is True
+    jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    d = jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is True
+
+
+def test_double_jump_available_after_walk_off_ledge():
+    jc = JumpController(abilities={Ability.DOUBLE_JUMP})
+    # Several grounded ticks (no jump used)
+    for _ in range(5):
+        jc.tick(action=Action.IDLE, grounded=True, dt=config.PHYS_DT)
+    # Walk off — grounded becomes False
+    jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    # Past the coyote window
+    for _ in range(int(config.COYOTE_TIME / config.PHYS_DT) + 2):
+        jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    # Fresh press → air jump should fire (we never used the primary)
+    d = jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is True
+
+
+def test_double_jump_air_jump_can_be_cut():
+    jc = JumpController(abilities={Ability.DOUBLE_JUMP})
+    # Ground jump
+    jc.tick(action=Action.JUMP, grounded=True, dt=config.PHYS_DT)
+    # Hold through one airborne tick (so we don't get a 'released' immediately)
+    jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    # Release
+    jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    # Fresh air press → fires
+    d = jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is True
+    # Release → cut next tick
+    d = jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    assert d.cut is True
