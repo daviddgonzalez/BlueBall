@@ -159,3 +159,45 @@ def test_double_jump_air_jump_can_be_cut():
     # Release → cut next tick
     d = jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
     assert d.cut is True
+
+
+def test_double_jump_unlocked_mid_air_grants_immediate_extra_jump():
+    """Unlocking DOUBLE_JUMP while airborne should immediately make the air
+    jump available, not wait until the next ground→air cycle.
+
+    Reproduces the bug where collecting the pickup mid-jump appeared to do
+    nothing until after the player landed once.
+    """
+    jc = JumpController(abilities=set())
+    # Ground jump (primary fires, refills air-jump counter to 0 since no ability)
+    jc.tick(action=Action.JUMP, grounded=True, dt=config.PHYS_DT)
+    # Airborne — second press would not fire because counter is 0
+    jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    d = jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is False
+    # Release
+    jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    # Pick up the DOUBLE_JUMP ability mid-air (set mutated by reference + notify)
+    jc.abilities.add(Ability.DOUBLE_JUMP)
+    jc.on_ability_added(Ability.DOUBLE_JUMP)
+    # Next fresh airborne press should now fire the air jump
+    d = jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
+    assert d.fire is True
+
+
+def test_on_ability_added_relies_on_unlock_idempotency():
+    """on_ability_added itself tops up the counter unconditionally when the
+    multiplier room is there. The safety net against double-refill is the
+    Player.unlock idempotency guard, which ensures on_ability_added fires at
+    most once per ability per Player lifetime. This test pins that contract:
+    if you call on_ability_added twice in the same air phase after the air
+    jump has been used, the second call WILL refill — so don't call it twice."""
+    jc = JumpController(abilities={Ability.DOUBLE_JUMP})
+    jc.tick(action=Action.JUMP, grounded=True, dt=config.PHYS_DT)
+    jc.tick(action=Action.IDLE, grounded=False, dt=config.PHYS_DT)
+    jc.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)  # air jump used
+    assert jc._air_jumps_remaining == 0
+    # Documenting current behavior: a second on_ability_added call WOULD refill.
+    # Player.unlock is responsible for not double-calling.
+    jc.on_ability_added(Ability.DOUBLE_JUMP)
+    assert jc._air_jumps_remaining == 1

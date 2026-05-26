@@ -42,6 +42,18 @@ class JumpController:
     def _max_air_jumps(self) -> int:
         return 1 if Ability.DOUBLE_JUMP in self.abilities else 0
 
+    def on_ability_added(self, ability: Ability) -> None:
+        """Called when the Player gains a new ability mid-run. Refresh derived
+        state so newly-acquired abilities are usable in the current air phase.
+
+        Without this, picking up DOUBLE_JUMP mid-air would not grant the extra
+        jump until the next ground→air transition (the counter was set to 0
+        when the player left the ground without the ability).
+        """
+        if ability is Ability.DOUBLE_JUMP:
+            if self._air_jumps_remaining < self._max_air_jumps():
+                self._air_jumps_remaining = self._max_air_jumps()
+
     def tick(self, action: Action, grounded: bool, dt: float) -> JumpDecision:
         jump_held = action in _JUMP_ACTIONS
 
