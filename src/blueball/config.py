@@ -72,3 +72,4 @@ ABILITY_PICKUP_DEFAULT_HEIGHT = 64    # px above ground where pickups float
 
 # Boost pads
 BOOST_PAD_THICKNESS = 16  # px — how thick the floor strip is in world units
+BOOST_PAD_DEFAULT_MULTIPLIER = 2.0

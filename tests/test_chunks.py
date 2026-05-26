@@ -12,6 +12,7 @@ from blueball.levels.chunks.bump import Bump
 from blueball.levels.chunks.goal import GoalChunk
 from blueball.abilities import Ability
 from blueball.entities.ability_pickup import AbilityPickup
+from blueball.entities.boost_pad import BoostPad
 
 
 def test_registry_has_all_v1_chunks():
@@ -96,3 +97,21 @@ def test_ability_pickup_chunk_rejects_unknown_ability():
     from blueball.levels.chunks.base import CHUNK_REGISTRY
     with pytest.raises(ValueError):
         CHUNK_REGISTRY["ability_pickup"](width_tiles=2, ability="frobnicate")
+
+
+def test_boost_pad_in_registry():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "boost_pad" in CHUNK_REGISTRY
+
+
+def test_boost_pad_chunk_adds_one_boost_pad_entity():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY, TILE
+    w = World()
+    chunk = CHUNK_REGISTRY["boost_pad"](width_tiles=3, multiplier=2.5)
+    width = chunk.build(w, x_offset=100.0)
+    assert width == 3 * TILE
+    pads = [e for e in w.entities if isinstance(e, BoostPad)]
+    assert len(pads) == 1
+    assert pads[0].multiplier == 2.5
+    # Pad width should match the segment span
+    assert pads[0].width == 3 * TILE
