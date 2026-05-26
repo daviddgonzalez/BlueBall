@@ -23,10 +23,15 @@ def _player_world():
 
 @pytest.fixture
 def tmp_save(monkeypatch, tmp_path):
-    monkeypatch.setenv("BLUEBALL_SAVE_PATH", str(tmp_path / "save.json"))
+    """Redirect BLUEBALL_SAVE_PATH at a tmp file. The save module captures
+    SAVE_PATH at import time, so we both reload it and overwrite the attribute
+    as belt-and-suspenders against future refactors."""
+    save_path = tmp_path / "save.json"
+    monkeypatch.setenv("BLUEBALL_SAVE_PATH", str(save_path))
     import importlib
     import blueball.save as save_mod
     importlib.reload(save_mod)
+    monkeypatch.setattr(save_mod, "SAVE_PATH", save_path)
     return save_mod
 
 

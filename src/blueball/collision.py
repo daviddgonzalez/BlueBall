@@ -72,7 +72,7 @@ def register(space: pymunk.Space, world_ref) -> None:
             entity = _find_entity_for_shape(shape, world_ref)
             if entity is None or entity is player:
                 continue
-            if not hasattr(entity, "ability") or entity._collected:
+            if not hasattr(entity, "ability"):
                 continue
             if player is not None:
                 player.unlock(entity.ability)
