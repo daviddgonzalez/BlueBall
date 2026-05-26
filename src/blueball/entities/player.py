@@ -7,7 +7,8 @@ import math
 import numpy as np
 import pymunk
 
-from .. import config
+from .. import config, save
+from ..abilities import Ability
 from ..agent import Action, Agent, Observation
 from ..input_feel import JumpController
 from .base import Entity
@@ -23,7 +24,12 @@ class Player(Entity):
     Agent actions through the JumpController.
     """
 
-    def __init__(self, agent: Agent, spawn_xy: tuple[float, float]) -> None:
+    def __init__(
+        self,
+        agent: Agent,
+        spawn_xy: tuple[float, float],
+        abilities: set[Ability] | None = None,
+    ) -> None:
         super().__init__()
         self.agent = agent
         moment = pymunk.moment_for_circle(config.BALL_MASS, 0, config.BALL_RADIUS)
@@ -37,7 +43,10 @@ class Player(Entity):
         self.bodies.append(self.body)
         self.shapes.append(self.shape)
 
-        self.jump_ctrl = JumpController()
+        # Share the abilities set by reference with the JumpController so
+        # later unlocks land in the controller without a re-push.
+        self.abilities: set[Ability] = abilities if abilities is not None else set()
+        self.jump_ctrl = JumpController(abilities=self.abilities)
         self.dead = False
         self.collectibles_collected = 0
         self._contact_normals: list = []
@@ -45,6 +54,17 @@ class Player(Entity):
     def die(self) -> None:
         self.dead = True
         self.alive = False
+
+    def unlock(self, ability: Ability) -> None:
+        """Add `ability` to this player's set (visible to JumpController on
+        the next tick via the shared reference) and persist it to disk.
+
+        Idempotent: re-unlocking an already-unlocked ability skips the write.
+        """
+        if ability in self.abilities:
+            return
+        self.abilities.add(ability)
+        save.add_ability(ability.value)
 
     @property
     def grounded(self) -> bool:

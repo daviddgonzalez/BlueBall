@@ -1,6 +1,7 @@
 import pymunk
 
 from blueball import config
+from blueball.abilities import Ability
 from blueball.agent import Action, Agent, Observation
 from blueball.entities.player import Player
 from blueball.world import World
@@ -69,3 +70,53 @@ def test_die_flips_alive_flag():
     p.die()
     assert p.dead is True
     assert p.alive is False
+
+
+def test_player_default_abilities_is_empty():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    assert p.abilities == set()
+    assert p.jump_ctrl.abilities is p.abilities  # shared by reference
+
+
+def test_player_constructed_with_abilities_propagates_to_jump_controller():
+    p = Player(
+        agent=_ScriptedAgent([Action.IDLE]),
+        spawn_xy=(100, 100),
+        abilities={Ability.DOUBLE_JUMP},
+    )
+    assert Ability.DOUBLE_JUMP in p.abilities
+    assert Ability.DOUBLE_JUMP in p.jump_ctrl.abilities
+
+
+def test_player_unlock_adds_and_persists(monkeypatch, tmp_path):
+    save_file = tmp_path / "save.json"
+    monkeypatch.setenv("BLUEBALL_SAVE_PATH", str(save_file))
+    import importlib
+    import blueball.save as save_mod
+    importlib.reload(save_mod)
+    # Player must import the freshly-reloaded module
+    import blueball.entities.player as player_mod
+    importlib.reload(player_mod)
+
+    p = player_mod.Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.unlock(Ability.DOUBLE_JUMP)
+    assert Ability.DOUBLE_JUMP in p.abilities
+    assert Ability.DOUBLE_JUMP in p.jump_ctrl.abilities
+    assert save_mod.load() == {"double_jump"}
+
+
+def test_player_unlock_is_idempotent(monkeypatch, tmp_path):
+    save_file = tmp_path / "save.json"
+    monkeypatch.setenv("BLUEBALL_SAVE_PATH", str(save_file))
+    import importlib
+    import blueball.save as save_mod
+    importlib.reload(save_mod)
+    import blueball.entities.player as player_mod
+    importlib.reload(player_mod)
+
+    p = player_mod.Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.unlock(Ability.DOUBLE_JUMP)
+    mtime_first = save_file.stat().st_mtime_ns
+    p.unlock(Ability.DOUBLE_JUMP)
+    mtime_second = save_file.stat().st_mtime_ns
+    assert mtime_first == mtime_second  # no rewrite on no-op unlock
