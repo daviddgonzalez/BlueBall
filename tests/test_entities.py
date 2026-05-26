@@ -2,6 +2,8 @@ import pymunk
 import pytest
 
 from blueball import collision
+from blueball.abilities import Ability
+from blueball.entities.ability_pickup import AbilityPickup
 from blueball.entities.base import Entity
 from blueball.entities.collectible import Collectible
 from blueball.entities.falling_hazard import FallingHazard
@@ -112,3 +114,18 @@ def test_falling_hazard_falls_after_trigger():
     for _ in range(30):
         w.step(1 / 60)
     assert fh.body.position.y > y0  # fell under gravity
+
+
+def test_ability_pickup_is_sensor_with_correct_collision_type():
+    w = World()
+    p = AbilityPickup(w, position=(100, 200), ability=Ability.DOUBLE_JUMP)
+    w.add_entity(p)
+    assert p.shapes[0].sensor is True
+    assert p.shapes[0].collision_type == collision.CT_ABILITY_PICKUP
+
+
+def test_ability_pickup_stores_ability():
+    w = World()
+    p = AbilityPickup(w, position=(100, 200), ability=Ability.DOUBLE_JUMP)
+    assert p.ability == Ability.DOUBLE_JUMP
+    assert p._collected is False

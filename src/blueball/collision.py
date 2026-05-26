@@ -15,6 +15,7 @@ CT_SPIKE = 2
 CT_PATROLLER = 3
 CT_COLLECTIBLE = 4
 CT_GOAL = 5
+CT_ABILITY_PICKUP = 7
 
 
 _TOP_NORMAL_COS = math.cos(math.radians(config.GROUNDED_NORMAL_TOLERANCE_DEG))
@@ -65,6 +66,19 @@ def register(space: pymunk.Space, world_ref) -> None:
         world_ref.complete_level()
         return False  # sensor
 
+    def on_ability_pickup(arbiter, space_, data):
+        player = _find_player_entity(arbiter, world_ref)
+        for shape in arbiter.shapes:
+            entity = _find_entity_for_shape(shape, world_ref)
+            if entity is None or entity is player:
+                continue
+            if not hasattr(entity, "ability") or entity._collected:
+                continue
+            if player is not None:
+                player.unlock(entity.ability)
+            entity.consume()
+        return False  # sensor — no physical response
+
     def on_patroller(arbiter, space_, data):
         player = _find_player_entity(arbiter, world_ref)
         if player is None:
@@ -97,3 +111,4 @@ def register(space: pymunk.Space, world_ref) -> None:
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_COLLECTIBLE, begin=on_collectible)
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_GOAL, begin=on_goal)
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_PATROLLER, begin=on_patroller)
+    space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_ABILITY_PICKUP, begin=on_ability_pickup)

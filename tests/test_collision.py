@@ -2,6 +2,7 @@ import pymunk
 import pytest
 
 from blueball import collision
+from blueball.abilities import Ability
 from blueball.agent import Action, Agent
 from blueball.entities.player import Player
 from blueball.world import World
@@ -18,6 +19,15 @@ def _player_world():
     p = Player(agent=_Idle(), spawn_xy=(100, 100))
     w.add_entity(p)
     return w, p
+
+
+@pytest.fixture
+def tmp_save(monkeypatch, tmp_path):
+    monkeypatch.setenv("BLUEBALL_SAVE_PATH", str(tmp_path / "save.json"))
+    import importlib
+    import blueball.save as save_mod
+    importlib.reload(save_mod)
+    return save_mod
 
 
 def test_player_dies_on_spike_contact():
@@ -49,3 +59,20 @@ def test_goal_marks_level_complete():
         if w.level_complete:
             break
     assert w.level_complete
+
+
+def test_player_unlocks_ability_on_pickup_contact(tmp_save):
+    from blueball.entities.ability_pickup import AbilityPickup
+    w, p = _player_world()
+    # Place the pickup directly on top of the player so contact is immediate.
+    pickup = AbilityPickup(w, position=(100, 100), ability=Ability.DOUBLE_JUMP, radius=20)
+    w.add_entity(pickup)
+
+    for _ in range(5):
+        w.step(1 / 60)
+        if pickup._collected:
+            break
+    assert Ability.DOUBLE_JUMP in p.abilities
+    assert pickup._collected is True
+    assert pickup.shapes[0] not in w.space.shapes
+    assert tmp_save.load() == {"double_jump"}
