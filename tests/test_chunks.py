@@ -94,6 +94,5 @@ def test_ability_pickup_chunk_adds_one_pickup_entity():
 
 def test_ability_pickup_chunk_rejects_unknown_ability():
     from blueball.levels.chunks.base import CHUNK_REGISTRY
-    w = World()
     with pytest.raises(ValueError):
-        CHUNK_REGISTRY["ability_pickup"](width_tiles=2, ability="frobnicate").build(w, x_offset=0.0)
+        CHUNK_REGISTRY["ability_pickup"](width_tiles=2, ability="frobnicate")
