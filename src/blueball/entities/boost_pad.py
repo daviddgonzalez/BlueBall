@@ -9,11 +9,9 @@ from __future__ import annotations
 
 import pymunk
 
+from .. import config
 from ..collision import CT_BOOST_PAD
 from .base import Entity
-
-
-BOOST_PAD_THICKNESS = 16  # px — how thick the floor strip is in world units
 
 
 class BoostPad(Entity):
@@ -33,7 +31,7 @@ class BoostPad(Entity):
         self.body = pymunk.Body(body_type=pymunk.Body.STATIC)
         self.body.position = position
         hw = width / 2
-        hh = BOOST_PAD_THICKNESS / 2
+        hh = config.BOOST_PAD_THICKNESS / 2
         shape = pymunk.Poly(self.body, [(-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)])
         shape.sensor = True
         shape.collision_type = CT_BOOST_PAD

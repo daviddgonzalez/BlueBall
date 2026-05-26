@@ -99,3 +99,4 @@ def test_player_receives_boost_on_pad_contact():
     assert p._boost_multiplier == 2.0
     # Pad must still be present in the space (not consumed)
     assert pad.shapes[0] in w.space.shapes
+    assert pad.body in w.space.bodies  # body also not removed
