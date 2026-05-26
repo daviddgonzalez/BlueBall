@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pygame
 
-from .. import config
+from .. import config, save
+from ..abilities import Ability
 from ..agent import HumanAgent
 from ..camera import FollowCamera
 from ..collision import register as register_collisions
@@ -29,7 +30,14 @@ class PlayScene(Scene):
         self.world = World()
         register_collisions(self.world.space, world_ref=self.world)
         self.level_meta = load_level(self.level_path, self.world)
-        self.player = Player(agent=HumanAgent(), spawn_xy=tuple(self.level_meta.spawn))
+        unlocked_names = save.load()
+        valid_names = {a.value for a in Ability}
+        unlocked = {Ability(name) for name in unlocked_names if name in valid_names}
+        self.player = Player(
+            agent=HumanAgent(),
+            spawn_xy=tuple(self.level_meta.spawn),
+            abilities=unlocked,
+        )
         self.world.add_entity(self.player)
         # Snap the camera so the first frame doesn't lerp from origin
         self.camera.position = (self.player.body.position.x, self.player.body.position.y)
