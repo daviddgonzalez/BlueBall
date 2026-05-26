@@ -66,3 +66,6 @@ COLLECTIBLE_PULSE_HZ = 2.0
 
 # Determinism
 DEFAULT_SEED = 1
+
+# Abilities
+ABILITY_PICKUP_DEFAULT_HEIGHT = 64    # px above ground where pickups float

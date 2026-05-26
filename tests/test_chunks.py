@@ -10,6 +10,8 @@ from blueball.levels.chunks.patrol_platform import PatrolPlatform
 from blueball.levels.chunks.stairs import StairsUp, StairsDown
 from blueball.levels.chunks.bump import Bump
 from blueball.levels.chunks.goal import GoalChunk
+from blueball.abilities import Ability
+from blueball.entities.ability_pickup import AbilityPickup
 
 
 def test_registry_has_all_v1_chunks():
@@ -71,3 +73,27 @@ def test_goal_chunk_adds_one_goal_entity():
     from blueball.entities.goal import Goal
     goals = [e for e in w.entities if isinstance(e, Goal)]
     assert len(goals) == 1
+
+
+def test_ability_pickup_in_registry():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "ability_pickup" in CHUNK_REGISTRY
+
+
+def test_ability_pickup_chunk_adds_one_pickup_entity():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    w = World()
+    chunk = CHUNK_REGISTRY["ability_pickup"](width_tiles=2, ability="double_jump")
+    width = chunk.build(w, x_offset=0.0)
+    from blueball.levels.chunks.base import TILE
+    assert width == 2 * TILE
+    pickups = [e for e in w.entities if isinstance(e, AbilityPickup)]
+    assert len(pickups) == 1
+    assert pickups[0].ability == Ability.DOUBLE_JUMP
+
+
+def test_ability_pickup_chunk_rejects_unknown_ability():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    w = World()
+    with pytest.raises(ValueError):
+        CHUNK_REGISTRY["ability_pickup"](width_tiles=2, ability="frobnicate").build(w, x_offset=0.0)
