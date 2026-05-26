@@ -57,6 +57,11 @@ class PlayScene(Scene):
             self._reset()
             return
         if self.world.level_complete:
+            # Persist any abilities the player picked up on this successful
+            # run. Death during the level skips this and the in-memory unlocks
+            # are dropped when _reset() rebuilds Player from disk.
+            for ability in self.player.abilities:
+                save.add_ability(ability.value)
             print(f"Level complete! Collectibles: {self.player.collectibles_collected}")
             pygame.event.post(pygame.event.Event(pygame.QUIT))
             return

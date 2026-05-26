@@ -7,7 +7,7 @@ import math
 import numpy as np
 import pymunk
 
-from .. import config, save
+from .. import config
 from ..abilities import Ability
 from ..agent import Action, Agent, Observation
 from ..input_feel import JumpController
@@ -57,14 +57,10 @@ class Player(Entity):
 
     def unlock(self, ability: Ability) -> None:
         """Add `ability` to this player's set (visible to JumpController on
-        the next tick via the shared reference) and persist it to disk.
-
-        Idempotent: re-unlocking an already-unlocked ability skips the write.
+        the next tick via the shared reference). In-memory only — persistence
+        happens at level-complete time so dying mid-run reverts the unlock.
         """
-        if ability in self.abilities:
-            return
         self.abilities.add(ability)
-        save.add_ability(ability.value)
 
     @property
     def grounded(self) -> bool:

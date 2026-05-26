@@ -80,4 +80,6 @@ def test_player_unlocks_ability_on_pickup_contact(tmp_save):
     assert Ability.DOUBLE_JUMP in p.abilities
     assert pickup._collected is True
     assert pickup.shapes[0] not in w.space.shapes
-    assert tmp_save.load() == {"double_jump"}
+    # Unlock is in-memory only at pickup time; PlayScene persists on
+    # level-complete. So nothing should be on disk yet.
+    assert tmp_save.load() == set()

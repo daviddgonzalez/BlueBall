@@ -88,7 +88,9 @@ def test_player_constructed_with_abilities_propagates_to_jump_controller():
     assert Ability.DOUBLE_JUMP in p.jump_ctrl.abilities
 
 
-def test_player_unlock_adds_and_persists(monkeypatch, tmp_path):
+def test_player_unlock_adds_to_set_and_propagates(monkeypatch, tmp_path):
+    """unlock() is in-memory only — no save write. Persistence is the
+    PlayScene's job at level-complete time."""
     save_file = tmp_path / "save.json"
     monkeypatch.setenv("BLUEBALL_SAVE_PATH", str(save_file))
     import importlib
@@ -99,10 +101,13 @@ def test_player_unlock_adds_and_persists(monkeypatch, tmp_path):
     p.unlock(Ability.DOUBLE_JUMP)
     assert Ability.DOUBLE_JUMP in p.abilities
     assert Ability.DOUBLE_JUMP in p.jump_ctrl.abilities
-    assert save_mod.load() == {"double_jump"}
+    # No save file should have been created — unlock is in-memory only.
+    assert not save_file.exists()
+    assert save_mod.load() == set()
 
 
-def test_player_unlock_is_idempotent(monkeypatch, tmp_path):
+def test_player_unlock_repeat_is_safe(monkeypatch, tmp_path):
+    """Re-unlocking an already-unlocked ability is a no-op (set semantics)."""
     save_file = tmp_path / "save.json"
     monkeypatch.setenv("BLUEBALL_SAVE_PATH", str(save_file))
     import importlib
@@ -111,7 +116,6 @@ def test_player_unlock_is_idempotent(monkeypatch, tmp_path):
 
     p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
     p.unlock(Ability.DOUBLE_JUMP)
-    mtime_first = save_file.stat().st_mtime_ns
     p.unlock(Ability.DOUBLE_JUMP)
-    mtime_second = save_file.stat().st_mtime_ns
-    assert mtime_first == mtime_second  # no rewrite on no-op unlock
+    assert p.abilities == {Ability.DOUBLE_JUMP}
+    assert not save_file.exists()

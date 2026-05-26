@@ -38,7 +38,7 @@ GROUND_MOVE_FORCE = 420.0
 # Higher brake than accel keeps air control responsive for corrections
 # without letting the player accelerate freely in midair.
 AIR_MOVE_FORCE_BRAKE = 300.0
-AIR_MOVE_FORCE_ACCEL = 60.0
+AIR_MOVE_FORCE_ACCEL = 120.0
 
 # Jump
 JUMP_IMPULSE = 315.0

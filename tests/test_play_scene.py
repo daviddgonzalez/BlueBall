@@ -63,3 +63,36 @@ def test_play_scene_ignores_unknown_abilities_in_save(headless_pygame, tmp_save)
     path.write_text(json.dumps({"unlocked_abilities": ["frobnicate", "double_jump"]}))
     scene = PlayScene(headless_pygame, _level_path())
     assert scene.player.abilities == {Ability.DOUBLE_JUMP}
+
+
+def test_play_scene_persists_unlocks_on_level_complete(headless_pygame, tmp_save):
+    """Unlocks gained during a successful run are written to disk when the
+    player reaches the goal."""
+    path, save_mod = tmp_save
+    scene = PlayScene(headless_pygame, _level_path())
+    # Player picks up an ability mid-run (in-memory only).
+    scene.player.unlock(Ability.DOUBLE_JUMP)
+    assert not path.exists()  # not persisted yet
+    # World marks the level complete (as it would on goal contact).
+    scene.world.complete_level()
+    # Drain pygame's event queue so the QUIT post inside update() doesn't
+    # leak across tests.
+    pygame.event.clear()
+    scene.update(frame_dt=1 / 60)
+    assert path.exists()
+    assert save_mod.load() == {"double_jump"}
+
+
+def test_play_scene_does_not_persist_unlocks_on_death(headless_pygame, tmp_save):
+    """If the player dies mid-run, in-memory unlocks are dropped on respawn
+    and the save file is unchanged."""
+    path, save_mod = tmp_save
+    scene = PlayScene(headless_pygame, _level_path())
+    scene.player.unlock(Ability.DOUBLE_JUMP)
+    assert Ability.DOUBLE_JUMP in scene.player.abilities
+    # Trigger death + reset
+    scene.player.die()
+    scene.update(frame_dt=1 / 60)
+    # After respawn, the new player should have NO abilities (save is empty).
+    assert scene.player.abilities == set()
+    assert not path.exists()
