@@ -94,11 +94,8 @@ def test_player_unlock_adds_and_persists(monkeypatch, tmp_path):
     import importlib
     import blueball.save as save_mod
     importlib.reload(save_mod)
-    # Player must import the freshly-reloaded module
-    import blueball.entities.player as player_mod
-    importlib.reload(player_mod)
 
-    p = player_mod.Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
     p.unlock(Ability.DOUBLE_JUMP)
     assert Ability.DOUBLE_JUMP in p.abilities
     assert Ability.DOUBLE_JUMP in p.jump_ctrl.abilities
@@ -111,10 +108,8 @@ def test_player_unlock_is_idempotent(monkeypatch, tmp_path):
     import importlib
     import blueball.save as save_mod
     importlib.reload(save_mod)
-    import blueball.entities.player as player_mod
-    importlib.reload(player_mod)
 
-    p = player_mod.Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
     p.unlock(Ability.DOUBLE_JUMP)
     mtime_first = save_file.stat().st_mtime_ns
     p.unlock(Ability.DOUBLE_JUMP)
