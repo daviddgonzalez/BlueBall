@@ -5,6 +5,7 @@ from blueball import collision
 from blueball.abilities import Ability
 from blueball.entities.ability_pickup import AbilityPickup
 from blueball.entities.base import Entity
+from blueball.entities.boost_pad import BoostPad
 from blueball.entities.collectible import Collectible
 from blueball.entities.falling_hazard import FallingHazard
 from blueball.entities.goal import Goal
@@ -129,3 +130,17 @@ def test_ability_pickup_stores_ability():
     p = AbilityPickup(w, position=(100, 200), ability=Ability.DOUBLE_JUMP)
     assert p.ability == Ability.DOUBLE_JUMP
     assert p._collected is False
+
+
+def test_boost_pad_is_sensor_with_correct_collision_type():
+    w = World()
+    pad = BoostPad(w, position=(100, 200), width=128, multiplier=2.0)
+    w.add_entity(pad)
+    assert pad.shapes[0].sensor is True
+    assert pad.shapes[0].collision_type == collision.CT_BOOST_PAD
+
+
+def test_boost_pad_stores_multiplier_and_width():
+    pad = BoostPad(World(), position=(50, 50), width=192, multiplier=1.7)
+    assert pad.multiplier == 1.7
+    assert pad.width == 192

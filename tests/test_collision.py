@@ -83,3 +83,19 @@ def test_player_unlocks_ability_on_pickup_contact(tmp_save):
     # Unlock is in-memory only at pickup time; PlayScene persists on
     # level-complete. So nothing should be on disk yet.
     assert tmp_save.load() == set()
+
+
+def test_player_receives_boost_on_pad_contact():
+    from blueball.entities.boost_pad import BoostPad
+    w, p = _player_world()
+    # Place a boost pad overlapping the player position so contact is immediate
+    pad = BoostPad(w, position=(100, 100), width=64, multiplier=2.0)
+    w.add_entity(pad)
+
+    for _ in range(5):
+        w.step(1 / 60)
+        if p._boost_multiplier > 1.0:
+            break
+    assert p._boost_multiplier == 2.0
+    # Pad must still be present in the space (not consumed)
+    assert pad.shapes[0] in w.space.shapes
