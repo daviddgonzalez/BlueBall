@@ -1,0 +1,54 @@
+{
+  "planPath": "docs/superpowers/plans/2026-05-26-abilities-framework.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 0: Ability enum + save file module",
+      "status": "completed",
+      "description": "**Goal:** A pure-Python `Ability` `StrEnum` and a tiny `save` module that loads / persists the set of unlocked ability names to a JSON file. Both modules have no dependencies on the rest of the codebase, so future code can import them without import cycles.\n\n**Files:**\n- Create: `src/blueball/abilities.py`\n- Create: `src/blueball/save.py`\n- Create: `tests/test_save.py`\n\n**Acceptance Criteria:**\n- [ ] `Ability` is a `StrEnum` with member `DOUBLE_JUMP = \"double_jump\"`.\n- [ ] `save.load()` returns an empty set when the save file does not exist.\n- [ ] `save.add_ability(name)` creates the parent directory if needed, writes JSON `{\"unlocked_abilities\": [...]}` with names sorted, and is idempotent.\n- [ ] Save path is overridable via the `BLUEBALL_SAVE_PATH` env var for test redirection.\n\n**Verify:** `pytest -q tests/test_save.py -v` → 5 passed\n\n```json:metadata\n{\"files\": [\"src/blueball/abilities.py\", \"src/blueball/save.py\", \"tests/test_save.py\"], \"verifyCommand\": \"pytest -q tests/test_save.py -v\", \"acceptanceCriteria\": [\"Ability StrEnum with DOUBLE_JUMP='double_jump'\", \"save.load() returns empty set when file missing\", \"save.add_ability creates parent dir, writes sorted JSON, idempotent\", \"BLUEBALL_SAVE_PATH env var overrides default path\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 1: Double jump in JumpController",
+      "status": "completed",
+      "blockedBy": [1],
+      "description": "**Goal:** Extend `JumpController` so it accepts the player's `abilities` set and, when `Ability.DOUBLE_JUMP` is present, allows exactly one extra mid-air jump per ground→air cycle. Existing buffer/coyote/cut behavior is unchanged when no abilities are passed.\n\n**Files:**\n- Modify: `src/blueball/input_feel.py`\n- Modify: `tests/test_input_feel.py`\n\n**Acceptance Criteria:**\n- [ ] `JumpController(abilities=None)` defaults to an empty set; existing 7 tests still pass.\n- [ ] With `{Ability.DOUBLE_JUMP}`: ground jump + airborne fresh press → fires once; second airborne press in same air phase → no fire.\n- [ ] After landing, the air-jump counter resets for the next air phase.\n- [ ] Walking off a ledge without jumping leaves the air jump available.\n- [ ] An air jump still goes through jump-cut on release.\n\n**Verify:** `pytest -q tests/test_input_feel.py -v` → 12 passed (7 existing + 5 new)\n\n```json:metadata\n{\"files\": [\"src/blueball/input_feel.py\", \"tests/test_input_feel.py\"], \"verifyCommand\": \"pytest -q tests/test_input_feel.py -v\", \"acceptanceCriteria\": [\"JumpController(abilities=None) backward-compatible\", \"double-jump fires exactly once per air phase when unlocked\", \"air-jump counter resets on landing\", \"air jump available after walk-off (no ground jump used)\", \"air jump still respects jump cut\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 2: abilities slot and unlock() on Player",
+      "status": "completed",
+      "blockedBy": [1, 2],
+      "description": "**Goal:** `Player` accepts an `abilities` set at construction, exposes `unlock(ability)` that adds to the set, persists via `save.add_ability`, and propagates to its `JumpController` (shared by reference).\n\n**Files:**\n- Modify: `src/blueball/entities/player.py`\n- Modify: `tests/test_player.py`\n\n**Acceptance Criteria:**\n- [ ] `Player(agent, spawn_xy)` constructs with `abilities == set()` and `jump_ctrl.abilities is player.abilities` (shared).\n- [ ] `Player(agent, spawn_xy, abilities={Ability.DOUBLE_JUMP})` propagates to JumpController.\n- [ ] `player.unlock(Ability.DOUBLE_JUMP)` adds, persists via `save.add_ability(\"double_jump\")`, and is visible in JumpController.\n- [ ] Unlock is idempotent — no rewrite on duplicate call (check via mtime).\n- [ ] Existing v1 player behavior unchanged.\n\n**Verify:** `pytest -q tests/test_player.py -v` → all pass\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/player.py\", \"tests/test_player.py\"], \"verifyCommand\": \"pytest -q tests/test_player.py -v\", \"acceptanceCriteria\": [\"Player default abilities empty + shared-by-ref with JumpController\", \"construct-with-abilities propagates to JumpController\", \"unlock() persists via save module\", \"unlock idempotent (no rewrite on duplicate)\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 3: AbilityPickup entity + collision handler",
+      "status": "completed",
+      "blockedBy": [3],
+      "description": "**Goal:** A new sensor entity `AbilityPickup` plus a registered begin handler on `CT_PLAYER ↔ CT_ABILITY_PICKUP` that calls `player.unlock(pickup.ability)` and tears down the pickup (mirrors how `Collectible` works).\n\n**Files:**\n- Create: `src/blueball/entities/ability_pickup.py`\n- Modify: `src/blueball/collision.py`\n- Modify: `tests/test_entities.py`\n- Modify: `tests/test_collision.py`\n\n**Acceptance Criteria:**\n- [ ] `AbilityPickup(world, position, ability, radius=18)` creates STATIC body with sensor `Circle`, `collision_type == CT_ABILITY_PICKUP`.\n- [ ] `collision.CT_ABILITY_PICKUP == 7`.\n- [ ] On contact, `player.unlock(pickup.ability)` is called, `pickup._collected=True`, body+shape removed from space.\n- [ ] Subsequent contacts no-op (guarded by `_collected`).\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_collision.py -v` → all pass\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/ability_pickup.py\", \"src/blueball/collision.py\", \"tests/test_entities.py\", \"tests/test_collision.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_collision.py -v\", \"acceptanceCriteria\": [\"AbilityPickup is sensor circle with CT_ABILITY_PICKUP\", \"CT_ABILITY_PICKUP == 7\", \"begin handler unlocks ability and consumes pickup\", \"consume() is idempotent\"]}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 4: ability_pickup chunk",
+      "status": "completed",
+      "blockedBy": [4],
+      "description": "**Goal:** A new chunk type `ability_pickup` lays a flat ground segment with an `AbilityPickup` sensor floating above it. Registered in the chunk registry so level JSON can reference it.\n\n**Files:**\n- Create: `src/blueball/levels/chunks/ability_pickup.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: `src/blueball/config.py`\n- Modify: `tests/test_chunks.py`\n\n**Acceptance Criteria:**\n- [ ] `\"ability_pickup\"` is in `CHUNK_REGISTRY` after import.\n- [ ] Building the chunk adds one `AbilityPickup` to world; pickup's `ability` matches JSON string.\n- [ ] Returned width equals `width_tiles * TILE`.\n- [ ] Invalid ability string raises `ValueError` at chunk construction.\n\n**Verify:** `pytest -q tests/test_chunks.py -v` → all pass\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/ability_pickup.py\", \"src/blueball/levels/chunks/__init__.py\", \"src/blueball/config.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \"pytest -q tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"ability_pickup registered in CHUNK_REGISTRY\", \"chunk builds one AbilityPickup with correct ability\", \"returned width is width_tiles * TILE\", \"invalid ability raises ValueError at construction\"]}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Task 5: PlayScene reads save file at level start",
+      "status": "completed",
+      "blockedBy": [3],
+      "description": "**Goal:** `PlayScene._reset()` reads the save file once per level start, builds an `abilities` set, and passes it to `Player`. Unknown ability names in the save are ignored so the loader is forward-compatible.\n\n**Files:**\n- Modify: `src/blueball/scenes/play.py`\n- Create: `tests/test_play_scene.py`\n\n**Acceptance Criteria:**\n- [ ] `scene.player.abilities` reflects the set of known `Ability` values in the save file.\n- [ ] Unknown names (e.g., `\"frobnicate\"`) are filtered out, do not raise.\n- [ ] Missing save file results in `abilities == set()`.\n\n**Verify:** `pytest -q tests/test_play_scene.py -v` → 3 passed\n\n```json:metadata\n{\"files\": [\"src/blueball/scenes/play.py\", \"tests/test_play_scene.py\"], \"verifyCommand\": \"pytest -q tests/test_play_scene.py -v\", \"acceptanceCriteria\": [\"PlayScene loads unlocked abilities from save into Player\", \"unknown ability names in save are filtered, do not raise\", \"missing save yields empty abilities set\"]}\n```"
+    },
+    {
+      "id": 7,
+      "subject": "Task 6: Renderer + tutorial level + manual playtest",
+      "status": "pending",
+      "blockedBy": [5, 6],
+      "description": "**Goal:** Wire the new pickup visual into the renderer, place an `ability_pickup` chunk into `tutorial_hill.json` in a spot where double jump is immediately useful, and verify end-to-end by playing the game.\n\n**Files:**\n- Modify: `src/blueball/render/renderer.py`\n- Modify: `src/blueball/levels/tutorial_hill.json`\n\n**Acceptance Criteria:**\n- [ ] `Renderer.draw_ability_pickup(pos, radius, ability)` draws a pulsing diamond with a per-ability color (warm yellow for \"double_jump\").\n- [ ] `tutorial_hill.json` contains an `ability_pickup` chunk followed by a gap that requires double jump.\n- [ ] `pytest -q` is fully green.\n- [ ] Manual playtest with `BLUEBALL_SAVE_PATH=/tmp/...` shows: pickup disappears on contact, second mid-air jump works, save persists across runs, deleting save restores locked state.\n\n**Verify:** `pytest -q` → all green; then `python main.py` and observe the documented manual sequence.\n\n```json:metadata\n{\"files\": [\"src/blueball/render/renderer.py\", \"src/blueball/levels/tutorial_hill.json\"], \"verifyCommand\": \"pytest -q\", \"acceptanceCriteria\": [\"draw_ability_pickup renders pulsing diamond per-ability color\", \"tutorial_hill.json has ability_pickup followed by a gap that requires double jump\", \"pytest fully green\", \"manual playtest: pickup → second mid-air jump → persists across runs → fresh save path = locked again\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-05-26T12:00:00Z"
+}
