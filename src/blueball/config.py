@@ -76,3 +76,12 @@ BOOST_PAD_DEFAULT_MULTIPLIER = 2.0
 # Fraction of the (target - current) velocity gap closed by the immediate
 # kick at pickup time. 1.0 = snap to the new cap; 0.5 = halve the kick.
 BOOST_PAD_KICK_FACTOR = 0.5
+
+# AI / GA training
+TRAIN_POP_SIZE      = 80      # spec default for real training
+TRAIN_GENERATIONS   = 200     # spec default for real training
+MAX_STEPS           = 3000    # per-evaluation timeout (~25s at PHYS_HZ=120)
+GA_MUTATION_RATE    = 0.1
+GA_MUTATION_SIGMA   = 0.1
+GA_TOURNAMENT_K     = 4
+GA_ELITISM          = 1

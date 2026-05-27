@@ -277,3 +277,53 @@ def test_ftnn_agent_all_zero_genome_returns_idle():
     from blueball.ai.ftnn import GENOME_SIZE
     agent = FTNNAgent(np.zeros(GENOME_SIZE, dtype=np.float32))
     assert agent.act(_make_obs()) == Action.IDLE
+
+
+# ----- Task 6: Trainer + smoke -----
+
+def _level_path():
+    from pathlib import Path
+    import blueball
+    return Path(blueball.__file__).parent / "levels" / "tutorial_hill.json"
+
+
+def test_evaluate_runs_one_genome_to_completion():
+    from blueball import config
+    from blueball.ai.trainer import evaluate
+    from blueball.ai.genome import random_genome
+    g = random_genome(np.random.default_rng(0))
+    idx, fit = evaluate((0, g, config.DEFAULT_SEED, _level_path(), 200))
+    assert idx == 0
+    assert np.isfinite(fit)
+
+
+def test_trainer_smoke_5gens_no_crash():
+    from blueball.ai.trainer import train
+    from blueball.ai.ftnn import GENOME_SIZE
+    result = train(
+        pop_size=8,
+        generations=5,
+        level_path=_level_path(),
+        max_steps=600,
+        ga_seed=0,
+    )
+    assert len(result.history) == 5
+    for entry in result.history:
+        assert {"gen", "best", "mean", "min"} <= set(entry)
+        assert np.isfinite(entry["best"])
+        assert np.isfinite(entry["mean"])
+        assert np.isfinite(entry["min"])
+    assert result.best_genome.shape == (GENOME_SIZE,)
+    assert result.best_genome.dtype == np.float32
+    assert len(result.final_population) == 8
+    for g in result.final_population:
+        assert g.shape == (GENOME_SIZE,)
+
+
+def test_trainer_is_deterministic_under_same_seed():
+    from blueball.ai.trainer import train
+    a = train(pop_size=6, generations=3, level_path=_level_path(),
+              max_steps=300, ga_seed=42, world_seed=1)
+    b = train(pop_size=6, generations=3, level_path=_level_path(),
+              max_steps=300, ga_seed=42, world_seed=1)
+    assert np.array_equal(a.best_genome, b.best_genome)
