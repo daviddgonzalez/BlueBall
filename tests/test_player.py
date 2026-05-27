@@ -275,3 +275,10 @@ def test_player_receive_spring_applies_upward_impulse():
     # pymunk y-down: upward velocity is negative
     # Player mass is 1.0; impulse = 400 * 1.0 = 400 => delta-v = -400 y
     assert p.body.velocity.y == -400.0
+
+
+def test_add_entity_wires_world_reference():
+    w = World()
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    w.add_entity(p)
+    assert p._world is w

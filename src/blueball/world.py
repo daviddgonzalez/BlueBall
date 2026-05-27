@@ -27,6 +27,7 @@ class World:
         """Register an entity with the world. Adds the entity's bodies and shapes
         to the pymunk space and tracks the entity for per-tick updates.
         """
+        entity._world = self
         for body in getattr(entity, "bodies", ()):
             self.space.add(body)
         for shape in getattr(entity, "shapes", ()):
