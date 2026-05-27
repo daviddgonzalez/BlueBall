@@ -217,6 +217,27 @@ def test_checkpoint_chunk_sampler_include_false():
     assert CheckpointChunk.difficulty == 0
 
 
+def test_crumbling_platform_chunk_in_registry():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "crumbling_platform" in CHUNK_REGISTRY
+
+
+def test_crumbling_platform_chunk_difficulty():
+    from blueball.levels.chunks.crumbling_platform import CrumblingPlatformChunk
+    assert CrumblingPlatformChunk.difficulty == 2
+
+
+def test_crumbling_platform_chunk_adds_one_entity():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY, TILE
+    from blueball.entities.crumbling_platform import CrumblingPlatform
+    w = World()
+    chunk = CHUNK_REGISTRY["crumbling_platform"](width_tiles=4)
+    width = chunk.build(w, x_offset=0.0)
+    assert width == 4 * TILE
+    platforms = [e for e in w.entities if isinstance(e, CrumblingPlatform)]
+    assert len(platforms) == 1
+
+
 def test_vertical_column_builds_alternating_platforms():
     from blueball.levels.chunks.vertical_column import VerticalColumn
     from blueball.levels.chunks.flat import GROUND_Y

@@ -225,3 +225,93 @@ def test_checkpoint_custom_radius():
     w = World()
     c = Checkpoint(w, position=(50, 50), id=5, radius=32)
     assert c.radius == 32
+
+
+# ---------------------------------------------------------------------------
+# CrumblingPlatform
+# ---------------------------------------------------------------------------
+
+def test_crumbling_platform_is_static_segment_with_friction():
+    from blueball.entities.crumbling_platform import CrumblingPlatform
+    w = World()
+    cp = CrumblingPlatform(w, position=(100, 300), width=128, crumble_delay_s=1.0)
+    w.add_entity(cp)
+    assert cp.shape.body.body_type == pymunk.Body.STATIC
+    assert cp.shape.friction == 1.0
+
+
+def test_crumbling_platform_not_removed_with_no_contact():
+    """Without any dynamic body nearby, the platform stays in space."""
+    from blueball.entities.crumbling_platform import CrumblingPlatform
+    w = World()
+    cp = CrumblingPlatform(w, position=(100, 300), width=128, crumble_delay_s=0.5)
+    w.add_entity(cp)
+    # Step for well over the crumble delay — still no contact, so it stays
+    for _ in range(120):
+        w.step(1 / 60)
+    assert cp._removed is False
+    assert cp.shape in w.space.shapes
+
+
+def test_crumbling_platform_removes_after_contact_and_delay():
+    """A dynamic body overlapping the segment starts the timer; after
+    crumble_delay_s the shape is removed from space."""
+    from blueball.entities.crumbling_platform import CrumblingPlatform
+    w = World()
+    # Platform at y=300, centred at x=100, width=128
+    cp = CrumblingPlatform(w, position=(100, 300), width=128, crumble_delay_s=0.25)
+    w.add_entity(cp)
+
+    # Add a dynamic body whose AABB overlaps the platform segment
+    body = pymunk.Body(1, pymunk.moment_for_circle(1, 0, 16))
+    body.position = (100, 300)  # directly on top of segment
+    circle = pymunk.Circle(body, 16)
+    w.space.add(body, circle)
+
+    # Step long enough to exhaust the crumble delay
+    total = 0.0
+    while total < 1.0:
+        w.step(1 / 60)
+        total += 1 / 60
+
+    assert cp._removed is True
+    assert cp.shape not in w.space.shapes
+
+
+def test_crumbling_platform_contacted_flag_set_on_first_overlap():
+    from blueball.entities.crumbling_platform import CrumblingPlatform
+    w = World()
+    cp = CrumblingPlatform(w, position=(100, 300), width=128, crumble_delay_s=5.0)
+    w.add_entity(cp)
+
+    assert cp._contacted is False
+
+    body = pymunk.Body(1, pymunk.moment_for_circle(1, 0, 16))
+    body.position = (100, 300)
+    circle = pymunk.Circle(body, 16)
+    w.space.add(body, circle)
+
+    w.step(1 / 60)  # one step is enough to detect overlap
+    assert cp._contacted is True
+
+
+def test_crumbling_platform_update_is_noop_after_removal():
+    """After removal, update() must not raise and _removed stays True."""
+    from blueball.entities.crumbling_platform import CrumblingPlatform
+    w = World()
+    cp = CrumblingPlatform(w, position=(100, 300), width=128, crumble_delay_s=0.0)
+    w.add_entity(cp)
+
+    body = pymunk.Body(1, pymunk.moment_for_circle(1, 0, 16))
+    body.position = (100, 300)
+    circle = pymunk.Circle(body, 16)
+    w.space.add(body, circle)
+
+    # Force a removal by running enough steps
+    for _ in range(10):
+        w.step(1 / 60)
+
+    assert cp._removed is True
+    # Extra updates should be no-ops — no exception
+    cp.update(1 / 60)
+    cp.update(1 / 60)

@@ -17,4 +17,5 @@ from . import (  # noqa: F401
     one_way_platform,
     spring,
     checkpoint,
+    crumbling_platform,
 )
