@@ -117,7 +117,7 @@ def test_boost_pad_chunk_adds_one_boost_pad_entity():
     assert pads[0].width == 3 * TILE
 
 
-def test_chunk_base_defaults_difficulty_and_sampler_include():
+def test_goal_chunk_uses_base_random_params_default():
     assert Flat.difficulty == 0
     assert Flat.sampler_include is True
     # random_params base default returns {}; GoalChunk never overrides it so it
