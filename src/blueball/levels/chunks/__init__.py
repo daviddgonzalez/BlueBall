@@ -19,4 +19,5 @@ from . import (  # noqa: F401
     checkpoint,
     crumbling_platform,
     moving_platform,
+    pushable_box,
 )

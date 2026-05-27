@@ -347,3 +347,43 @@ def test_moving_platform_oscillates_along_y():
         w.step(1 / 60)
     assert abs(mp.body.position.y - spawn_y) <= 100 + 1  # within range bound
     assert mp.body.position.y != spawn_y  # actually moved
+
+
+# ---------------------------------------------------------------------------
+# PushableBox
+# ---------------------------------------------------------------------------
+
+def test_pushable_box_is_dynamic_with_ct_pushable():
+    from blueball.entities.pushable_box import PushableBox
+    from blueball import collision as col
+    w = World()
+    b = PushableBox(w, position=(100, 580), size=32, mass=0.5)
+    assert b.body.body_type == pymunk.Body.DYNAMIC
+    assert b.shape.collision_type == col.CT_PUSHABLE
+    assert b.body.mass == 0.5
+
+
+def test_player_pushes_box():
+    from blueball.entities.pushable_box import PushableBox
+    from blueball.entities.player import Player
+    from blueball.agent import Action, Agent
+    from blueball.collision import register
+
+    class Press(Agent):
+        def act(self, obs):
+            return Action.RIGHT
+
+    w = World()
+    register(w.space, world_ref=w)
+    # Ground floor under both
+    floor = pymunk.Segment(w.space.static_body, (-2000, 600), (2000, 600), 5)
+    floor.friction = 1.0
+    w.space.add(floor)
+    b = PushableBox(w, position=(200, 580), size=32, mass=0.5)
+    w.add_entity(b)
+    p = Player(agent=Press(), spawn_xy=(140, 580))
+    w.add_entity(p)
+    start_x = b.body.position.x
+    for _ in range(120):
+        w.step(1 / 60)
+    assert b.body.position.x > start_x + 5

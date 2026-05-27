@@ -273,3 +273,37 @@ def test_moving_platform_chunk_builds_one_entity():
     assert width == 4 * TILE
     platforms = [e for e in w.entities if isinstance(e, MovingPlatform)]
     assert len(platforms) == 1
+
+
+# ---------------------------------------------------------------------------
+# PushableBoxChunk
+# ---------------------------------------------------------------------------
+
+def test_pushable_box_chunk_in_registry():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "pushable_box" in CHUNK_REGISTRY
+
+
+def test_pushable_box_chunk_difficulty():
+    from blueball.levels.chunks.pushable_box import PushableBoxChunk
+    assert PushableBoxChunk.difficulty == 2
+
+
+def test_pushable_box_chunk_builds_one_entity():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY, TILE
+    from blueball.entities.pushable_box import PushableBox
+    w = World()
+    chunk = CHUNK_REGISTRY["pushable_box"](width_tiles=2)
+    width = chunk.build(w, x_offset=0.0)
+    assert width == 2 * TILE
+    boxes = [e for e in w.entities if isinstance(e, PushableBox)]
+    assert len(boxes) == 1
+
+
+def test_pushable_box_chunk_random_params():
+    import random as _rng
+    from blueball.levels.chunks.pushable_box import PushableBoxChunk
+    params = PushableBoxChunk.random_params(_rng.Random(0))
+    assert 2 <= params["width_tiles"] <= 3
+    assert params["size_px"] in (28, 32, 40)
+    assert 0.4 <= params["mass"] <= 0.8
