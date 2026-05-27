@@ -123,6 +123,41 @@ def test_one_way_platform_passes_rising_player():
     assert p.body.position.y < 500
 
 
+def test_spring_collision_launches_player_upward():
+    from blueball.entities.spring import Spring
+
+    w = World()
+    collision.register(w.space, world_ref=w)
+    s = Spring(w, position=(100, 596), width=64, impulse=600.0)
+    w.add_entity(s)
+    p = Player(agent=_Idle(), spawn_xy=(100, 580))
+    w.add_entity(p)
+    p.body.velocity = (0, 0)
+    w.step(1 / 60)
+    # After contact, the player should have a strong upward (negative-y) velocity
+    assert p.body.velocity.y < -200
+
+
+def test_spring_collision_non_player_dynamic_body():
+    """A non-player dynamic body (pushable) touching a spring should also launch upward."""
+    from blueball.entities.spring import Spring
+
+    w = World()
+    collision.register(w.space, world_ref=w)
+    s = Spring(w, position=(200, 596), width=64, impulse=600.0)
+    w.add_entity(s)
+    # Simulate a pushable box: just a plain dynamic body with CT_PUSHABLE
+    box_body = pymunk.Body(mass=2.0, moment=pymunk.moment_for_box(2.0, (20, 20)))
+    box_body.position = (200, 580)
+    box_shape = pymunk.Poly.create_box(box_body, (20, 20))
+    box_shape.collision_type = collision.CT_PUSHABLE
+    w.space.add(box_body, box_shape)
+    box_body.velocity = (0, 0)
+    w.step(1 / 60)
+    # After contact, the box should have a strong upward velocity
+    assert box_body.velocity.y < -200
+
+
 def test_all_collision_type_constants_distinct():
     from blueball import collision as col
     names = [

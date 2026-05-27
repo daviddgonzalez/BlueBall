@@ -190,3 +190,12 @@ def test_one_way_platform_entity_has_correct_collision_type():
     assert p.shape.collision_type == col.CT_ONE_WAY
     assert p.shape.body.body_type == pymunk.Body.STATIC
     assert p.shape.friction == 1.0
+
+
+def test_spring_entity_is_sensor_with_ct_spring():
+    from blueball.entities.spring import Spring
+    from blueball import collision as col
+    w = World()
+    s = Spring(w, position=(100, 600), width=64, impulse=400.0)
+    assert s.shape.sensor is True
+    assert s.shape.collision_type == col.CT_SPRING

@@ -138,6 +138,34 @@ def register(space: pymunk.Space, world_ref) -> None:
                     arbiter.process_collision = False
                     return
 
+    def on_spring(arbiter, space_, data):
+        # Find the Spring entity to get impulse value.
+        spring_entity = None
+        for shape in arbiter.shapes:
+            if shape.collision_type == CT_SPRING:
+                entity = _find_entity_for_shape(shape, world_ref)
+                if entity is not None and hasattr(entity, "impulse"):
+                    spring_entity = entity
+                    break
+        if spring_entity is None:
+            return False
+        player = _find_player_entity(arbiter, world_ref)
+        if player is not None:
+            player.receive_spring(spring_entity.impulse)
+        else:
+            # Non-player dynamic body (e.g. pushable box)
+            for shape in arbiter.shapes:
+                if shape.collision_type == CT_SPRING:
+                    continue
+                if shape.body.body_type == pymunk.Body.DYNAMIC:
+                    shape.body.apply_impulse_at_local_point(
+                        (0, -spring_entity.impulse * shape.body.mass), (0, 0)
+                    )
+        return False  # sensor — no physical response
+
+    space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_SPRING, begin=on_spring)
+    space.on_collision(collision_type_a=CT_PUSHABLE, collision_type_b=CT_SPRING, begin=on_spring)
+
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_SPIKE, begin=on_spike)
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_COLLECTIBLE, begin=on_collectible)
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_GOAL, begin=on_goal)
