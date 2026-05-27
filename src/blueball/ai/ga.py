@@ -81,6 +81,11 @@ def breed(
         raise ValueError("fitnesses must match population size")
     if elitism < 0 or elitism > n:
         raise ValueError("invalid elitism count")
+    if n < 2 and elitism < n:
+        raise ValueError(
+            "breed needs population of at least 2 to call tournament_select "
+            "(or set elitism == population size to skip breeding)"
+        )
 
     # Elitism: copy the top `elitism` genomes unchanged.
     elite_order = np.argsort(-fitnesses, kind="stable")[:elitism]

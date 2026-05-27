@@ -128,6 +128,28 @@ def test_breed_preserves_population_size_and_elitism():
     fitnesses = np.array([0.0, 5.0, 1.0, 9.0, 2.0, 3.0, 7.0, 4.0])
     nxt = breed(pop, fitnesses, rng, elitism=1)
     assert len(nxt) == 8
-    # The best (fitness 9.0 -> pop[3], all 3.0) must survive unchanged.
-    elite = pop[3]
-    assert any(np.array_equal(g, elite) for g in nxt)
+    # The best (fitness 9.0 -> pop[3], all 3.0) must survive in slot 0
+    # — breed contracts that elites occupy the first `elitism` indices.
+    assert np.array_equal(nxt[0], pop[3])
+
+
+def test_tournament_select_favors_higher_fitness_under_sampling():
+    """With k=2 sampling and a clearly dominant index, that index should be
+    chosen as one of the returned pair far more often than uniform chance."""
+    from blueball.ai.ga import tournament_select
+    rng = np.random.default_rng(0)
+    # 10 candidates; index 9 is overwhelmingly best.
+    fitnesses = np.array([0.0] * 9 + [1000.0])
+    dominant_picked = 0
+    trials = 500
+    for _ in range(trials):
+        i1, i2 = tournament_select(fitnesses, rng, k=2)
+        if 9 in (i1, i2):
+            dominant_picked += 1
+    # Uniform random pair-pick rate for "index 9 in 2-sample": 2/10 = 0.2.
+    # The dominant candidate must win whenever it's sampled, so the actual
+    # rate should be ~0.2 (it's sampled 20% of the time and always promoted),
+    # but importantly higher than 0.18 noise floor for 500 trials.
+    rate = dominant_picked / trials
+    assert rate > 0.15, f"dominant rate too low: {rate}"
+    assert rate < 0.30, f"dominant rate suspiciously high: {rate}"
