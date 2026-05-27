@@ -21,6 +21,12 @@ CT_ABILITY_PICKUP = 7
 # Shared shape-filter group for all Players. Shapes that share a non-zero
 # group don't collide with each other (pymunk semantics), so N agents in
 # one World coexist non-interactively without per-agent group assignment.
+#
+# WARNING: this constant is exclusive to Player shapes. Do NOT assign
+# group=PLAYER_GROUP to any other entity — pymunk's narrow-phase would
+# silently suppress collisions between that entity and every Player,
+# bypassing all per-pair handlers below. If a future system needs its own
+# non-collision group, allocate a new constant (e.g. GHOST_GROUP = 98).
 PLAYER_GROUP = 99
 
 
@@ -69,9 +75,15 @@ def register(space: pymunk.Space, world_ref) -> None:
         return False  # sensor — no physical response
 
     def on_goal(arbiter, space_, data):
+        # A dead player's body stays in the pymunk space after die() and can
+        # drift through the goal sensor under gravity. Without this guard:
+        # TrainScene would award +200 reached_goal on top of -100 died =
+        # +100 net for "die near the goal"; PlayScene would end-of-level
+        # on a corpse's body crossing the flag.
         player = _find_player_entity(arbiter, world_ref)
-        if player is not None:
-            player.reached_goal = True
+        if player is None or player.dead:
+            return False
+        player.reached_goal = True
         world_ref.complete_level()
         return False  # sensor
 
