@@ -54,3 +54,25 @@ class HumanAgent(Agent):
         if jump:
             return Action.JUMP
         return Action.IDLE
+
+
+class FTNNAgent(Agent):
+    """An Agent driven by a fixed-topology neural network (FTNN). Reads the
+    observation, packs it into the 14-float input vector, runs it through
+    the network, and returns the argmax Action.
+
+    Imports of the `ai` package are lazy so that importing `agent` (which
+    PlayScene and tests do) doesn't pull in the AI scaffolding transitively.
+    """
+
+    def __init__(self, genome: np.ndarray) -> None:
+        from .ai.ftnn import FTNN
+        from .ai.observation import observation_to_inputs
+
+        self._net = FTNN(genome)
+        self._to_inputs = observation_to_inputs
+
+    def act(self, observation: Observation) -> Action:
+        x = self._to_inputs(observation)
+        y = self._net.forward(x)
+        return Action(int(np.argmax(y)))

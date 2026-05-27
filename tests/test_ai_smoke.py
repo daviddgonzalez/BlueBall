@@ -249,3 +249,31 @@ def test_fitness_penalizes_death_and_charges_step_cost():
     ))
     # 10 + 0 + 0 - 5 - 100 = -95
     assert f == pytest.approx(-95.0)
+
+
+# ----- Task 5: FTNNAgent -----
+
+def test_ftnn_agent_returns_action_enum():
+    from blueball.agent import FTNNAgent, Action
+    from blueball.ai.genome import random_genome
+    rng = np.random.default_rng(0)
+    agent = FTNNAgent(random_genome(rng))
+    action = agent.act(_make_obs())
+    assert isinstance(action, Action)
+
+
+def test_ftnn_agent_is_deterministic_for_same_genome():
+    from blueball.agent import FTNNAgent
+    from blueball.ai.genome import random_genome
+    g = random_genome(np.random.default_rng(7))
+    a1 = FTNNAgent(g)
+    a2 = FTNNAgent(g)
+    obs = _make_obs(vel=(50.0, -30.0), ang_vel=2.0, grounded=True)
+    assert a1.act(obs) == a2.act(obs)
+
+
+def test_ftnn_agent_all_zero_genome_returns_idle():
+    from blueball.agent import FTNNAgent, Action
+    from blueball.ai.ftnn import GENOME_SIZE
+    agent = FTNNAgent(np.zeros(GENOME_SIZE, dtype=np.float32))
+    assert agent.act(_make_obs()) == Action.IDLE
