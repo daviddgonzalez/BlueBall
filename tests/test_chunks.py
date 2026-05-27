@@ -115,3 +115,11 @@ def test_boost_pad_chunk_adds_one_boost_pad_entity():
     assert pads[0].multiplier == 2.5
     # Pad width should match the segment span
     assert pads[0].width == 3 * TILE
+
+
+def test_chunk_base_defaults_difficulty_and_sampler_include():
+    assert Flat.difficulty == 0
+    assert Flat.sampler_include is True
+    # random_params is a classmethod returning {}
+    import random as _rng
+    assert Flat.random_params(_rng.Random(0)) == {}

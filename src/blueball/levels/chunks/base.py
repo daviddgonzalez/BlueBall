@@ -21,6 +21,17 @@ def register_chunk(name: str):
 
 
 class Chunk(abc.ABC):
+    # Sampler integration. Default values keep existing chunks sampler-eligible
+    # at trivial difficulty until concrete subclasses override.
+    difficulty: int = 0
+    sampler_include: bool = True
+
+    @classmethod
+    def random_params(cls, rng) -> dict:
+        """Return a kwargs dict the sampler should pass to __init__.
+        Default: use the chunk's __init__ defaults."""
+        return {}
+
     @abc.abstractmethod
     def build(self, world, x_offset: float) -> float:
         """Materialize the chunk's bodies and entities into `world`, anchored at
