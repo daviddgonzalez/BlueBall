@@ -239,12 +239,15 @@ class Player(Entity):
         renderer.draw_ball(self.body, alpha)
 
     def _observe(self) -> Observation:
-        # v1 only needs grounded for the JumpController; richer fields land
-        # when AI training arrives.
+        # Stub: rays and nearest fields will be populated in Task 23.
         return Observation(
-            rays=np.zeros(8, dtype=np.float32),
+            rays=np.ones(8, dtype=np.float32),
+            ray_hit_types=np.zeros(8, dtype=np.int8),
             vel=np.array([self.body.velocity.x, self.body.velocity.y], dtype=np.float32),
             ang_vel=self.body.angular_velocity,
             grounded=self.grounded,
-            nearest_collectible=None,
+            nearest_pickup=None,
+            nearest_hazard=None,
+            abilities=0,
+            keys_held=self.keys_held,
         )

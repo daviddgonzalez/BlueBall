@@ -292,3 +292,26 @@ def test_player_ray_filter_excludes_own_shape():
         (100, 100), (200, 100), 0.5, p._ray_filter,
     )
     assert hit is None  # filter excluded our own shape; nothing else in world
+
+
+def test_observation_has_enriched_fields():
+    import numpy as np
+    from blueball.agent import HitType, Observation
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    obs = p._observe()
+    assert obs.rays.shape == (8,)
+    assert obs.ray_hit_types.shape == (8,)
+    assert obs.ray_hit_types.dtype == np.int8
+    assert obs.abilities == 0
+    assert obs.keys_held == 0
+    assert obs.nearest_hazard is None
+    assert obs.nearest_pickup is None
+    # HitType enum complete
+    assert HitType.MISS == 0
+    assert HitType.GROUND == 1
+    assert HitType.HAZARD == 2
+    assert HitType.PICKUP == 3
+    assert HitType.GOAL == 4
+    assert HitType.ENEMY == 5
+    assert HitType.BLOCK == 6
+    assert HitType.DOOR == 7
