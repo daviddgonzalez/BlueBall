@@ -138,3 +138,67 @@ def test_play_scene_esc_returns_menu_scene(monkeypatch, tmp_path):
     result = scene.handle_events([pygame.event.Event(pygame.KEYDOWN, {"key": pygame.K_ESCAPE})])
     assert isinstance(result, MenuScene)
     pygame.display.quit()
+
+
+def test_play_scene_streaming_first_chunk_has_spawn_ground(headless_pygame, tmp_save):
+    """The first emitted built-chunks entry must include a static ground
+    segment at y=GROUND_Y. The sampler can pick floating chunks (e.g.
+    'platform') as its first emission; PlayScene compensates by planting
+    a guaranteed Flat at x=0 ahead of the sampler.
+    """
+    import pymunk
+    from blueball.levels.chunks.flat import GROUND_Y
+
+    data = {
+        "name": "Infinite",
+        "background": "#202028",
+        "ground": "#666c70",
+        "spawn": [80, 540],
+        "chunks": [],
+    }
+    # Seed 0 reliably picks a floating 'platform' as the sampler's first
+    # emission — without the spawn floor it would leave the player with
+    # no ground beneath them.
+    scene = PlayScene(headless_pygame, level_data=data, sampler_seed=0)
+    assert scene._built_chunks, "expected at least one materialized chunk"
+    first = scene._built_chunks[0]
+    assert first["x_start"] == 0.0
+    ground_segments = [
+        s for s in first["shapes"]
+        if isinstance(s, pymunk.Segment)
+        and s.a.y == GROUND_Y and s.b.y == GROUND_Y
+    ]
+    assert ground_segments, "first chunk must include a ground segment at GROUND_Y"
+
+
+def test_play_scene_streaming_builds_ahead(headless_pygame, tmp_save):
+    """Infinite Run uses sampler_seed and streams chunks. After construction,
+    only the initial buffer is built (NOT all 500). Advancing the player
+    triggers more builds; sliding past chunks culls them."""
+    data = {
+        "name": "Infinite",
+        "background": "#202028",
+        "ground": "#666c70",
+        "spawn": [80, 540],
+        "chunks": [],
+    }
+    scene = PlayScene(headless_pygame, level_data=data, sampler_seed=42)
+    assert scene._streaming is True
+    initial_count = len(scene._built_chunks)
+    assert 0 < initial_count <= 20  # only a few chunks, not 500
+
+    # Jump the player far ahead — streaming maintainer should build more
+    initial_build_x = scene._build_x
+    scene.player.body.position = (scene._build_x + 100, 540)
+    scene._maintain_streaming(scene.player.body.position.x)
+    assert scene._build_x > initial_build_x  # more chunks built ahead
+    assert len(scene._built_chunks) > initial_count
+
+    # Jump the player way ahead — chunks behind should cull
+    far_x = scene._build_x + 5000
+    scene.player.body.position = (far_x, 540)
+    scene._maintain_streaming(far_x)
+    # All chunks fully behind player by more than LOAD_BEHIND should be gone
+    for info in scene._built_chunks:
+        # No chunk should end more than LOAD_BEHIND px behind the player
+        assert info["x_end"] >= far_x - 800 - 1

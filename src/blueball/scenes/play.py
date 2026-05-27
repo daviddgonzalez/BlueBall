@@ -105,30 +105,24 @@ class PlayScene(Scene):
         self._chunk_iter = iter(self._sampler)
         self._built_chunks: list[dict] = []
         self._build_x: float = 0.0
+        # Guarantee a ground segment at the spawn point. The sampler can pick
+        # a chunk like `platform` (floating, no ground) as its first emission,
+        # which would drop the player into the void on frame 1.
+        from ..levels.chunks.flat import Flat
+        self._materialize_chunk(Flat(width_tiles=4))
         for _ in range(_INITIAL_BUILD_CHUNKS):
             if not self._build_next_chunk():
                 break
 
-    def _build_next_chunk(self) -> bool:
-        """Pop the next chunk dict from the sampler and materialize it,
-        tracking exactly what got added to the world so we can remove it
-        later. Returns False if the sampler is exhausted.
+    def _materialize_chunk(self, chunk) -> float:
+        """Build *chunk* at the current cursor and append a tracking record
+        to ``_built_chunks``. Returns the chunk's width.
         """
-        chunk_dict = next(self._chunk_iter, None)
-        if chunk_dict is None:
-            return False
-        type_name = chunk_dict["type"]
-        kwargs = {k: v for k, v in chunk_dict.items() if k != "type"}
-        chunk_cls = CHUNK_REGISTRY.get(type_name)
-        if chunk_cls is None:
-            return False
-
         pre_shapes = set(self.world.space.shapes)
         pre_bodies = set(self.world.space.bodies)
         pre_entities = set(self.world.entities)
         pre_constraints = set(self.world.space.constraints)
 
-        chunk = chunk_cls(**kwargs)
         width = chunk.build(self.world, x_offset=self._build_x)
 
         new_shapes = set(self.world.space.shapes) - pre_shapes
@@ -145,6 +139,22 @@ class PlayScene(Scene):
             "constraints": new_constraints,
         })
         self._build_x += width
+        return width
+
+    def _build_next_chunk(self) -> bool:
+        """Pop the next chunk dict from the sampler and materialize it,
+        tracking exactly what got added to the world so we can remove it
+        later. Returns False if the sampler is exhausted.
+        """
+        chunk_dict = next(self._chunk_iter, None)
+        if chunk_dict is None:
+            return False
+        type_name = chunk_dict["type"]
+        kwargs = {k: v for k, v in chunk_dict.items() if k != "type"}
+        chunk_cls = CHUNK_REGISTRY.get(type_name)
+        if chunk_cls is None:
+            return False
+        self._materialize_chunk(chunk_cls(**kwargs))
         return True
 
     def _maintain_streaming(self, player_x: float) -> None:
