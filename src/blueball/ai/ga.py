@@ -75,6 +75,13 @@ def breed(
     """Produce the next generation. The top `elitism` genomes pass through
     unchanged; the rest are children of `crossover(parents) → mutate(child)`
     with tournament-selected parents.
+
+    Degenerate case (n=2, elitism=0): tournament_select clamps k to 2, draws
+    both indices without replacement, and so every child is bred from the
+    same (g0, g1) pair (mutation still introduces noise, but no other
+    crossover parents exist). Functionally correct but selection pressure
+    collapses to a flat coin flip — callers running tiny populations should
+    either bump pop_size, set elitism == 1, or accept the limitation.
     """
     n = len(population)
     if len(fitnesses) != n:
