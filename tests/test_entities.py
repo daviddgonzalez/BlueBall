@@ -144,3 +144,39 @@ def test_boost_pad_stores_multiplier_and_width():
     pad = BoostPad(World(), position=(50, 50), width=192, multiplier=1.7)
     assert pad.multiplier == 1.7
     assert pad.width == 192
+
+
+def test_spike_default_orientation_is_up():
+    w = World()
+    s = Spike(w, position=(0, 0), width=32, height=24)
+    assert s.orientation == "up"
+    hw = 16.0
+    verts = set(s.shapes[0].get_vertices())
+    assert verts == {(-hw, 0), (hw, 0), (0, -24)}
+
+
+def test_spike_orientation_down_inverts_tip():
+    w = World()
+    s = Spike(w, position=(0, 0), width=32, height=24, orientation="down")
+    assert s.orientation == "down"
+    hw = 16.0
+    verts = set(s.shapes[0].get_vertices())
+    assert verts == {(-hw, 0), (hw, 0), (0, 24)}
+
+
+def test_spike_orientation_left_and_right():
+    w = World()
+    hw = 16.0
+    left = Spike(w, position=(0, 0), width=32, height=24, orientation="left")
+    assert left.orientation == "left"
+    assert set(left.shapes[0].get_vertices()) == {(0, -hw), (0, hw), (-24, 0)}
+
+    right = Spike(w, position=(0, 0), width=32, height=24, orientation="right")
+    assert right.orientation == "right"
+    assert set(right.shapes[0].get_vertices()) == {(0, -hw), (0, hw), (24, 0)}
+
+
+def test_spike_invalid_orientation_raises():
+    w = World()
+    with pytest.raises(ValueError, match="orientation"):
+        Spike(w, position=(0, 0), width=32, height=24, orientation="diagonal")
