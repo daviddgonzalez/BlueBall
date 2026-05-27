@@ -176,7 +176,27 @@ def register(space: pymunk.Space, world_ref) -> None:
         collision_type_a=CT_PLAYER, collision_type_b=CT_ONE_WAY,
         pre_solve=on_one_way_presolve,
     )
+    def on_checkpoint(arbiter, space_, data):
+        from .levels.chunks.flat import GROUND_Y
+        player = _find_player_entity(arbiter, world_ref)
+        for shape in arbiter.shapes:
+            entity = _find_entity_for_shape(shape, world_ref)
+            if entity is None or entity is player:
+                continue
+            if not hasattr(entity, "activated"):
+                continue
+            if player is not None:
+                player.respawn_xy = (
+                    shape.body.position.x,
+                    GROUND_Y - config.BALL_RADIUS - 4,
+                )
+            entity.activated = True
+        return False  # sensor — no physical response
+
     space.on_collision(
         collision_type_a=CT_PUSHABLE, collision_type_b=CT_ONE_WAY,
         pre_solve=on_one_way_presolve,
+    )
+    space.on_collision(
+        collision_type_a=CT_PLAYER, collision_type_b=CT_CHECKPOINT, begin=on_checkpoint,
     )

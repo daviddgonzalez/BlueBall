@@ -194,6 +194,29 @@ def test_one_way_platform_chunk_registered():
     assert OneWayPlatformChunk.difficulty == 1
 
 
+def test_checkpoint_chunk_in_registry():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "checkpoint" in CHUNK_REGISTRY
+
+
+def test_checkpoint_chunk_adds_one_checkpoint_entity():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY, TILE
+    from blueball.entities.checkpoint import Checkpoint
+    w = World()
+    chunk = CHUNK_REGISTRY["checkpoint"](width_tiles=2, id=1)
+    width = chunk.build(w, x_offset=0.0)
+    assert width == 2 * TILE
+    checkpoints = [e for e in w.entities if isinstance(e, Checkpoint)]
+    assert len(checkpoints) == 1
+    assert checkpoints[0].id == 1
+
+
+def test_checkpoint_chunk_sampler_include_false():
+    from blueball.levels.chunks.checkpoint import CheckpointChunk
+    assert CheckpointChunk.sampler_include is False
+    assert CheckpointChunk.difficulty == 0
+
+
 def test_vertical_column_builds_alternating_platforms():
     from blueball.levels.chunks.vertical_column import VerticalColumn
     from blueball.levels.chunks.flat import GROUND_Y

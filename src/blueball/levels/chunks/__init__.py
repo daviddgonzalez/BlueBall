@@ -16,4 +16,5 @@ from . import (  # noqa: F401
     vertical_column,
     one_way_platform,
     spring,
+    checkpoint,
 )

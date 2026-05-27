@@ -199,3 +199,29 @@ def test_spring_entity_is_sensor_with_ct_spring():
     s = Spring(w, position=(100, 600), width=64, impulse=400.0)
     assert s.shape.sensor is True
     assert s.shape.collision_type == col.CT_SPRING
+
+
+def test_checkpoint_is_sensor_with_correct_collision_type():
+    from blueball.entities.checkpoint import Checkpoint
+    from blueball import collision as col
+    w = World()
+    c = Checkpoint(w, position=(100, 200), id=1)
+    w.add_entity(c)
+    assert c.shapes[0].sensor is True
+    assert c.shapes[0].collision_type == col.CT_CHECKPOINT
+
+
+def test_checkpoint_stores_id_and_default_radius():
+    from blueball.entities.checkpoint import Checkpoint
+    w = World()
+    c = Checkpoint(w, position=(50, 50), id=3)
+    assert c.id == 3
+    assert c.radius == 18
+    assert c.activated is False
+
+
+def test_checkpoint_custom_radius():
+    from blueball.entities.checkpoint import Checkpoint
+    w = World()
+    c = Checkpoint(w, position=(50, 50), id=5, radius=32)
+    assert c.radius == 32

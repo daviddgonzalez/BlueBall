@@ -158,6 +158,39 @@ def test_spring_collision_non_player_dynamic_body():
     assert box_body.velocity.y < -200
 
 
+def test_checkpoint_sets_respawn_xy_on_contact():
+    from blueball.entities.checkpoint import Checkpoint
+    from blueball.levels.chunks.flat import GROUND_Y
+    from blueball import config
+    w, p = _player_world()
+    cp = Checkpoint(w, position=(100, 100), id=1, radius=20)
+    w.add_entity(cp)
+    for _ in range(5):
+        w.step(1 / 60)
+        if cp.activated:
+            break
+    assert cp.activated is True
+    expected_y = GROUND_Y - config.BALL_RADIUS - 4
+    assert p.respawn_xy is not None
+    assert p.respawn_xy[1] == expected_y
+
+
+def test_checkpoint_does_not_write_save_file(tmp_save):
+    from blueball.entities.checkpoint import Checkpoint
+    w, p = _player_world()
+    cp = Checkpoint(w, position=(100, 100), id=1, radius=20)
+    w.add_entity(cp)
+    for _ in range(5):
+        w.step(1 / 60)
+        if cp.activated:
+            break
+    assert cp.activated is True
+    # No save file should have been created
+    import pathlib
+    save_path = pathlib.Path(tmp_save.SAVE_PATH)
+    assert not save_path.exists()
+
+
 def test_all_collision_type_constants_distinct():
     from blueball import collision as col
     names = [
