@@ -153,3 +153,65 @@ def test_tournament_select_favors_higher_fitness_under_sampling():
     rate = dominant_picked / trials
     assert rate > 0.15, f"dominant rate too low: {rate}"
     assert rate < 0.30, f"dominant rate suspiciously high: {rate}"
+
+
+# ----- Task 2: Observation → input-vector adapter -----
+
+def _make_obs(
+    *,
+    rays=None,
+    vel=(0.0, 0.0),
+    ang_vel=0.0,
+    grounded=False,
+    nearest_collectible=None,
+):
+    from blueball.agent import Observation
+    if rays is None:
+        rays = np.zeros(8, dtype=np.float32)
+    return Observation(
+        rays=rays,
+        vel=np.asarray(vel, dtype=np.float32),
+        ang_vel=float(ang_vel),
+        grounded=bool(grounded),
+        nearest_collectible=nearest_collectible,
+    )
+
+
+def test_observation_to_inputs_shape_and_dtype():
+    from blueball.ai.observation import observation_to_inputs
+    x = observation_to_inputs(_make_obs())
+    assert x.shape == (14,)
+    assert x.dtype == np.float32
+
+
+def test_observation_to_inputs_layout_matches_spec():
+    from blueball.ai.observation import observation_to_inputs
+    rays = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], dtype=np.float32)
+    obs = _make_obs(
+        rays=rays,
+        vel=(11.0, -22.0),
+        ang_vel=3.5,
+        grounded=True,
+        nearest_collectible=(50.0, -25.0),
+    )
+    x = observation_to_inputs(obs)
+    np.testing.assert_allclose(x[0:8], rays)
+    assert x[8] == 11.0 and x[9] == -22.0
+    assert x[10] == 3.5
+    assert x[11] == 1.0
+    assert x[12] == 50.0 and x[13] == -25.0
+
+
+def test_observation_to_inputs_handles_none_collectible():
+    from blueball.ai.observation import observation_to_inputs
+    obs = _make_obs(nearest_collectible=None, grounded=False)
+    x = observation_to_inputs(obs)
+    assert x[11] == 0.0          # grounded=False → 0.0
+    assert x[12] == 0.0 and x[13] == 0.0
+
+
+def test_observation_to_inputs_rejects_wrong_ray_count():
+    from blueball.ai.observation import observation_to_inputs
+    obs = _make_obs(rays=np.zeros(7, dtype=np.float32))
+    with pytest.raises(AssertionError, match=r"\(8,\)"):
+        observation_to_inputs(obs)
