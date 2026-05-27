@@ -18,4 +18,5 @@ from . import (  # noqa: F401
     spring,
     checkpoint,
     crumbling_platform,
+    moving_platform,
 )

@@ -315,3 +315,35 @@ def test_crumbling_platform_update_is_noop_after_removal():
     # Extra updates should be no-ops — no exception
     cp.update(1 / 60)
     cp.update(1 / 60)
+
+
+def test_moving_platform_oscillates_along_x():
+    from blueball.entities.moving_platform import MovingPlatform
+    w = World()
+    mp = MovingPlatform(w, position=(500, 500), length=64, axis="x", range_px=200, speed=120)
+    w.add_entity(mp)
+    spawn_x = mp.body.position.x
+    for _ in range(200):
+        w.step(1 / 60)
+    # After several seconds we expect to have moved and bounded
+    assert abs(mp.body.position.x - spawn_x) <= 100 + 1  # within range bound
+    assert mp.body.position.x != spawn_x  # actually moved
+
+
+def test_moving_platform_invalid_axis_raises():
+    from blueball.entities.moving_platform import MovingPlatform
+    w = World()
+    with pytest.raises(ValueError):
+        MovingPlatform(w, position=(0, 0), length=64, axis="z", range_px=100, speed=80)
+
+
+def test_moving_platform_oscillates_along_y():
+    from blueball.entities.moving_platform import MovingPlatform
+    w = World()
+    mp = MovingPlatform(w, position=(500, 500), length=64, axis="y", range_px=200, speed=120)
+    w.add_entity(mp)
+    spawn_y = mp.body.position.y
+    for _ in range(200):
+        w.step(1 / 60)
+    assert abs(mp.body.position.y - spawn_y) <= 100 + 1  # within range bound
+    assert mp.body.position.y != spawn_y  # actually moved

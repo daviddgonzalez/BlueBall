@@ -255,3 +255,21 @@ def test_vertical_column_builds_alternating_platforms():
     assert segs_sorted[1].b.x == 6 * TILE
     assert segs_sorted[2].a.x == 0
     assert segs_sorted[3].b.x == 6 * TILE
+
+
+def test_moving_platform_chunk_registered():
+    from blueball.levels.chunks.moving_platform import MovingPlatformChunk
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "moving_platform" in CHUNK_REGISTRY
+    assert MovingPlatformChunk.difficulty == 2
+
+
+def test_moving_platform_chunk_builds_one_entity():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY, TILE
+    from blueball.entities.moving_platform import MovingPlatform
+    w = World()
+    chunk = CHUNK_REGISTRY["moving_platform"](width_tiles=4)
+    width = chunk.build(w, x_offset=0.0)
+    assert width == 4 * TILE
+    platforms = [e for e in w.entities if isinstance(e, MovingPlatform)]
+    assert len(platforms) == 1
