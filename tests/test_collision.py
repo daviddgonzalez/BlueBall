@@ -100,3 +100,17 @@ def test_player_receives_boost_on_pad_contact():
     # Pad must still be present in the space (not consumed)
     assert pad.shapes[0] in w.space.shapes
     assert pad.body in w.space.bodies  # body also not removed
+
+
+def test_all_collision_type_constants_distinct():
+    from blueball import collision as col
+    names = [
+        "CT_PLAYER", "CT_SPIKE", "CT_PATROLLER", "CT_COLLECTIBLE",
+        "CT_GOAL", "CT_BOOST_PAD", "CT_ABILITY_PICKUP",
+        "CT_ONE_WAY", "CT_SPRING", "CT_PUSHABLE", "CT_SWINGING",
+        "CT_CHARGER", "CT_CHECKPOINT", "CT_KEY", "CT_DOOR",
+    ]
+    values = [getattr(col, n) for n in names]
+    assert len(set(values)) == len(names)
+    assert col.CT_ONE_WAY == 8
+    assert col.CT_DOOR == 15
