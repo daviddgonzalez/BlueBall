@@ -36,6 +36,8 @@ class FTNN:
             )
         if genome.dtype != np.float32:
             genome = genome.astype(np.float32)
+        else:
+            genome = genome.copy()
 
         i = 0
         self._W1 = genome[i:i + _W1_SIZE].reshape(FTNN_INPUTS, FTNN_HIDDEN)

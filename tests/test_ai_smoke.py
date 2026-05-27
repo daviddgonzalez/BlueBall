@@ -23,10 +23,10 @@ def test_ftnn_topology_constants():
 
 
 def test_ftnn_forward_pass_shape_and_dtype():
-    from blueball.ai.ftnn import FTNN, FTNN_INPUTS, FTNN_OUTPUTS, GENOME_SIZE
-    genome = np.zeros(GENOME_SIZE, dtype=np.float32)
-    net = FTNN(genome)
-    y = net.forward(np.zeros(FTNN_INPUTS, dtype=np.float32))
+    from blueball.ai.ftnn import FTNN, FTNN_INPUTS, FTNN_OUTPUTS
+    from blueball.ai.genome import random_genome
+    net = FTNN(random_genome(np.random.default_rng(0)))
+    y = net.forward(np.random.default_rng(1).standard_normal(FTNN_INPUTS).astype(np.float32))
     assert y.shape == (FTNN_OUTPUTS,)
     assert y.dtype == np.float32
 
@@ -57,3 +57,16 @@ def test_random_genome_is_deterministic_under_same_seed():
     a = random_genome(np.random.default_rng(42))
     b = random_genome(np.random.default_rng(42))
     assert np.array_equal(a, b)
+
+
+def test_ftnn_does_not_alias_caller_genome():
+    """If the caller mutates the genome buffer in-place after construction,
+    the FTNN's stored weights MUST NOT change. Without a defensive copy
+    in __init__, slicing produces views that share memory and this fails."""
+    from blueball.ai.ftnn import FTNN, FTNN_INPUTS, GENOME_SIZE
+    genome = np.ones(GENOME_SIZE, dtype=np.float32)
+    net = FTNN(genome)
+    baseline = net.forward(np.zeros(FTNN_INPUTS, dtype=np.float32))
+    genome[:] = -7.0      # in-place mutation by the caller
+    after = net.forward(np.zeros(FTNN_INPUTS, dtype=np.float32))
+    np.testing.assert_array_equal(baseline, after)
