@@ -15,10 +15,9 @@ The level-design slice ships:
 
 - **14 new chunk types**, bringing the library from 10 to 24.
 - **3 new hand-built levels** — Vertical Climb, Speed Run, Maze — each with distinct feel and a mandatory subset of new chunks.
-- A **`MenuScene`** for level selection; all four levels (Tutorial Hill + the three new ones) open from the start.
+- A **`MenuScene`** for level selection with 5 entries (Tutorial Hill + the three new levels + Infinite Run); all open from the start.
+- **`ChunkSampler` + Infinite Run** — a deterministic procedural sampler that emits ~500 chunks per run with a soft difficulty ramp, plus the Infinite Run scene that consumes its output. Long pre-built run only; true streaming (extending the level as the player advances, with culling of off-screen geometry) is deferred to Phase 4.
 - **Observation enrichment**: the 8 raycast slots actually contain raycast results, a parallel `ray_hit_types` array categorizes what each ray hit, scalar fields surface the nearest pickup and nearest hazard, and bitfields expose unlocked abilities and collected keys.
-
-Chunk Sampler / infinite mode is **deferred to a follow-up phase**; the chunk library shipped here is sized so that Phase 4 can stitch it procedurally without further chunk authoring.
 
 ## Motivation
 
@@ -28,7 +27,7 @@ The Phase 2 handoff memory committed Phase 3 to **levels-first** rather than the
 - Hand-built levels are more fun to play with than untrained agents — they unlock testing of the abilities framework and boost pads in varied contexts.
 - The AI session is explicitly told to scaffold on `tutorial_hill` with the v1 Observation (rays = zeros), and to defer raycast wiring until this branch merges. The level-design branch is the unblocker for that follow-up.
 
-The chunk catalog is sized to support both the three hand-built levels and a future procedural sampler. Each chunk is a self-contained build-and-register module so Phase 4 can add a `ChunkSampler` without touching this slice.
+The chunk catalog is sized to support both the three hand-built levels and the procedural sampler shipped in this slice. Each chunk is a self-contained build-and-register module with an associated `difficulty` class attribute, so the sampler can pick chunks by target difficulty without inspecting their internals.
 
 ## Behavior
 
@@ -69,6 +68,17 @@ Save state is unchanged from Phase 2 — only unlocked abilities persist across 
 |---|---|---|---|
 | Boost pad (existing) | Horizontal — multiplies horizontal speed cap | Player only | Take-the-max multiplier, in-memory until next landing |
 | Spring (new) | Vertical — direct upward impulse | Any dynamic body (Player, pushable boxes) | Per-contact impulse, no consume, no cooldown beyond pymunk's contact rules |
+
+### Infinite Run & sampler
+
+| When | What happens |
+|---|---|
+| Player selects "Infinite Run" in `MenuScene` | A `ChunkSampler(seed)` is constructed with a seed derived from the system clock. It emits a deterministic ~500-chunk sequence (final entry is always `goal`). The resulting chunk list is handed to `PlayScene` as in-memory level data; no JSON is written to disk. |
+| Player runs the level | Identical to a hand-built level: chunks are built into `world.space` at scene start; player rolls right; falling below `FALL_DEATH_Y` kills. Death respawns at the level's spawn (or the last touched `checkpoint`, if any). |
+| Player reaches the `goal` chunk | `world.level_complete` triggers; PlayScene returns to MenuScene as for any other level. |
+| Player selects "Infinite Run" again | A new seed is drawn; a new run is generated. The sampler is deterministic per-seed; the seed used by each run is stored on PlayScene as `self.sampler_seed` (read by tests, not exposed in UI). |
+
+The sampler **does not stream**. All chunks are emitted up front and built into the world before play begins. Streaming + culling is a Phase 4 follow-up; this slice keeps determinism and the existing chunk-build model intact.
 
 ### Crumbling platforms
 
@@ -138,6 +148,131 @@ The existing `Spike` entity gains an `orientation` parameter ("up" | "down" | "l
 The bob is deterministic given the world seed (no random component). World-determinism tests will exercise this.
 
 ## Components
+
+### `levels/chunks/base.py` (modified)
+
+The `Chunk` base class gains two class-level attributes consumed by the sampler:
+
+```python
+class Chunk(abc.ABC):
+    difficulty: int = 0          # 0 = trivial, 3 = hard. Sampler uses this for difficulty-curve weighting.
+    sampler_include: bool = True # If False, the sampler never emits this chunk type.
+
+    @abc.abstractmethod
+    def build(self, world, x_offset: float) -> float: ...
+```
+
+Every existing chunk gets the right `difficulty` value as part of this slice:
+
+| Chunk | difficulty | sampler_include |
+|---|---|---|
+| `flat` | 0 | True |
+| `gap` | 1 | True |
+| `spike_pit` | 2 | True |
+| `patrol_platform` | 2 | True |
+| `stairs_up` | 0 | True |
+| `stairs_down` | 0 | True |
+| `bump` | 0 | True |
+| `falling_hazard` | 3 | True |
+| `goal` | n/a | False (sampler appends explicitly at end) |
+| `ability_pickup` | 1 | False (per-level designer placement; sampler skips) |
+| `boost_pad` | 1 | True |
+
+And every new chunk:
+
+| Chunk | difficulty | sampler_include |
+|---|---|---|
+| `platform` | 0 | True |
+| `vertical_column` | 2 | True |
+| `moving_platform` | 2 | True |
+| `spring` | 1 | True |
+| `checkpoint` | 0 | False (paired with player progress; sampler sprinkles via a separate rule, see Sampler section) |
+| `one_way_platform` | 1 | True |
+| `crumbling_platform` | 2 | True |
+| `key` | n/a | False (paired with `door`; not procedurally generated) |
+| `door` | n/a | False (paired with `key`) |
+| `pushable_box` | 2 | True |
+| `spike_wall` | 2 | True |
+| `swinging_hazard` | 3 | True |
+| `ice_floor` | 1 | True |
+| `charger_platform` | 3 | True |
+
+### `levels/sampler.py` (new)
+
+```python
+class ChunkSampler:
+    """Deterministic procedural chunk emitter.
+
+    Emits a sequence of chunk dicts (each suitable for handing to the loader).
+    Difficulty ramps linearly with progress, capping at the hardest tier.
+    A `goal` chunk is appended after `target_chunks` non-terminal emits.
+    A `checkpoint` chunk is interspersed every `checkpoint_every` chunks.
+    """
+
+    def __init__(
+        self,
+        seed: int,
+        target_chunks: int = 500,
+        ramp_per_chunk: float = 0.006,   # 0.006 * 500 = 3.0, so the ramp reaches max at the end
+        sigma: float = 0.7,              # softness of the difficulty-match weighting
+        checkpoint_every: int = 25,
+    ) -> None:
+        self.rng = random.Random(seed)
+        self.target = target_chunks
+        self.ramp = ramp_per_chunk
+        self.sigma = sigma
+        self.checkpoint_every = checkpoint_every
+        self.progress = 0
+        # Pre-compute sampler pool from the registry at construction time so the
+        # registry's ordering bug-class doesn't bleed into RNG determinism.
+        self._pool: list[tuple[str, type[Chunk]]] = sorted(
+            ((name, cls) for name, cls in CHUNK_REGISTRY.items() if cls.sampler_include),
+            key=lambda item: item[0],
+        )
+
+    def __iter__(self) -> Iterator[dict]: ...
+
+    def emit_next(self) -> dict | None:
+        """Returns the next chunk dict, or None if the run is finished
+        (after `target_chunks` non-terminal emits + a final `goal`)."""
+        ...
+```
+
+**Algorithm per emit:**
+1. If `self.progress == self.target`, return `{"type": "goal"}`; subsequent calls return `None`.
+2. Else if `self.progress > 0 and self.progress % self.checkpoint_every == 0`, return `{"type": "checkpoint", "id": self.progress // self.checkpoint_every}` and increment progress.
+3. Else compute `target_diff = min(3.0, self.progress * self.ramp)`. Score each chunk in `self._pool` by `weight = exp(-((cls.difficulty - target_diff) ** 2) / (2 * self.sigma ** 2))`. Use `random.choices(pool, weights)` to pick one. Build the chunk dict with `random_params(self.rng)`.
+
+**Per-chunk parameter randomization:**
+
+Each chunk class (existing and new) gains an optional `classmethod random_params(cls, rng) -> dict`. The default implementation returns `{}` (use chunk defaults). Chunks where randomization is meaningful override it. Concrete value ranges live in the chunk modules; representative examples:
+
+- `flat.random_params` → `{"width_tiles": rng.randint(2, 5)}`
+- `gap.random_params` → `{"width_tiles": rng.randint(2, 5)}`
+- `spike_pit.random_params` → `{"width_tiles": rng.randint(2, 4), "spikes": rng.randint(2, 4)}`
+- `boost_pad.random_params` → `{"width_tiles": rng.randint(3, 6), "multiplier": rng.uniform(1.5, 2.2)}`
+- `ice_floor.random_params` → `{"width_tiles": rng.randint(2, 5)}`
+- `vertical_column.random_params` → `{"width_tiles": 6, "steps": rng.randint(3, 6), "step_height": rng.choice([64, 80, 96])}`
+- etc.
+
+`sampler.emit_next()` calls `cls.random_params(self.rng)` and merges that into `{"type": name, **params}`.
+
+**Determinism:** the sampler's `rng` is the only source of randomness; given the same seed, two sampler instances emit the same sequence. The pool's stable sort by name (above) prevents `dict` ordering from leaking into the RNG.
+
+### `levels/loader.py` (modified)
+
+`load_level(source, world)` now accepts either a `Path | str` (read JSON, parse, build) or a `dict` (already-parsed level data). The new signature:
+
+```python
+def load_level(source: Path | str | dict, world) -> LevelMeta:
+    if isinstance(source, dict):
+        data = source
+    else:
+        data = json.loads(Path(source).read_text())
+    # remainder unchanged
+```
+
+This is the seam `InfiniteScene` uses: the sampler emits a list of dicts, the menu wraps them in a top-level level dict, and PlayScene calls `load_level(dict_data, world)`.
 
 ### `levels/chunks/` (new modules)
 
@@ -327,14 +462,17 @@ The existing handlers (`on_spike`, `on_collectible`, `on_goal`, `on_patroller`, 
 
 ```python
 class MenuScene(Scene):
+    INFINITE_RUN = "__infinite__"
+
     def __init__(self, screen: pygame.Surface) -> None:
         self.screen = screen
         levels_dir = Path(__file__).parent.parent / "levels"
-        self.entries: list[tuple[str, Path]] = [
+        self.entries: list[tuple[str, Path | str]] = [
             ("Tutorial Hill", levels_dir / "tutorial_hill.json"),
             ("Vertical Climb", levels_dir / "vertical_climb.json"),
             ("Speed Run", levels_dir / "speed_run.json"),
             ("Maze", levels_dir / "maze.json"),
+            ("Infinite Run", self.INFINITE_RUN),
         ]
         self.cursor: int = 0
         self._font = pygame.font.SysFont(None, 36)
@@ -352,8 +490,19 @@ class MenuScene(Scene):
                 elif event.key in (pygame.K_DOWN, pygame.K_s):
                     self.cursor = min(len(self.entries) - 1, self.cursor + 1)
                 elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                    _, path = self.entries[self.cursor]
-                    return PlayScene(self.screen, level_path=path)
+                    _, target = self.entries[self.cursor]
+                    if target == self.INFINITE_RUN:
+                        seed = int(time.time() * 1000) & 0xFFFFFFFF
+                        sampler = ChunkSampler(seed=seed)
+                        level_data = {
+                            "name": f"Infinite Run (seed={seed})",
+                            "background": "#202028",
+                            "ground": "#666c70",
+                            "spawn": [80, 540],
+                            "chunks": list(sampler),
+                        }
+                        return PlayScene(self.screen, level_data=level_data, sampler_seed=seed)
+                    return PlayScene(self.screen, level_path=target)
         return self
 
     def update(self, frame_dt: float) -> None:
@@ -364,16 +513,18 @@ class MenuScene(Scene):
         ...
 ```
 
-`PlayScene` is imported at the bottom of `menu.py` or inside `handle_events` to avoid a circular import.
+`PlayScene` and `ChunkSampler` are imported at the bottom of `menu.py` or inside `handle_events` to avoid a circular import. The Infinite Run entry uses a slate-gray palette distinct from the other levels; its seed is encoded into the level name purely for debug/log visibility.
 
 ### `scenes/play.py` (modified)
 
-- Constructor signature unchanged.
+- Constructor accepts either a `level_path: Path | None` or `level_data: dict | None` (exactly one must be non-None). Optionally accepts `sampler_seed: int | None` for debug/test inspection. `_reset()` passes whichever was supplied through to `load_level`, which accepts both.
 - Add `self._last_respawn_xy: tuple[float, float] | None = None` and `self._exit_to_menu: bool = False` fields.
 - `_reset()` overrides `player.body.position = self._last_respawn_xy` when non-None.
 - `update()` on death snapshots `self._last_respawn_xy = self.player.respawn_xy` before calling `_reset()`.
 - `update()` on `world.level_complete` clears `self._last_respawn_xy = None`, sets `self._exit_to_menu = True`, and returns early without further camera/physics updates that tick.
 - `handle_events()`: if `self._exit_to_menu`, returns `MenuScene(self.screen)`. Else processes events normally. Esc returns `MenuScene(self.screen)` instead of `None`. `pygame.QUIT` still returns `None`.
+
+For Infinite Run specifically, `level_data` is the dict the menu built from `ChunkSampler` output; `_reset()` rebuilds the world from the SAME dict each respawn so checkpoints work consistently. Death does not re-roll the sampler.
 
 The existing `main.py` already drives scene swaps via the `handle_events` return value — no changes to the main loop's scene-swap logic.
 
@@ -454,7 +605,8 @@ Exact chunk sequence is finalized during feel-tuning, not in this spec.
 
 ### New test files
 
-- **`tests/test_menu_scene.py`** — cursor moves on key events; Enter returns a `PlayScene` whose `level_path` matches the cursor; Esc returns `None`.
+- **`tests/test_menu_scene.py`** — cursor moves on key events; Enter on a normal level returns a `PlayScene` whose `level_path` matches the cursor; Enter on Infinite Run returns a `PlayScene` whose `level_data["chunks"]` ends with a `goal` chunk and whose `sampler_seed` is set; Esc returns `None`.
+- **`tests/test_sampler.py`** — sampler determinism (two `ChunkSampler(seed=N)` instances emit identical sequences); difficulty curve ramps with progress (average difficulty of chunks in the last quartile exceeds the first quartile by a configurable margin); every emitted chunk type is in `CHUNK_REGISTRY` and has `sampler_include=True`; sequence ends with exactly one `goal`; checkpoints appear at `checkpoint_every`-spaced intervals.
 
 ### Modified test files
 
@@ -474,8 +626,8 @@ Exact chunk sequence is finalized during feel-tuning, not in this spec.
 - **`tests/test_collision.py`** — `test_spring_launches_player`, `test_spring_launches_pushable_box`, `test_checkpoint_updates_respawn`, `test_key_sets_held_bit`, `test_door_blocks_until_key`, `test_door_opens_after_key`, `test_charger_kills_on_side_contact`, `test_charger_dies_on_stomp`, `test_crumbling_starts_timer_on_contact`, `test_pushable_box_moves_under_player_contact`.
 - **`tests/test_player.py`** — `test_player_starts_with_no_keys`, `test_player_collect_key_sets_bit_and_is_idempotent`, `test_player_has_key_reads_bit`, `test_player_respawn_xy_defaults_to_none`, `test_player_observation_includes_new_fields` (rays nonzero when geometry nearby; hit types correct; abilities bitfield matches `Player.abilities`; keys_held matches; `nearest_pickup`/`nearest_hazard` selected correctly from a world with multiple entities).
 - **`tests/test_play_scene.py`** — `test_play_scene_respawn_uses_checkpoint_after_death`, `test_play_scene_clears_checkpoint_on_level_complete`, `test_play_scene_escape_returns_menu_scene`, `test_play_scene_level_complete_returns_menu_scene`.
-- **`tests/test_level_loader.py`** — smoke-load each of the three new level JSONs.
-- **`tests/test_world_determinism.py`** — re-run with `speed_run.json` (no Charger means no FOV-driven branching; cleanest determinism canary). Two `World`s with the same seed and same action stream produce identical Player positions after N ticks.
+- **`tests/test_level_loader.py`** — smoke-load each of the three new level JSONs; also smoke-load a small dict-mode level (asserts the loader's dict path works).
+- **`tests/test_world_determinism.py`** — re-run with `speed_run.json` (no Charger means no FOV-driven branching; cleanest determinism canary). Two `World`s with the same seed and same action stream produce identical Player positions after N ticks. Add a second case: a sampler-built level with a fixed sampler seed produces identical Player positions across two runs (guards the sampler ↔ world-step interaction).
 
 ### Coverage gaps deliberately left
 
@@ -486,7 +638,8 @@ Exact chunk sequence is finalized during feel-tuning, not in this spec.
 
 ## What's deliberately out of scope
 
-- **ChunkSampler / infinite mode.** Phase 4 builds on this slice's chunk library; this slice does not add the sampler, difficulty curve, or `InfiniteScene`.
+- **Streaming infinite mode.** This slice ships a pre-built infinite run (sampler emits ~500 chunks up front, all built into the world before play begins). True streaming — extending the level as the player advances, culling old chunks behind the camera, raycast-filter cleanup — is a Phase 4 polish pass.
+- **Sampler difficulty hand-tuning.** The ramp coefficients (`ramp_per_chunk`, `sigma`, `checkpoint_every`) are best-guess starting values. If the resulting runs feel wrong in playtest, retuning happens iteratively; structural changes (e.g. a 2D difficulty space, biome blocks) are out of scope.
 - **AI/GA scaffolding.** Owned by the parallel session per the Phase 2 handoff. This slice ships the Observation enrichment so the AI session has something concrete to wire to when it picks up the work.
 - **Sprites / asset pipeline.** All new entities draw with flat PyGame primitives, matching the v1 visual style.
 - **Audio.** Same deferral as v1.
@@ -507,7 +660,8 @@ When the AI session picks up after this slice merges, the following are guarante
 - `Observation.nearest_pickup` and `Observation.nearest_hazard` return world-frame deltas to the closest entity in those categories, or `None` if no such entity exists.
 - `Observation.abilities` and `Observation.keys_held` are bitfields. Ability bit indices match `Ability` enum declaration order (only bit 0 = `DOUBLE_JUMP` is meaningful today).
 - All ray queries exclude the player's own shape via a pymunk `ShapeFilter` group, configured on the Player at construction.
-- Determinism is preserved — `test_world_determinism.py` runs against `speed_run.json` after this slice lands.
+- Determinism is preserved — `test_world_determinism.py` runs against `speed_run.json` and a sampler-built level after this slice lands.
+- `ChunkSampler(seed)` is deterministic and reusable: the AI session can construct one in its trainer with a per-genome seed to give every individual a different procedural environment, or share a seed across a generation to compare individuals on identical terrain.
 
 The AI session does not need to re-implement any Observation logic. It just reads the dataclass.
 
