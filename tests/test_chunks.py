@@ -449,3 +449,71 @@ def test_charger_platform_chunk_random_params():
     params = ChargerPlatformChunk.random_params(_rng.Random(42))
     assert 6 <= params["length_tiles"] <= 10
     assert params["facing"] in ("left", "right")
+
+
+# ---------------------------------------------------------------------------
+# spike_wall
+# ---------------------------------------------------------------------------
+
+def test_spike_wall_chunk_places_oriented_spikes():
+    from blueball.levels.chunks.spike_wall import SpikeWall
+    from blueball.entities.spike import Spike
+    w = World()
+    SpikeWall(width_tiles=4, spikes=4, orientation="down", ceiling_y_offset=160).build(w, x_offset=0)
+    spikes = [e for e in w.entities if isinstance(e, Spike)]
+    assert len(spikes) == 4
+    for s in spikes:
+        assert s.orientation == "down"
+
+
+def test_spike_wall_chunk_in_registry():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "spike_wall" in CHUNK_REGISTRY
+
+
+def test_spike_wall_chunk_difficulty():
+    from blueball.levels.chunks.spike_wall import SpikeWall
+    assert SpikeWall.difficulty == 2
+
+
+def test_spike_wall_chunk_ceiling_y_placement():
+    from blueball.levels.chunks.spike_wall import SpikeWall
+    from blueball.entities.spike import Spike
+    from blueball.levels.chunks.flat import GROUND_Y
+    w = World()
+    SpikeWall(width_tiles=3, spikes=2, orientation="down", ceiling_y_offset=140).build(w, x_offset=0)
+    spikes = [e for e in w.entities if isinstance(e, Spike)]
+    for s in spikes:
+        assert s.position[1] == GROUND_Y - 140
+
+
+def test_spike_wall_chunk_up_orientation_places_at_ground():
+    from blueball.levels.chunks.spike_wall import SpikeWall
+    from blueball.entities.spike import Spike
+    from blueball.levels.chunks.flat import GROUND_Y
+    w = World()
+    SpikeWall(width_tiles=3, spikes=2, orientation="up", ceiling_y_offset=160).build(w, x_offset=0)
+    spikes = [e for e in w.entities if isinstance(e, Spike)]
+    for s in spikes:
+        assert s.position[1] == GROUND_Y
+
+
+def test_spike_wall_chunk_has_flat_ground_segment():
+    from blueball.levels.chunks.spike_wall import SpikeWall
+    from blueball.levels.chunks.flat import GROUND_Y
+    w = World()
+    SpikeWall(width_tiles=3, spikes=2, orientation="down", ceiling_y_offset=160).build(w, x_offset=0)
+    segs = [s for s in w.space.shapes if isinstance(s, pymunk.Segment) and s.body is w.space.static_body]
+    assert len(segs) == 1
+    assert segs[0].a.y == GROUND_Y
+    assert segs[0].b.y == GROUND_Y
+
+
+def test_spike_wall_chunk_random_params():
+    import random as _rng
+    from blueball.levels.chunks.spike_wall import SpikeWall
+    params = SpikeWall.random_params(_rng.Random(42))
+    assert 2 <= params["width_tiles"] <= 4
+    assert 2 <= params["spikes"] <= 4
+    assert params["orientation"] in ("down", "left", "right")
+    assert params["ceiling_y_offset"] in (128, 160, 200)
