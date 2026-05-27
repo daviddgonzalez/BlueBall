@@ -70,3 +70,64 @@ def test_ftnn_does_not_alias_caller_genome():
     genome[:] = -7.0      # in-place mutation by the caller
     after = net.forward(np.zeros(FTNN_INPUTS, dtype=np.float32))
     np.testing.assert_array_equal(baseline, after)
+
+
+# ----- Task 1: GA operators -----
+
+def test_mutate_at_rate_zero_returns_equal_but_different_object():
+    from blueball.ai.ga import mutate
+    rng = np.random.default_rng(0)
+    g = np.arange(258, dtype=np.float32)
+    out = mutate(g, rng, rate=0.0, sigma=1.0)
+    assert out is not g
+    assert np.array_equal(out, g)
+
+
+def test_mutate_at_rate_one_changes_most_weights():
+    from blueball.ai.ga import mutate
+    rng = np.random.default_rng(0)
+    g = np.zeros(258, dtype=np.float32)
+    out = mutate(g, rng, rate=1.0, sigma=1.0)
+    changed = np.count_nonzero(out != g)
+    assert changed / 258 > 0.95
+
+
+def test_mutate_does_not_modify_input():
+    from blueball.ai.ga import mutate
+    rng = np.random.default_rng(0)
+    g = np.zeros(258, dtype=np.float32)
+    snapshot = g.copy()
+    mutate(g, rng, rate=1.0, sigma=1.0)
+    assert np.array_equal(g, snapshot)
+
+
+def test_crossover_inherits_from_both_parents():
+    from blueball.ai.ga import crossover
+    rng = np.random.default_rng(0)
+    a = np.zeros(258, dtype=np.float32)
+    b = np.ones(258, dtype=np.float32)
+    child = crossover(a, b, rng)
+    frac_b = np.count_nonzero(child == 1.0) / 258
+    assert 0.3 < frac_b < 0.7
+    # Every gene came from either parent
+    assert np.all((child == 0.0) | (child == 1.0))
+
+
+def test_tournament_select_returns_top_two_when_k_is_full():
+    from blueball.ai.ga import tournament_select
+    rng = np.random.default_rng(0)
+    fitnesses = np.array([1.0, 5.0, 3.0, 9.0, 7.0])
+    i1, i2 = tournament_select(fitnesses, rng, k=5)
+    assert {i1, i2} == {3, 4}     # indices of 9.0 and 7.0
+
+
+def test_breed_preserves_population_size_and_elitism():
+    from blueball.ai.ga import breed
+    rng = np.random.default_rng(0)
+    pop = [np.full(258, float(i), dtype=np.float32) for i in range(8)]
+    fitnesses = np.array([0.0, 5.0, 1.0, 9.0, 2.0, 3.0, 7.0, 4.0])
+    nxt = breed(pop, fitnesses, rng, elitism=1)
+    assert len(nxt) == 8
+    # The best (fitness 9.0 -> pop[3], all 3.0) must survive unchanged.
+    elite = pop[3]
+    assert any(np.array_equal(g, elite) for g in nxt)
