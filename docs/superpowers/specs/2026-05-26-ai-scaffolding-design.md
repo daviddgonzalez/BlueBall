@@ -63,14 +63,14 @@ class FTNN:
     def forward(self, x: np.ndarray) -> np.ndarray: ...
 ```
 
-- The genome layout is `[W1 (14*12) | b1 (12) | W2 (12*6) | b2 (6)]` = `14*12 + 12 + 12*6 + 6 = 282` float32s. `GENOME_SIZE = 282` is exported from `genome.py` (derived from the constants here so changing topology updates both).
+- The genome layout is `[W1 (14*12) | b1 (12) | W2 (12*6) | b2 (6)]` = `14*12 + 12 + 12*6 + 6 = 258` float32s. `GENOME_SIZE = 258` is exported from `genome.py` (derived from the constants here so changing topology updates both).
 - `FTNN.__init__` slices the flat genome into its weight/bias arrays once; `forward` does two matmuls + one `tanh`.
 - No batch dimension. One observation per call.
 
 #### `ai/genome.py`
 
 ```python
-GENOME_SIZE = FTNN_INPUTS * FTNN_HIDDEN + FTNN_HIDDEN + FTNN_HIDDEN * FTNN_OUTPUTS + FTNN_OUTPUTS  # 282
+GENOME_SIZE = FTNN_INPUTS * FTNN_HIDDEN + FTNN_HIDDEN + FTNN_HIDDEN * FTNN_OUTPUTS + FTNN_OUTPUTS  # 258
 
 def random_genome(rng: np.random.Generator) -> np.ndarray:
     """Sample a fresh genome from N(0, 1). Returns float32 ndarray of shape (GENOME_SIZE,)."""
