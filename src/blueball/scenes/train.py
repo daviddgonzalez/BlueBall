@@ -94,9 +94,10 @@ class TrainScene(Scene):
 
     def _score_visible_players(self) -> np.ndarray:
         """Compute fitness for the n_visible players. The remaining
-        (pop_size - n_visible) population members get a baseline-zero fitness;
-        a future task can evaluate them headless if we want them to compete."""
-        fits = np.zeros(self.pop_size, dtype=np.float64)
+        (pop_size - n_visible) population members get -inf so they are never
+        chosen by tournament_select; once headless evaluation is added in a
+        follow-up task they'll get real fitness values."""
+        fits = np.full(self.pop_size, -np.inf, dtype=np.float64)
         for i, p in enumerate(self._players):
             fits[i] = fitness(FitnessInputs(
                 progress_x=float(p.body.position.x - self._spawn_xy[0]),
@@ -157,10 +158,13 @@ class TrainScene(Scene):
 
     def _draw_hud(self) -> None:
         live = sum(1 for p in self._players if not (p.dead or p.reached_goal))
-        text = (
-            f"gen {self.current_gen + 1}/{self.generations}  "
-            f"best {self.best_fitness:.1f}  mean {self.best_mean:.1f}  "
-            f"live {live}/{self.n_visible}"
-        )
-        surf = self._font.render(text, True, (255, 255, 255))
+        if self.current_gen >= self.generations:
+            label = f"DONE  best {self.best_fitness:.1f}  mean {self.best_mean:.1f}"
+        else:
+            label = (
+                f"gen {self.current_gen + 1}/{self.generations}  "
+                f"best {self.best_fitness:.1f}  mean {self.best_mean:.1f}  "
+                f"live {live}/{self.n_visible}"
+            )
+        surf = self._font.render(label, True, (255, 255, 255))
         self.screen.blit(surf, (12, 12))
