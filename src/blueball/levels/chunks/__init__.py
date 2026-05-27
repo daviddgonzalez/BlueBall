@@ -11,4 +11,5 @@ from . import (  # noqa: F401
     goal,
     ability_pickup,
     boost_pad,
+    platform,
 )

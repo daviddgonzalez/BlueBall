@@ -144,3 +144,27 @@ def test_flat_random_params_returns_width_in_range():
     import random as _rng
     params = Flat.random_params(_rng.Random(0))
     assert 2 <= params["width_tiles"] <= 5
+
+
+def test_platform_chunk_adds_one_floating_segment():
+    from blueball.levels.chunks.platform import Platform
+    from blueball.levels.chunks.flat import GROUND_Y
+    w = World()
+    width = Platform(width_tiles=4, y_offset=96).build(w, x_offset=100)
+    assert width == 4 * TILE
+    segs = [s for s in w.space.shapes if isinstance(s, pymunk.Segment)]
+    assert len(segs) == 1
+    a, b = segs[0].a, segs[0].b
+    assert a.y == GROUND_Y - 96
+    assert b.y == GROUND_Y - 96
+
+
+def test_platform_chunk_registry_and_attributes():
+    from blueball.levels.chunks.platform import Platform
+    assert "platform" in CHUNK_REGISTRY
+    assert Platform.difficulty == 0
+    assert Platform.sampler_include is True
+    import random as _rng
+    params = Platform.random_params(_rng.Random(0))
+    assert 3 <= params["width_tiles"] <= 5
+    assert params["y_offset"] in (64, 96, 128)
