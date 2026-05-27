@@ -9,12 +9,38 @@ import pymunk
 
 from .. import config
 from ..abilities import Ability
-from ..agent import Action, Agent, Observation
+from ..agent import Action, Agent, HitType, Observation, _CT_TO_HITTYPE
 from ..input_feel import JumpController
 from .base import Entity
 
 
 _PLAYER_RAY_GROUP = 1
+
+# 8 ray directions, 45° apart, starting due-right (east) and going counter-
+# clockwise.  Pre-computed once at import time.
+_TWO_PI_OVER_8 = 2 * math.pi / 8
+_RAY_ANGLES: tuple[tuple[float, float], ...] = tuple(
+    (math.cos(i * _TWO_PI_OVER_8), math.sin(i * _TWO_PI_OVER_8))
+    for i in range(8)
+)
+
+# Entity type name buckets for nearest-entity scan.
+_PICKUP_TYPENAMES = frozenset({
+    "Collectible", "AbilityPickup", "BoostPad", "Key", "Spring", "Checkpoint",
+})
+_HAZARD_TYPENAMES = frozenset({
+    "Spike", "FallingHazard", "Patroller", "SwingingHazard", "Charger",
+})
+
+
+def _abilities_to_bitfield(abilities: set[Ability]) -> int:
+    """Return an integer bitfield where bit *i* is set if the *i*-th member
+    of the Ability enum (in declaration order) is present in *abilities*."""
+    result = 0
+    for i, member in enumerate(Ability):
+        if member in abilities:
+            result |= (1 << i)
+    return result
 
 _MOVE_LEFT = {Action.LEFT, Action.LEFT_JUMP}
 _MOVE_RIGHT = {Action.RIGHT, Action.RIGHT_JUMP}
@@ -238,16 +264,81 @@ class Player(Entity):
     def draw(self, renderer, alpha: float) -> None:
         renderer.draw_ball(self.body, alpha)
 
+    def _nearest_entity_delta(
+        self, type_names: frozenset[str]
+    ) -> tuple[float, float] | None:
+        """Return the (dx, dy) world-frame delta to the closest entity whose
+        class name is in *type_names*, or None if no such entity exists.
+
+        Position is taken from ``e.body.position`` when the entity has a
+        ``body`` attribute, otherwise from ``e.position``.
+        """
+        best_sq: float | None = None
+        best_delta: tuple[float, float] | None = None
+        px, py = self.body.position
+
+        for e in self._world.entities:
+            if type(e).__name__ not in type_names:
+                continue
+            if hasattr(e, "body"):
+                ex, ey = e.body.position
+            else:
+                ex, ey = e.position
+            dx = ex - px
+            dy = ey - py
+            sq = dx * dx + dy * dy
+            if best_sq is None or sq < best_sq:
+                best_sq = sq
+                best_delta = (dx, dy)
+
+        return best_delta
+
     def _observe(self) -> Observation:
-        # Stub: rays and nearest fields will be populated in Task 23.
+        """Build an Observation from 8 raycasts + nearest-entity scans.
+
+        When the player has not yet been added to a World (``_world`` is
+        absent) — e.g. during unit tests that construct a Player without a
+        World — raycasts are skipped (all 1.0 / MISS) and nearest-entity
+        deltas are returned as None.
+        """
+        rays = np.empty(8, dtype=np.float32)
+        hit_types = np.empty(8, dtype=np.int8)
+
+        world = getattr(self, "_world", None)
+
+        if world is not None:
+            pos = self.body.position
+            for i, (cx, cy) in enumerate(_RAY_ANGLES):
+                end = pos + pymunk.Vec2d(cx, cy) * config.MAX_RAY_LEN
+                hit = world.space.segment_query_first(
+                    pos, end, 0.5, self._ray_filter
+                )
+                if hit is None:
+                    rays[i] = 1.0
+                    hit_types[i] = HitType.MISS
+                else:
+                    rays[i] = float(hit.alpha)
+                    hit_types[i] = _CT_TO_HITTYPE.get(
+                        hit.shape.collision_type, HitType.GROUND
+                    )
+            nearest_pickup = self._nearest_entity_delta(_PICKUP_TYPENAMES)
+            nearest_hazard = self._nearest_entity_delta(_HAZARD_TYPENAMES)
+        else:
+            rays[:] = 1.0
+            hit_types[:] = HitType.MISS
+            nearest_pickup = None
+            nearest_hazard = None
+
         return Observation(
-            rays=np.ones(8, dtype=np.float32),
-            ray_hit_types=np.zeros(8, dtype=np.int8),
-            vel=np.array([self.body.velocity.x, self.body.velocity.y], dtype=np.float32),
+            rays=rays,
+            ray_hit_types=hit_types,
+            vel=np.array(
+                [self.body.velocity.x, self.body.velocity.y], dtype=np.float32
+            ),
             ang_vel=self.body.angular_velocity,
             grounded=self.grounded,
-            nearest_pickup=None,
-            nearest_hazard=None,
-            abilities=0,
+            nearest_pickup=nearest_pickup,
+            nearest_hazard=nearest_hazard,
+            abilities=_abilities_to_bitfield(self.abilities),
             keys_held=self.keys_held,
         )

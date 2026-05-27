@@ -294,6 +294,61 @@ def test_player_ray_filter_excludes_own_shape():
     assert hit is None  # filter excluded our own shape; nothing else in world
 
 
+def test_observe_ray_hits_wall():
+    """A wall placed to the right of the player should register as a GROUND hit
+    with alpha < 1.0 on the due-right ray (index 0)."""
+    import numpy as np
+    from blueball.agent import HitType
+    w = World()
+    # Vertical wall segment to the right of spawn
+    static = w.space.static_body
+    wall = pymunk.Segment(static, (300, 50), (300, 550), 5)
+    wall.friction = 1.0
+    w.space.add(wall)
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 300))
+    w.add_entity(p)
+    obs = p._observe()
+    # ray 0 goes due right; wall is 200 px away, MAX_RAY_LEN = 300 → alpha ≈ 200/300 ≈ 0.667
+    assert obs.rays[0] < 1.0, "Ray 0 should hit the wall (alpha < 1.0)"
+    assert obs.ray_hit_types[0] == HitType.GROUND
+
+
+def test_nearest_pickup_finds_collectible():
+    """_observe() nearest_pickup returns a delta toward a Collectible entity."""
+    import numpy as np
+
+    class _FakeCollectible:
+        """Minimal stand-in for a Collectible with a body position."""
+        def __init__(self, x, y):
+            body = pymunk.Body(body_type=pymunk.Body.STATIC)
+            body.position = (x, y)
+            self.body = body
+
+    w = World()
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    w.add_entity(p)
+    c = _FakeCollectible(200, 100)
+    # Register entity with a matching type name via a subclass trick
+    _FakeCollectible.__name__ = "Collectible"
+    w.entities.append(c)
+    obs = p._observe()
+    assert obs.nearest_pickup is not None, "nearest_pickup should find the Collectible"
+    dx, dy = obs.nearest_pickup
+    assert abs(dx - 100.0) < 1e-3
+    assert abs(dy - 0.0) < 1e-3
+
+
+def test_abilities_bitfield_double_jump_is_bit_0():
+    """When DOUBLE_JUMP (first Ability enum member) is in the set, bit 0 is set."""
+    p = Player(
+        agent=_ScriptedAgent([Action.IDLE]),
+        spawn_xy=(100, 100),
+        abilities={Ability.DOUBLE_JUMP},
+    )
+    obs = p._observe()
+    assert obs.abilities & 1, "bit 0 should be set when DOUBLE_JUMP is unlocked"
+
+
 def test_observation_has_enriched_fields():
     import numpy as np
     from blueball.agent import HitType, Observation
