@@ -186,3 +186,22 @@ def test_ice_floor_attributes():
     from blueball.levels.chunks.ice_floor import IceFloor
     assert "ice_floor" in CHUNK_REGISTRY
     assert IceFloor.difficulty == 1
+
+
+def test_vertical_column_builds_alternating_platforms():
+    from blueball.levels.chunks.vertical_column import VerticalColumn
+    from blueball.levels.chunks.flat import GROUND_Y
+    w = World()
+    width = VerticalColumn(width_tiles=6, steps=4, step_height=80, bottom_offset=96, platform_tiles=2).build(w, x_offset=0)
+    assert width == 6 * TILE
+    segs = [s for s in w.space.shapes if isinstance(s, pymunk.Segment)]
+    assert len(segs) == 4
+    # Sorted by y descending (bottom to top in pymunk y-down): smallest y is highest.
+    segs_sorted = sorted(segs, key=lambda s: -s.a.y)  # bottom first
+    ys = [s.a.y for s in segs_sorted]
+    assert ys == [GROUND_Y - 96, GROUND_Y - 176, GROUND_Y - 256, GROUND_Y - 336]
+    # Even-index hug left (start at x=0); odd-index hug right (end at width)
+    assert segs_sorted[0].a.x == 0
+    assert segs_sorted[1].b.x == 6 * TILE
+    assert segs_sorted[2].a.x == 0
+    assert segs_sorted[3].b.x == 6 * TILE

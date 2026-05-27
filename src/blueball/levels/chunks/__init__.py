@@ -13,4 +13,5 @@ from . import (  # noqa: F401
     boost_pad,
     platform,
     ice_floor,
+    vertical_column,
 )
