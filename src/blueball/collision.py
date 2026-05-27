@@ -158,8 +158,9 @@ def register(space: pymunk.Space, world_ref) -> None:
                 if shape.collision_type == CT_SPRING:
                     continue
                 if shape.body.body_type == pymunk.Body.DYNAMIC:
-                    shape.body.apply_impulse_at_local_point(
-                        (0, -spring_entity.impulse * shape.body.mass), (0, 0)
+                    shape.body.apply_impulse_at_world_point(
+                        (0, -spring_entity.impulse * shape.body.mass),
+                        shape.body.position,
                     )
         return False  # sensor — no physical response
 

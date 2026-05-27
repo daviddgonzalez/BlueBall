@@ -112,9 +112,11 @@ class Player(Entity):
 
     def receive_spring(self, impulse: float) -> None:
         """Vertical upward impulse, mass-scaled so the resulting delta-v
-        is the same regardless of body mass. Pymunk y-down → up is -y."""
-        self.body.apply_impulse_at_local_point(
-            (0, -impulse * self.body.mass), (0, 0)
+        is the same regardless of body mass. Pymunk y-down → up is -y.
+        World-frame so the ball's rotation doesn't twist the impulse into
+        a horizontal component opposite the roll direction."""
+        self.body.apply_impulse_at_world_point(
+            (0, -impulse * self.body.mass), self.body.position
         )
 
     def receive_boost(self, multiplier: float) -> None:
