@@ -607,3 +607,62 @@ def test_charger_switches_to_charge_when_player_in_cone():
     for _ in range(10):
         w.step(1 / 60)
     assert c.state == "charge"
+
+
+def test_charger_draw_does_not_render_after_death():
+    """After die(), draw() must return immediately without calling the renderer."""
+    from blueball.entities.charger import Charger
+
+    w = World()
+    c = Charger(w, position=(300, 588), left_bound=200, right_bound=400, facing="right")
+    w.add_entity(c)
+    c.die()
+
+    calls = []
+
+    class _SpyRenderer:
+        def draw_charger(self, *args, **kwargs):
+            calls.append(args)
+
+    c.draw(_SpyRenderer(), alpha=0.5)
+    assert calls == [], "draw_charger must not be called when Charger is dead"
+
+
+def test_swinging_hazard_exposes_position_equal_to_anchor():
+    """SwingingHazard.position must equal anchor_pos so _nearest_entity_delta
+    can read it without AttributeError."""
+    from blueball.entities.swinging_hazard import SwingingHazard
+
+    w = World()
+    anchor = (350, 250)
+    sh = SwingingHazard(
+        world=w,
+        anchor_pos=anchor,
+        rope_length=100,
+        bob_mass=2.0,
+        bob_radius=14,
+        initial_angle_deg=0.0,
+    )
+    assert hasattr(sh, "position"), "SwingingHazard must expose a .position attribute"
+    assert sh.position[0] == anchor[0]
+    assert sh.position[1] == anchor[1]
+
+
+def test_swinging_hazard_in_world_does_not_crash_player_observe():
+    """Loading a level with a SwingingHazard and running one physics tick must
+    not raise AttributeError in Player._observe / _nearest_entity_delta."""
+    import os
+    import importlib
+    from pathlib import Path
+    import pygame
+    import blueball
+    from blueball.scenes.play import PlayScene
+
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    pygame.display.init()
+    screen = pygame.display.set_mode((800, 600))
+    level_path = Path(blueball.__file__).parent / "levels" / "vertical_climb.json"
+    scene = PlayScene(screen, level_path=level_path)
+    # Must not raise AttributeError
+    scene.update(1 / 60)
+    pygame.display.quit()

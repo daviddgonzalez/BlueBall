@@ -115,6 +115,18 @@ def test_play_scene_accepts_level_data(monkeypatch, tmp_path):
     pygame.display.quit()
 
 
+def test_play_scene_level_complete_returns_menu_scene(headless_pygame, tmp_save):
+    """After level_complete triggers, handle_events([]) must return a MenuScene."""
+    from blueball.scenes.menu import MenuScene
+    _path, save_mod = tmp_save
+    scene = PlayScene(headless_pygame, _level_path())
+    scene.world.complete_level()
+    pygame.event.clear()
+    scene.update(frame_dt=1 / 60)
+    result = scene.handle_events([])
+    assert isinstance(result, MenuScene)
+
+
 def test_play_scene_esc_returns_menu_scene(monkeypatch, tmp_path):
     import os
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")

@@ -43,6 +43,9 @@ class SwingingHazard(Entity):
         # PinJoint links anchor to bob
         joint = pymunk.PinJoint(self.anchor_body, self.bob_body, (0, 0), (0, 0))
 
+        # Stable representative position for entity scans (e.g. Player._nearest_entity_delta)
+        self.position = anchor_pos
+
         # Register for world.add_entity to add to space
         self.bodies.append(self.anchor_body)
         self.bodies.append(self.bob_body)

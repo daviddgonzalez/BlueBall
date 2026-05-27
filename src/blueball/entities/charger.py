@@ -116,4 +116,6 @@ class Charger(Entity):
             self.body.velocity = (-self.patrol_speed, 0)
 
     def draw(self, renderer, alpha: float) -> None:
+        if not self.alive:
+            return
         renderer.draw_charger(self.body, alpha, self.state)
