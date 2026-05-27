@@ -52,6 +52,8 @@ class Player(Entity):
         self._boost_multiplier: float = 1.0
         self._aerial_since_pickup: bool = False
         self._contact_normals: list = []
+        self.keys_held: int = 0
+        self.respawn_xy: tuple[float, float] | None = None
 
     def die(self) -> None:
         self.dead = True
@@ -70,6 +72,20 @@ class Player(Entity):
             return
         self.abilities.add(ability)
         self.jump_ctrl.on_ability_added(ability)
+
+    def collect_key(self, key_id: int) -> None:
+        """Set the bit for `key_id` in keys_held. Idempotent."""
+        self.keys_held |= (1 << key_id)
+
+    def has_key(self, key_id: int) -> bool:
+        return bool(self.keys_held & (1 << key_id))
+
+    def receive_spring(self, impulse: float) -> None:
+        """Vertical upward impulse, mass-scaled so the resulting delta-v
+        is the same regardless of body mass. Pymunk y-down → up is -y."""
+        self.body.apply_impulse_at_local_point(
+            (0, -impulse * self.body.mass), (0, 0)
+        )
 
     def receive_boost(self, multiplier: float) -> None:
         """Apply a boost-pad's multiplier, take-the-max'd against any active

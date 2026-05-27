@@ -246,3 +246,32 @@ def test_player_unlocking_double_jump_mid_air_grants_immediate_extra_jump():
     # Next fresh airborne press should fire the air jump immediately
     d = p.jump_ctrl.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
     assert d.fire is True
+
+
+def test_player_starts_with_no_keys_and_no_respawn():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    assert p.keys_held == 0
+    assert p.respawn_xy is None
+    assert p.has_key(0) is False
+    assert p.has_key(5) is False
+
+
+def test_player_collect_key_sets_bit_and_is_idempotent():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.collect_key(3)
+    assert p.has_key(3) is True
+    assert p.keys_held == (1 << 3)
+    p.collect_key(3)  # idempotent
+    assert p.keys_held == (1 << 3)
+    p.collect_key(0)
+    assert p.has_key(0) is True
+    assert p.keys_held == (1 << 3) | (1 << 0)
+
+
+def test_player_receive_spring_applies_upward_impulse():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.body.velocity = (0, 0)
+    p.receive_spring(impulse=400.0)
+    # pymunk y-down: upward velocity is negative
+    # Player mass is 1.0; impulse = 400 * 1.0 = 400 => delta-v = -400 y
+    assert p.body.velocity.y == -400.0
