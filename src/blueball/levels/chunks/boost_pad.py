@@ -12,6 +12,12 @@ from .flat import GROUND_Y
 
 @register_chunk("boost_pad")
 class BoostPadChunk(Chunk):
+    difficulty: int = 1
+
+    @classmethod
+    def random_params(cls, rng) -> dict:
+        return {"width_tiles": rng.randint(3, 6), "multiplier": round(rng.uniform(1.5, 2.2), 2)}
+
     def __init__(
         self,
         width_tiles: int = 4,

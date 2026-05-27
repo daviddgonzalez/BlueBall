@@ -11,6 +11,12 @@ GROUND_Y = 600  # baseline ground height; consistent across chunks
 
 @register_chunk("flat")
 class Flat(Chunk):
+    difficulty: int = 0
+
+    @classmethod
+    def random_params(cls, rng) -> dict:
+        return {"width_tiles": rng.randint(2, 5)}
+
     def __init__(self, width_tiles: int = 6) -> None:
         self.width_tiles = width_tiles
 

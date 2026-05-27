@@ -16,6 +16,12 @@ def _add_step(world, x0, x1, top_y):
 
 @register_chunk("stairs_up")
 class StairsUp(Chunk):
+    difficulty: int = 0
+
+    @classmethod
+    def random_params(cls, rng) -> dict:
+        return {"steps": rng.randint(2, 4), "step_height": rng.choice([24, 32, 40])}
+
     def __init__(self, steps: int = 3, step_height: int = 32) -> None:
         self.steps = steps
         self.step_height = step_height
@@ -34,6 +40,12 @@ class StairsUp(Chunk):
 
 @register_chunk("stairs_down")
 class StairsDown(Chunk):
+    difficulty: int = 0
+
+    @classmethod
+    def random_params(cls, rng) -> dict:
+        return {"steps": rng.randint(2, 4), "step_height": rng.choice([24, 32, 40])}
+
     def __init__(self, steps: int = 3, step_height: int = 32) -> None:
         self.steps = steps
         self.step_height = step_height

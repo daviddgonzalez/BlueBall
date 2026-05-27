@@ -120,6 +120,27 @@ def test_boost_pad_chunk_adds_one_boost_pad_entity():
 def test_chunk_base_defaults_difficulty_and_sampler_include():
     assert Flat.difficulty == 0
     assert Flat.sampler_include is True
-    # random_params is a classmethod returning {}
+    # random_params base default returns {}; GoalChunk never overrides it so it
+    # still returns {} here (sampler_include=False keeps it out of sampling anyway).
     import random as _rng
-    assert Flat.random_params(_rng.Random(0)) == {}
+    assert GoalChunk.random_params(_rng.Random(0)) == {}
+
+
+def test_existing_chunks_difficulty_assigned():
+    assert Flat.difficulty == 0
+    assert Gap.difficulty == 1
+    assert SpikePit.difficulty == 2
+    from blueball.levels.chunks.falling_hazard import FallingHazardChunk
+    assert FallingHazardChunk.difficulty == 3
+
+
+def test_goal_and_ability_pickup_excluded_from_sampler():
+    from blueball.levels.chunks.ability_pickup import AbilityPickupChunk
+    assert GoalChunk.sampler_include is False
+    assert AbilityPickupChunk.sampler_include is False
+
+
+def test_flat_random_params_returns_width_in_range():
+    import random as _rng
+    params = Flat.random_params(_rng.Random(0))
+    assert 2 <= params["width_tiles"] <= 5

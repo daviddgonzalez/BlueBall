@@ -11,6 +11,12 @@ from .flat import GROUND_Y
 
 @register_chunk("spike_pit")
 class SpikePit(Chunk):
+    difficulty: int = 2
+
+    @classmethod
+    def random_params(cls, rng) -> dict:
+        return {"width_tiles": rng.randint(2, 4), "spikes": rng.randint(2, 4)}
+
     def __init__(self, width_tiles: int = 3, spikes: int = 3) -> None:
         self.width_tiles = width_tiles
         self.spikes = spikes

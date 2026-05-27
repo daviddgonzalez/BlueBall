@@ -13,6 +13,8 @@ from .flat import GROUND_Y
 
 @register_chunk("ability_pickup")
 class AbilityPickupChunk(Chunk):
+    sampler_include: bool = False
+
     def __init__(
         self,
         width_tiles: int = 2,

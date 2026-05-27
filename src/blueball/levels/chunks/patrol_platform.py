@@ -12,6 +12,12 @@ from .flat import GROUND_Y
 
 @register_chunk("patrol_platform")
 class PatrolPlatform(Chunk):
+    difficulty: int = 2
+
+    @classmethod
+    def random_params(cls, rng) -> dict:
+        return {"length_tiles": rng.randint(4, 8), "patroller_speed": rng.choice([40.0, 60.0, 80.0])}
+
     def __init__(self, length_tiles: int = 6, patroller_speed: float = config.PATROLLER_SPEED) -> None:
         self.length_tiles = length_tiles
         self.patroller_speed = patroller_speed

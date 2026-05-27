@@ -11,6 +11,8 @@ from .flat import GROUND_Y
 
 @register_chunk("goal")
 class GoalChunk(Chunk):
+    sampler_include: bool = False
+
     def __init__(self, width_tiles: int = 2) -> None:
         self.width_tiles = width_tiles
 

@@ -10,6 +10,12 @@ from .flat import GROUND_Y
 
 @register_chunk("bump")
 class Bump(Chunk):
+    difficulty: int = 0
+
+    @classmethod
+    def random_params(cls, rng) -> dict:
+        return {"height": rng.randint(24, 48), "width_tiles": rng.randint(2, 3)}
+
     def __init__(self, height: int = 32, width_tiles: int = 2) -> None:
         self.height = height
         self.width_tiles = width_tiles
