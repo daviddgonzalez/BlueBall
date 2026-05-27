@@ -53,15 +53,10 @@ def evaluate(args: tuple) -> tuple[int, float]:
 
     steps = 0
     while steps < max_steps:
-        # Step exactly one physics tick. world.step(PHYS_DT) would route
-        # through the accumulator and execute one substep; calling the
-        # pymunk space directly skips the accumulator bookkeeping in this
-        # headless path.
-        world.space.step(config.PHYS_DT)
-        for entity in world.entities:
-            upd = getattr(entity, "update", None)
-            if upd is not None:
-                upd(config.PHYS_DT)
+        # Use World.step so the headless path stays in lockstep with the
+        # live game. Passing exactly PHYS_DT means the accumulator runs
+        # exactly one substep per call.
+        world.step(config.PHYS_DT)
         steps += 1
         if player.dead or player.reached_goal:
             break
