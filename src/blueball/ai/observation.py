@@ -12,8 +12,15 @@ Layout (indices):
 
 DEPENDENCY: if the level-design branch's Observation enrichment ever changes
 rays.shape from (8,) to a different size, update RAY_COUNT here AND FTNN_INPUTS
-in ai/ftnn.py in lockstep. The assertion below catches the mismatch with a
-clear message.
+in ai/ftnn.py in lockstep. The runtime check below catches the mismatch with
+a clear message.
+
+KNOWN GAP (deferred): when obs.nearest_collectible is None, indices 12-13 are
+set to (0, 0) — indistinguishable from a collectible at the player's exact
+position. Currently moot (Player._observe always returns None for v1) but will
+need a sentinel/has_collectible flag when the level-design branch wires real
+collectible offsets. Bumping FTNN_INPUTS to 15 with a binary flag is the
+cleanest follow-up.
 """
 
 from __future__ import annotations
@@ -26,10 +33,16 @@ RAY_COUNT = 8
 
 
 def observation_to_inputs(obs: Observation) -> np.ndarray:
-    assert obs.rays.shape == (RAY_COUNT,), (
-        f"observation_to_inputs expects rays of shape ({RAY_COUNT},), "
-        f"got {obs.rays.shape} — update RAY_COUNT and FTNN_INPUTS together."
-    )
+    # Explicit raise (not assert) so the check survives `python -O`. Stripping
+    # this guard at runtime would let a wrong-shaped rays array propagate to
+    # the numpy broadcast on x[0:8] = obs.rays and surface as a cryptic
+    # "could not broadcast input array from shape (N,) into shape (8,)"
+    # buried deep in a worker traceback.
+    if obs.rays.shape != (RAY_COUNT,):
+        raise ValueError(
+            f"observation_to_inputs expects rays of shape ({RAY_COUNT},), "
+            f"got {obs.rays.shape} — update RAY_COUNT and FTNN_INPUTS together."
+        )
     x = np.empty(14, dtype=np.float32)
     x[0:8] = obs.rays
     x[8] = obs.vel[0]

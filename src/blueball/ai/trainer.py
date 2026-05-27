@@ -8,6 +8,16 @@ reaches the goal), and returns (idx, fitness).
 
 `train(...)` is the generation loop; `map_fn` defaults to `map` (serial,
 in-process). Real training callers pass `multiprocessing.Pool(...).imap`.
+
+DETERMINISM CAVEAT: `evaluate` calls `world.step(config.PHYS_DT)` once per
+iteration. PHYS_DT = 1/120 is not exactly representable in IEEE 754, so the
+world's accumulator drifts by a tiny epsilon each step. Over thousands of
+iterations the drift could cross PHYS_DT and fire an extra substep,
+breaking exact determinism across float environments (different numpy/
+python builds, x86 vs ARM). The smoke test passes consistently today, but
+if `test_trainer_is_deterministic_under_same_seed` ever flakes on CI, this
+is the place to look — a follow-up should switch the accumulator to an
+integer substep counter or pre-quantize PHYS_DT.
 """
 
 from __future__ import annotations
@@ -91,6 +101,10 @@ def train(
     tournament). `world_seed` controls physics. Two runs with the same
     `(ga_seed, world_seed)` produce byte-identical `best_genome`.
     """
+    if pop_size < 1:
+        raise ValueError(f"train requires pop_size >= 1, got {pop_size}")
+    if generations < 1:
+        raise ValueError(f"train requires generations >= 1, got {generations}")
     ga_rng = np.random.default_rng(ga_seed)
     population: list[np.ndarray] = [random_genome(ga_rng) for _ in range(pop_size)]
     history: list[dict] = []

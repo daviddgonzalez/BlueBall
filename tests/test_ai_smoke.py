@@ -211,9 +211,10 @@ def test_observation_to_inputs_handles_none_collectible():
 
 
 def test_observation_to_inputs_rejects_wrong_ray_count():
+    """ValueError (not AssertionError) so the check survives `python -O`."""
     from blueball.ai.observation import observation_to_inputs
     obs = _make_obs(rays=np.zeros(7, dtype=np.float32))
-    with pytest.raises(AssertionError, match=r"\(8,\)"):
+    with pytest.raises(ValueError, match=r"\(8,\)"):
         observation_to_inputs(obs)
 
 
@@ -327,6 +328,20 @@ def test_trainer_is_deterministic_under_same_seed():
     b = train(pop_size=6, generations=3, level_path=_level_path(),
               max_steps=300, ga_seed=42, world_seed=1)
     assert np.array_equal(a.best_genome, b.best_genome)
+
+
+def test_trainer_rejects_zero_generations():
+    """train(generations=0) must fail loudly, not silently return a random
+    genome as the 'best'."""
+    from blueball.ai.trainer import train
+    with pytest.raises(ValueError, match="generations"):
+        train(pop_size=4, generations=0, level_path=_level_path(), max_steps=100)
+
+
+def test_trainer_rejects_zero_pop_size():
+    from blueball.ai.trainer import train
+    with pytest.raises(ValueError, match="pop_size"):
+        train(pop_size=0, generations=2, level_path=_level_path(), max_steps=100)
 
 
 # ----- Task 8: TrainScene -----

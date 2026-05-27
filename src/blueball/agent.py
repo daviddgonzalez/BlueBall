@@ -1,4 +1,10 @@
-"""Agent interface. v1 ships HumanAgent; AI agents arrive later."""
+"""Agent interface. v1 ships HumanAgent; AI agents arrive later.
+
+NOTE: pygame is NOT imported at module level. HumanAgent imports pygame
+lazily inside `act()` so that headless callers (the GA trainer, especially
+under multiprocessing.Pool on hosts without DISPLAY/SDL) can import
+`blueball.agent` without forcing pygame's C extension to load.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +14,6 @@ from enum import IntEnum
 from typing import Optional
 
 import numpy as np
-import pygame
 
 
 class Action(IntEnum):
@@ -39,9 +44,16 @@ class Agent(abc.ABC):
 
 
 class HumanAgent(Agent):
-    """Reads PyGame keyboard state and emits an Action."""
+    """Reads PyGame keyboard state and emits an Action.
+
+    pygame is imported lazily inside ``act()`` rather than at module top so
+    that headless callers (e.g. the GA trainer running under
+    ``multiprocessing.Pool`` on a build server without DISPLAY) don't
+    transitively load pygame's C extension when they import this module.
+    """
 
     def act(self, observation: Observation) -> Action:
+        import pygame  # lazy: see class docstring
         keys = pygame.key.get_pressed()
         left = keys[pygame.K_a] or keys[pygame.K_LEFT]
         right = keys[pygame.K_d] or keys[pygame.K_RIGHT]
