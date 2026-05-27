@@ -36,4 +36,6 @@ class Checkpoint(Entity):
         self.shapes.append(shape)
 
     def draw(self, renderer, alpha: float) -> None:
-        pass  # visual handled by renderer if needed
+        import pygame
+        t = pygame.time.get_ticks() / 1000.0
+        renderer.draw_checkpoint(self.position, self.radius, t, self.activated)

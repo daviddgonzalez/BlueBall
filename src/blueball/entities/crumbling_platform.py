@@ -65,4 +65,9 @@ class CrumblingPlatform(Entity):
             self._removed = True
 
     def draw(self, renderer, alpha: float) -> None:
-        pass
+        if self._removed:
+            return
+        progress = 0.0
+        if self._contacted and self.crumble_delay_s > 0:
+            progress = min(1.0, self._contact_timer / self.crumble_delay_s)
+        renderer.draw_crumbling_platform(self.position, alpha, self.width, progress)

@@ -56,4 +56,4 @@ class MovingPlatform(Entity):
                 self.body.velocity = (0, self.speed)
 
     def draw(self, renderer, alpha: float) -> None:
-        pass
+        renderer.draw_moving_platform(self.body, alpha, self.length)

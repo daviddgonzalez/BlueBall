@@ -37,5 +37,7 @@ class Spring(Entity):
         self.bodies.append(body)
         self.shapes.append(self.shape)
 
-    def draw(self, renderer, alpha: float) -> None:  # pragma: no cover
-        pass
+    def draw(self, renderer, alpha: float) -> None:
+        import pygame
+        t = pygame.time.get_ticks() / 1000.0
+        renderer.draw_spring(self.position, self.width, t)

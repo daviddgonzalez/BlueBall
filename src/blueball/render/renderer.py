@@ -68,13 +68,20 @@ class Renderer:
         arc_y = sy + math.sin(angle) * r * 0.5
         pygame.draw.circle(self.screen, _BALL_DARK, (int(arc_x), int(arc_y)), int(r * 0.4))
 
-    def draw_spike(self, pos, width, height):
+    def draw_spike(self, pos, width, height, orientation: str = "up"):
+        """Draw a spike triangle oriented to the given direction."""
         x, y = pos
-        half_w = width / 2
-        p1 = self._w2s((x - half_w, y))
-        p2 = self._w2s((x + half_w, y))
-        p3 = self._w2s((x, y - height))
-        pygame.draw.polygon(self.screen, _SPIKE_COLOR, [p1, p2, p3])
+        hw = width / 2
+        if orientation == "up":
+            verts = [(x - hw, y), (x + hw, y), (x, y - height)]
+        elif orientation == "down":
+            verts = [(x - hw, y), (x + hw, y), (x, y + height)]
+        elif orientation == "left":
+            verts = [(x, y - hw), (x, y + hw), (x - height, y)]
+        else:  # right
+            verts = [(x, y - hw), (x, y + hw), (x + height, y)]
+        points = [self._w2s(v) for v in verts]
+        pygame.draw.polygon(self.screen, _SPIKE_COLOR, points)
 
     def draw_collectible(self, pos):
         x, y = pos
@@ -149,3 +156,147 @@ class Renderer:
                 b = self._w2s((shape.b.x, shape.b.y))
                 pygame.draw.line(self.screen, color, a, b, 6)
                 pygame.draw.line(self.screen, _GROUND_EDGE, a, b, 2)
+
+    # ------------------------------------------------------------------ #
+    # Phase 3 entity renderers                                            #
+    # ------------------------------------------------------------------ #
+
+    def draw_moving_platform(self, body: pymunk.Body, alpha: float, length: float) -> None:
+        """Interpolated horizontal platform rect."""
+        wx, wy = self._interp_body_pos(body, alpha)
+        hw = length / 2
+        thickness = 10
+        p1 = self._w2s((wx - hw, wy - thickness / 2))
+        p2 = self._w2s((wx + hw, wy - thickness / 2))
+        p3 = self._w2s((wx + hw, wy + thickness / 2))
+        p4 = self._w2s((wx - hw, wy + thickness / 2))
+        pygame.draw.polygon(self.screen, (120, 200, 120), [p1, p2, p3, p4])
+        pygame.draw.polygon(self.screen, (60, 140, 60), [p1, p2, p3, p4], 2)
+
+    def draw_spring(self, pos, width: float, t: float) -> None:
+        """Flat rect spring pad, color (170, 170, 220)."""
+        x, y = pos
+        hw = width / 2
+        half_thick = 8
+        # Slight squish animation when recently triggered (use t for gentle pulse)
+        pulse_h = half_thick * (1.0 + 0.15 * abs(math.sin(t * 6)))
+        p1 = self._w2s((x - hw, y - pulse_h))
+        p2 = self._w2s((x + hw, y - pulse_h))
+        p3 = self._w2s((x + hw, y + pulse_h))
+        p4 = self._w2s((x - hw, y + pulse_h))
+        pygame.draw.polygon(self.screen, (170, 170, 220), [p1, p2, p3, p4])
+        pygame.draw.polygon(self.screen, (100, 100, 180), [p1, p2, p3, p4], 2)
+
+    def draw_checkpoint(self, pos, radius: int, t: float, active: bool) -> None:
+        """Diamond shape; bright (255,220,80) if active else (90,220,140)."""
+        x, y = pos
+        sx, sy = self._w2s((x, y))
+        color = (255, 220, 80) if active else (90, 220, 140)
+        r = radius
+        points = [(sx, sy - r), (sx + r, sy), (sx, sy + r), (sx - r, sy)]
+        pygame.draw.polygon(self.screen, color, points)
+        pygame.draw.polygon(self.screen, (255, 255, 255), points, 2)
+
+    def draw_crumbling_platform(self, pos, alpha: float, width: float, progress: float) -> None:
+        """Platform rect that darkens as progress approaches 1.0."""
+        x, y = pos
+        hw = width / 2
+        thickness = 10
+        # Lerp from a warm tan to near-black as progress -> 1
+        r = int(180 * (1.0 - progress))
+        g = int(140 * (1.0 - progress))
+        b = int(100 * (1.0 - progress))
+        color = (max(0, r), max(0, g), max(0, b))
+        p1 = self._w2s((x - hw, y - thickness / 2))
+        p2 = self._w2s((x + hw, y - thickness / 2))
+        p3 = self._w2s((x + hw, y + thickness / 2))
+        p4 = self._w2s((x - hw, y + thickness / 2))
+        pygame.draw.polygon(self.screen, color, [p1, p2, p3, p4])
+        pygame.draw.polygon(self.screen, (60, 40, 20), [p1, p2, p3, p4], 2)
+
+    def draw_key(self, pos, radius: int, key_id: int) -> None:
+        """Small yellow circle with a keyhole notch."""
+        x, y = pos
+        sx, sy = self._w2s((x, y))
+        pygame.draw.circle(self.screen, (255, 200, 60), (int(sx), int(sy)), radius)
+        pygame.draw.circle(self.screen, (180, 120, 10), (int(sx), int(sy)), radius, 2)
+        # Small inner circle as keyhole decoration
+        inner_r = max(3, radius // 3)
+        pygame.draw.circle(self.screen, (180, 120, 10), (int(sx), int(sy)), inner_r)
+
+    def draw_door(self, pos, height: int, open_: bool) -> None:
+        """Vertical bar; thinner outline-only when open."""
+        x, y = pos
+        if open_:
+            # Outline only — door is passable
+            a = self._w2s((x, y))
+            b = self._w2s((x, y - height))
+            pygame.draw.line(self.screen, (180, 140, 80), a, b, 2)
+        else:
+            thick = 8
+            p1 = self._w2s((x - thick / 2, y))
+            p2 = self._w2s((x + thick / 2, y))
+            p3 = self._w2s((x + thick / 2, y - height))
+            p4 = self._w2s((x - thick / 2, y - height))
+            pygame.draw.polygon(self.screen, (160, 100, 40), [p1, p2, p3, p4])
+            pygame.draw.polygon(self.screen, (220, 160, 80), [p1, p2, p3, p4], 2)
+
+    def draw_pushable_box(self, body: pymunk.Body, alpha: float, size: float) -> None:
+        """Interpolated square box."""
+        wx, wy = self._interp_body_pos(body, alpha)
+        hs = size / 2
+        p1 = self._w2s((wx - hs, wy - hs))
+        p2 = self._w2s((wx + hs, wy - hs))
+        p3 = self._w2s((wx + hs, wy + hs))
+        p4 = self._w2s((wx - hs, wy + hs))
+        pygame.draw.polygon(self.screen, (160, 120, 80), [p1, p2, p3, p4])
+        pygame.draw.polygon(self.screen, (100, 70, 30), [p1, p2, p3, p4], 2)
+
+    def draw_swinging_hazard(
+        self,
+        anchor_body: pymunk.Body,
+        bob_body: pymunk.Body,
+        bob_radius: float,
+        alpha: float,
+    ) -> None:
+        """Line from anchor to bob, plus a spiky circle for the bob."""
+        ax, ay = anchor_body.position.x, anchor_body.position.y
+        bx, by = self._interp_body_pos(bob_body, alpha)
+        sa = self._w2s((ax, ay))
+        sb = self._w2s((bx, by))
+        pygame.draw.line(self.screen, (160, 140, 100), sa, sb, 2)
+        # Bob: filled circle + spike points around perimeter
+        sbx, sby = int(sb[0]), int(sb[1])
+        pygame.draw.circle(self.screen, _SPIKE_COLOR, (sbx, sby), int(bob_radius))
+        pygame.draw.circle(self.screen, (240, 100, 100), (sbx, sby), int(bob_radius), 2)
+        # 4 spike tips
+        for angle_deg in (0, 90, 180, 270):
+            a_rad = math.radians(angle_deg)
+            tip_x = sbx + int((bob_radius + 5) * math.cos(a_rad))
+            tip_y = sby + int((bob_radius + 5) * math.sin(a_rad))
+            base1 = (sbx + int(3 * math.cos(a_rad + math.pi / 2)),
+                     sby + int(3 * math.sin(a_rad + math.pi / 2)))
+            base2 = (sbx + int(3 * math.cos(a_rad - math.pi / 2)),
+                     sby + int(3 * math.sin(a_rad - math.pi / 2)))
+            pygame.draw.polygon(self.screen, _SPIKE_COLOR, [base1, base2, (tip_x, tip_y)])
+
+    def draw_one_way_platform(self, pos, width: float) -> None:
+        """Thin platform strip with a downward chevron arrow."""
+        x, y = pos
+        hw = width / 2
+        # Platform line
+        a = self._w2s((x - hw, y))
+        b = self._w2s((x + hw, y))
+        pygame.draw.line(self.screen, (80, 200, 160), a, b, 4)
+        # Downward chevron at center
+        cx, cy = self._w2s((x, y))
+        arrow_pts = [(cx - 8, cy - 4), (cx, cy + 4), (cx + 8, cy - 4)]
+        pygame.draw.lines(self.screen, (80, 200, 160), False, arrow_pts, 2)
+
+    def draw_charger(self, body: pymunk.Body, alpha: float, state: str, radius: int = 12) -> None:
+        """Interpolated circle; (255,120,120) when charging else (200,80,80)."""
+        wx, wy = self._interp_body_pos(body, alpha)
+        sx, sy = self._w2s((wx, wy))
+        color = (255, 120, 120) if state == "charge" else (200, 80, 80)
+        pygame.draw.circle(self.screen, color, (int(sx), int(sy)), radius)
+        pygame.draw.circle(self.screen, (255, 200, 200), (int(sx), int(sy)), radius, 2)

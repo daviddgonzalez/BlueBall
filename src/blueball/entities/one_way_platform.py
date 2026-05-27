@@ -28,4 +28,4 @@ class OneWayPlatform(Entity):
         self.width = width
 
     def draw(self, renderer, alpha: float) -> None:
-        pass
+        renderer.draw_one_way_platform(self.position, self.width)

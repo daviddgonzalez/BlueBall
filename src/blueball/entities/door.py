@@ -49,4 +49,4 @@ class Door(Entity):
             self.is_open = True
 
     def draw(self, renderer, alpha: float) -> None:
-        pass  # visual handled by renderer if needed
+        renderer.draw_door(self.position, self.height, self.is_open)

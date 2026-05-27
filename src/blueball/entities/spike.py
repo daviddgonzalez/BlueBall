@@ -39,4 +39,4 @@ class Spike(Entity):
         self.orientation = orientation
 
     def draw(self, renderer, alpha: float) -> None:
-        renderer.draw_spike(self.position, self.width, self.height)
+        renderer.draw_spike(self.position, self.width, self.height, self.orientation)

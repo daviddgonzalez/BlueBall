@@ -45,4 +45,6 @@ class Key(Entity):
                     self._world.space.remove(body)
 
     def draw(self, renderer, alpha: float) -> None:
-        pass  # visual handled by renderer if needed
+        if self._collected:
+            return
+        renderer.draw_key(self.position, self.radius, self.key_id)
