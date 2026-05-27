@@ -26,8 +26,11 @@ def _hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
     return (int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16))
 
 
-def load_level(path: Union[str, Path], world) -> LevelMeta:
-    data = json.loads(Path(path).read_text())
+def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
+    if isinstance(source, dict):
+        data = source
+    else:
+        data = json.loads(Path(source).read_text())
     chunks_list = data["chunks"]
 
     x = 0.0

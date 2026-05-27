@@ -42,3 +42,20 @@ def test_unknown_chunk_raises(tmp_path):
     with pytest.raises(ValueError) as ei:
         load_level(path, w)
     assert "not_a_real_chunk" in str(ei.value)
+
+
+def test_load_level_accepts_dict():
+    data = {
+        "name": "Test",
+        "background": "#000000",
+        "ground": "#111111",
+        "spawn": [80, 540],
+        "chunks": [
+            {"type": "flat", "width_tiles": 3},
+            {"type": "goal"},
+        ],
+    }
+    w = World()
+    meta = load_level(data, w)
+    assert meta.name == "Test"
+    assert meta.total_width > 0
