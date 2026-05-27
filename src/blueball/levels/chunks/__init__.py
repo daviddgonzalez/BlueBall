@@ -20,4 +20,5 @@ from . import (  # noqa: F401
     crumbling_platform,
     moving_platform,
     pushable_box,
+    key,
 )

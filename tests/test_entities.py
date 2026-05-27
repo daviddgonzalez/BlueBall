@@ -387,3 +387,55 @@ def test_player_pushes_box():
     for _ in range(120):
         w.step(1 / 60)
     assert b.body.position.x > start_x + 5
+
+
+# ---------------------------------------------------------------------------
+# Key
+# ---------------------------------------------------------------------------
+
+def test_key_is_sensor_with_correct_collision_type():
+    from blueball.entities.key import Key
+    from blueball import collision as col
+    w = World()
+    k = Key(w, position=(100, 200), key_id=0)
+    w.add_entity(k)
+    assert k.shapes[0].sensor is True
+    assert k.shapes[0].collision_type == col.CT_KEY
+
+
+def test_key_stores_key_id_and_default_radius():
+    from blueball.entities.key import Key
+    w = World()
+    k = Key(w, position=(50, 50), key_id=2)
+    assert k.key_id == 2
+    assert k.radius == 18
+    assert k._collected is False
+
+
+def test_key_custom_radius():
+    from blueball.entities.key import Key
+    w = World()
+    k = Key(w, position=(50, 50), key_id=1, radius=32)
+    assert k.radius == 32
+
+
+def test_key_update_removes_shape_when_collected():
+    from blueball.entities.key import Key
+    w = World()
+    k = Key(w, position=(50, 50), key_id=0)
+    w.add_entity(k)
+    # Shape is in space initially
+    assert k.shapes[0] in w.space.shapes
+    k._collected = True
+    k.update(1 / 60)
+    assert k.shapes[0] not in w.space.shapes
+
+
+def test_key_update_noop_when_not_collected():
+    from blueball.entities.key import Key
+    w = World()
+    k = Key(w, position=(50, 50), key_id=0)
+    w.add_entity(k)
+    shape = k.shapes[0]
+    k.update(1 / 60)
+    assert shape in w.space.shapes

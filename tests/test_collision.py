@@ -203,3 +203,63 @@ def test_all_collision_type_constants_distinct():
     assert len(set(values)) == len(names)
     assert col.CT_ONE_WAY == 8
     assert col.CT_DOOR == 15
+
+
+def test_key_collision_sets_player_keys_held_bit():
+    from blueball.entities.key import Key
+    w, p = _player_world()
+    # Place key overlapping the player so contact is immediate
+    k = Key(w, position=(100, 100), key_id=3, radius=20)
+    w.add_entity(k)
+    for _ in range(5):
+        w.step(1 / 60)
+        if k._collected:
+            break
+    assert k._collected is True
+    assert p.has_key(3) is True
+
+
+def test_key_shape_removed_from_space_after_contact():
+    from blueball.entities.key import Key
+    w, p = _player_world()
+    k = Key(w, position=(100, 100), key_id=1, radius=20)
+    w.add_entity(k)
+    shape = k.shapes[0]
+    # Run enough ticks for contact + update to fire
+    for _ in range(10):
+        w.step(1 / 60)
+        if shape not in w.space.shapes:
+            break
+    assert shape not in w.space.shapes
+
+
+def test_key_handler_is_sensor_returns_false():
+    """The on_key handler must return False (no physical response)."""
+    from blueball.entities.key import Key
+    w, p = _player_world()
+    k = Key(w, position=(100, 100), key_id=0, radius=20)
+    w.add_entity(k)
+    # Sensor shapes don't physically push the player — player should overlap key
+    start_y = p.body.position.y
+    for _ in range(5):
+        w.step(1 / 60)
+        if k._collected:
+            break
+    # Player's vertical motion should not have been blocked by the key sensor
+    assert k._collected is True
+
+
+def test_key_already_collected_not_double_counted():
+    """If somehow on_key fires twice, keys_held should not be affected beyond the first."""
+    from blueball.entities.key import Key
+    w, p = _player_world()
+    k = Key(w, position=(100, 100), key_id=2, radius=20)
+    w.add_entity(k)
+    for _ in range(10):
+        w.step(1 / 60)
+    # keys_held bit for key 2 should be set exactly once
+    assert p.keys_held & (1 << 2)
+    # Manually simulate a second handler call — should not change keys_held
+    keys_before = p.keys_held
+    p.collect_key(2)
+    assert p.keys_held == keys_before

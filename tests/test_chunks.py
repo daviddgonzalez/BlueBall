@@ -307,3 +307,40 @@ def test_pushable_box_chunk_random_params():
     assert 2 <= params["width_tiles"] <= 3
     assert params["size_px"] in (28, 32, 40)
     assert 0.4 <= params["mass"] <= 0.8
+
+
+# ---------------------------------------------------------------------------
+# Key chunk
+# ---------------------------------------------------------------------------
+
+def test_key_chunk_in_registry():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "key" in CHUNK_REGISTRY
+
+
+def test_key_chunk_sampler_include_false_and_difficulty():
+    from blueball.levels.chunks.key import KeyChunk
+    assert KeyChunk.sampler_include is False
+    assert KeyChunk.difficulty == 1
+
+
+def test_key_chunk_builds_one_key_entity():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY, TILE
+    from blueball.entities.key import Key
+    w = World()
+    chunk = CHUNK_REGISTRY["key"](width_tiles=2, key_id=0)
+    width = chunk.build(w, x_offset=0.0)
+    assert width == 2 * TILE
+    keys = [e for e in w.entities if isinstance(e, Key)]
+    assert len(keys) == 1
+    assert keys[0].key_id == 0
+
+
+def test_key_chunk_key_id_stored():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    from blueball.entities.key import Key
+    w = World()
+    chunk = CHUNK_REGISTRY["key"](width_tiles=2, key_id=5)
+    chunk.build(w, x_offset=0.0)
+    keys = [e for e in w.entities if isinstance(e, Key)]
+    assert keys[0].key_id == 5

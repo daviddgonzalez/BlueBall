@@ -200,3 +200,22 @@ def register(space: pymunk.Space, world_ref) -> None:
     space.on_collision(
         collision_type_a=CT_PLAYER, collision_type_b=CT_CHECKPOINT, begin=on_checkpoint,
     )
+
+    def on_key(arbiter, space_, data):
+        player = _find_player_entity(arbiter, world_ref)
+        for shape in arbiter.shapes:
+            entity = _find_entity_for_shape(shape, world_ref)
+            if entity is None or entity is player:
+                continue
+            if not hasattr(entity, "key_id"):
+                continue
+            if entity._collected:
+                continue
+            if player is not None:
+                player.collect_key(entity.key_id)
+            entity._collected = True
+        return False  # sensor — no physical response
+
+    space.on_collision(
+        collision_type_a=CT_PLAYER, collision_type_b=CT_KEY, begin=on_key,
+    )
