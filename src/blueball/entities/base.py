@@ -13,6 +13,7 @@ class Entity(abc.ABC):
     def __init__(self) -> None:
         self.bodies: list[pymunk.Body] = []
         self.shapes: list[pymunk.Shape] = []
+        self.constraints: list[pymunk.Constraint] = []
         self.alive: bool = True
 
     def update(self, dt: float) -> None:

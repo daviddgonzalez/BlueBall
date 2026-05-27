@@ -492,3 +492,83 @@ def test_door_update_noop_when_not_opening():
     d.update(1 / 60)
     assert d.is_open is False
     assert shape in w.space.shapes
+
+
+# ---------------------------------------------------------------------------
+# SwingingHazard
+# ---------------------------------------------------------------------------
+
+def test_swinging_hazard_constructs_anchor_and_bob():
+    from blueball.entities.swinging_hazard import SwingingHazard
+    from blueball import collision as col
+    w = World()
+    sh = SwingingHazard(
+        world=w,
+        anchor_pos=(200, 300),
+        rope_length=80,
+        bob_mass=2.0,
+        bob_radius=14,
+        initial_angle_deg=0.0,
+    )
+    assert sh.anchor_body.body_type == pymunk.Body.STATIC
+    assert sh.bob_body.body_type == pymunk.Body.DYNAMIC
+    assert sh.bob_body.mass == 2.0
+    assert sh.bob_shape.collision_type == col.CT_SWINGING
+    assert sh.bob_shape.friction == 0.5
+
+
+def test_swinging_hazard_bob_spawns_at_correct_offset():
+    """Bob position = anchor + (rope*sin(angle), rope*cos(angle)) in y-down coords."""
+    import math
+    from blueball.entities.swinging_hazard import SwingingHazard
+    w = World()
+    angle_deg = 30.0
+    rope = 100.0
+    anchor = (200, 300)
+    sh = SwingingHazard(
+        world=w,
+        anchor_pos=anchor,
+        rope_length=rope,
+        bob_mass=1.0,
+        bob_radius=14,
+        initial_angle_deg=angle_deg,
+    )
+    expected_x = anchor[0] + rope * math.sin(math.radians(angle_deg))
+    expected_y = anchor[1] + rope * math.cos(math.radians(angle_deg))
+    assert abs(sh.bob_body.position.x - expected_x) < 0.5
+    assert abs(sh.bob_body.position.y - expected_y) < 0.5
+
+
+def test_swinging_hazard_pin_joint_in_space():
+    """PinJoint must be added to the physics space via world.add_entity."""
+    from blueball.entities.swinging_hazard import SwingingHazard
+    w = World()
+    sh = SwingingHazard(
+        world=w,
+        anchor_pos=(300, 200),
+        rope_length=60,
+        bob_mass=1.5,
+        bob_radius=14,
+        initial_angle_deg=0.0,
+    )
+    w.add_entity(sh)
+    constraints = list(w.space.constraints)
+    assert len(constraints) == 1
+
+
+def test_swinging_hazard_moment_is_correct():
+    """moment = moment_for_circle(mass, 0, radius)."""
+    from blueball.entities.swinging_hazard import SwingingHazard
+    w = World()
+    mass = 2.0
+    radius = 14
+    sh = SwingingHazard(
+        world=w,
+        anchor_pos=(100, 100),
+        rope_length=50,
+        bob_mass=mass,
+        bob_radius=radius,
+        initial_angle_deg=0.0,
+    )
+    expected_moment = pymunk.moment_for_circle(mass, 0, radius)
+    assert abs(sh.bob_body.moment - expected_moment) < 1e-6

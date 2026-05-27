@@ -247,3 +247,13 @@ def register(space: pymunk.Space, world_ref) -> None:
     space.on_collision(
         collision_type_a=CT_PLAYER, collision_type_b=CT_DOOR, begin=on_door,
     )
+
+    def on_swinging(arbiter, space_, data):
+        player = _find_player_entity(arbiter, world_ref)
+        if player is not None:
+            player.die()
+        return True
+
+    space.on_collision(
+        collision_type_a=CT_PLAYER, collision_type_b=CT_SWINGING, begin=on_swinging,
+    )

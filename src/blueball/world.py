@@ -32,6 +32,8 @@ class World:
             self.space.add(body)
         for shape in getattr(entity, "shapes", ()):
             self.space.add(shape)
+        for constraint in getattr(entity, "constraints", ()):
+            self.space.add(constraint)
         self.entities.append(entity)
 
     def complete_level(self) -> None:

@@ -22,4 +22,5 @@ from . import (  # noqa: F401
     pushable_box,
     key,
     door,
+    swinging_hazard,
 )

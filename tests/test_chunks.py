@@ -381,3 +381,38 @@ def test_door_chunk_key_id_stored():
     chunk.build(w, x_offset=0.0)
     doors = [e for e in w.entities if isinstance(e, Door)]
     assert doors[0].key_id == 4
+
+
+# ---------------------------------------------------------------------------
+# SwingingHazardChunk
+# ---------------------------------------------------------------------------
+
+def test_swinging_hazard_chunk_in_registry():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "swinging_hazard" in CHUNK_REGISTRY
+
+
+def test_swinging_hazard_chunk_difficulty():
+    from blueball.levels.chunks.swinging_hazard import SwingingHazardChunk
+    assert SwingingHazardChunk.difficulty == 3
+
+
+def test_swinging_hazard_chunk_builds_one_entity():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY, TILE
+    from blueball.entities.swinging_hazard import SwingingHazard
+    w = World()
+    chunk = CHUNK_REGISTRY["swinging_hazard"](width_tiles=3, rope_length=80, bob_mass=2.0, initial_angle_deg=15.0)
+    width = chunk.build(w, x_offset=0.0)
+    assert width == 3 * TILE
+    hazards = [e for e in w.entities if isinstance(e, SwingingHazard)]
+    assert len(hazards) == 1
+
+
+def test_swinging_hazard_chunk_random_params():
+    import random as _rng
+    from blueball.levels.chunks.swinging_hazard import SwingingHazardChunk
+    params = SwingingHazardChunk.random_params(_rng.Random(42))
+    assert 3 <= params["width_tiles"] <= 6
+    assert 60 <= params["rope_length"] <= 150
+    assert 1.0 <= params["bob_mass"] <= 3.0
+    assert -30 <= params["initial_angle_deg"] <= 30

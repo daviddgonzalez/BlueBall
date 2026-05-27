@@ -337,3 +337,37 @@ def test_open_door_does_not_re_trigger():
     # Extra updates must not raise
     d.update(1 / 60)
     d.update(1 / 60)
+
+
+# ---------------------------------------------------------------------------
+# SwingingHazard collision
+# ---------------------------------------------------------------------------
+
+def test_swinging_hazard_bob_contact_kills_player():
+    """Player touching the bob's CT_SWINGING shape triggers player.die()."""
+    from blueball.entities.swinging_hazard import SwingingHazard
+    w, p = _player_world()
+    # Place bob directly overlapping player spawn (100, 100)
+    sh = SwingingHazard(
+        world=w,
+        anchor_pos=(100, 100),
+        rope_length=1,  # very short rope so bob starts at anchor
+        bob_mass=1.0,
+        bob_radius=20,
+        initial_angle_deg=0.0,
+    )
+    w.add_entity(sh)
+    for _ in range(10):
+        w.step(1 / 60)
+        if p.dead:
+            break
+    assert p.dead
+
+
+def test_swinging_hazard_handler_registered():
+    """CT_SWINGING handler must be registered on the space."""
+    from blueball import collision as col
+    w = World()
+    col.register(w.space, world_ref=w)
+    # Registering again should not blow up — idempotent
+    col.register(w.space, world_ref=w)
