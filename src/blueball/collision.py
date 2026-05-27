@@ -18,6 +18,11 @@ CT_GOAL = 5
 CT_BOOST_PAD = 6
 CT_ABILITY_PICKUP = 7
 
+# Shared shape-filter group for all Players. Shapes that share a non-zero
+# group don't collide with each other (pymunk semantics), so N agents in
+# one World coexist non-interactively without per-agent group assignment.
+PLAYER_GROUP = 99
+
 
 _TOP_NORMAL_COS = math.cos(math.radians(config.GROUNDED_NORMAL_TOLERANCE_DEG))
 
@@ -64,6 +69,9 @@ def register(space: pymunk.Space, world_ref) -> None:
         return False  # sensor — no physical response
 
     def on_goal(arbiter, space_, data):
+        player = _find_player_entity(arbiter, world_ref)
+        if player is not None:
+            player.reached_goal = True
         world_ref.complete_level()
         return False  # sensor
 

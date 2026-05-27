@@ -100,3 +100,21 @@ def test_player_receives_boost_on_pad_contact():
     # Pad must still be present in the space (not consumed)
     assert pad.shapes[0] in w.space.shapes
     assert pad.body in w.space.bodies  # body also not removed
+
+
+def test_goal_handler_sets_player_reached_goal():
+    """Player overlapping the goal sensor → player.reached_goal True AND
+    world.level_complete True (existing PlayScene path preserved)."""
+    w, p = _player_world()
+    goal_body = w.space.static_body
+    goal_shape = pymunk.Poly(goal_body, [(80, 130), (120, 130), (120, 150), (80, 150)])
+    goal_shape.sensor = True
+    goal_shape.collision_type = collision.CT_GOAL
+    w.space.add(goal_shape)
+
+    for _ in range(60):
+        w.step(1 / 60)
+        if p.reached_goal:
+            break
+    assert p.reached_goal is True
+    assert w.level_complete is True

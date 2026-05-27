@@ -10,6 +10,7 @@ import pymunk
 from .. import config
 from ..abilities import Ability
 from ..agent import Action, Agent, Observation
+from ..collision import PLAYER_GROUP
 from ..input_feel import JumpController
 from .base import Entity
 
@@ -40,6 +41,7 @@ class Player(Entity):
         self.shape.elasticity = config.BALL_ELASTICITY
         # collision_type=1 matches CT_PLAYER in collision.py (added in Task 8)
         self.shape.collision_type = 1
+        self.shape.filter = pymunk.ShapeFilter(group=PLAYER_GROUP)
         self.bodies.append(self.body)
         self.shapes.append(self.shape)
 
@@ -48,6 +50,7 @@ class Player(Entity):
         self.abilities: set[Ability] = abilities if abilities is not None else set()
         self.jump_ctrl = JumpController(abilities=self.abilities)
         self.dead = False
+        self.reached_goal = False
         self.collectibles_collected = 0
         self._boost_multiplier: float = 1.0
         self._aerial_since_pickup: bool = False

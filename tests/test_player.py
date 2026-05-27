@@ -246,3 +246,30 @@ def test_player_unlocking_double_jump_mid_air_grants_immediate_extra_jump():
     # Next fresh airborne press should fire the air jump immediately
     d = p.jump_ctrl.tick(action=Action.JUMP, grounded=False, dt=config.PHYS_DT)
     assert d.fire is True
+
+
+def test_player_shape_has_player_group_collision_filter():
+    from blueball import collision
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    assert p.shape.filter.group == collision.PLAYER_GROUP
+    assert collision.PLAYER_GROUP == 99
+
+
+def test_player_reached_goal_defaults_false():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    assert p.reached_goal is False
+
+
+def test_two_players_in_one_world_do_not_collide():
+    """Both players spawn at the same point, share PLAYER_GROUP, and so
+    must not exert contact forces on each other. With identical agents
+    they should follow identical trajectories under gravity."""
+    w = World()
+    p1 = Player(agent=_ScriptedAgent([Action.IDLE] * 50), spawn_xy=(200, 100))
+    p2 = Player(agent=_ScriptedAgent([Action.IDLE] * 50), spawn_xy=(200, 100))
+    w.add_entity(p1)
+    w.add_entity(p2)
+    for _ in range(30):
+        w.step(1 / 60)
+    assert abs(p1.body.position.x - p2.body.position.x) < 1e-6
+    assert abs(p1.body.position.y - p2.body.position.y) < 1e-6
