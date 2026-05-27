@@ -168,3 +168,21 @@ def test_platform_chunk_registry_and_attributes():
     params = Platform.random_params(_rng.Random(0))
     assert 3 <= params["width_tiles"] <= 5
     assert params["y_offset"] in (64, 96, 128)
+
+
+def test_ice_floor_chunk_uses_low_friction():
+    from blueball.levels.chunks.ice_floor import IceFloor
+    from blueball.levels.chunks.flat import GROUND_Y
+    from blueball import config
+    w = World()
+    IceFloor(width_tiles=3).build(w, x_offset=0)
+    segs = [s for s in w.space.shapes if isinstance(s, pymunk.Segment)]
+    assert len(segs) == 1
+    assert segs[0].friction == config.ICE_FLOOR_FRICTION
+    assert segs[0].a.y == GROUND_Y
+
+
+def test_ice_floor_attributes():
+    from blueball.levels.chunks.ice_floor import IceFloor
+    assert "ice_floor" in CHUNK_REGISTRY
+    assert IceFloor.difficulty == 1

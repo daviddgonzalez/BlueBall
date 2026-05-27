@@ -12,4 +12,5 @@ from . import (  # noqa: F401
     ability_pickup,
     boost_pad,
     platform,
+    ice_floor,
 )

@@ -76,3 +76,17 @@ BOOST_PAD_DEFAULT_MULTIPLIER = 2.0
 # Fraction of the (target - current) velocity gap closed by the immediate
 # kick at pickup time. 1.0 = snap to the new cap; 0.5 = halve the kick.
 BOOST_PAD_KICK_FACTOR = 0.5
+
+# Phase 3 chunks
+ICE_FLOOR_FRICTION = 0.05
+SPRING_DEFAULT_IMPULSE = 600.0
+CRUMBLE_DEFAULT_DELAY_S = 0.5
+MOVING_PLATFORM_DEFAULT_SPEED = 80.0
+CHARGER_DEFAULT_SIGHT_RANGE = 200.0
+CHARGER_DEFAULT_SIGHT_ARC_DEG = 60.0
+CHARGER_DEFAULT_CHARGE_SPEED = 180.0
+CHARGER_DEFAULT_PATROL_SPEED = 40.0
+
+# Observation
+MAX_RAY_LEN = 300.0
+NUM_RAYS = 8
