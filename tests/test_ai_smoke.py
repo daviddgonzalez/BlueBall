@@ -327,3 +327,63 @@ def test_trainer_is_deterministic_under_same_seed():
     b = train(pop_size=6, generations=3, level_path=_level_path(),
               max_steps=300, ga_seed=42, world_seed=1)
     assert np.array_equal(a.best_genome, b.best_genome)
+
+
+# ----- Task 8: TrainScene -----
+
+@pytest.fixture
+def headless_pygame():
+    import os
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    import pygame
+    pygame.display.init()
+    pygame.font.init()
+    surface = pygame.display.set_mode((1280, 720))
+    yield surface
+    pygame.display.quit()
+
+
+def test_train_scene_constructs_and_steps(headless_pygame):
+    """TrainScene builds without raising, owns N FTNNAgent-driven Players,
+    and a single update() tick does not crash."""
+    from blueball.scenes.train import TrainScene
+    from blueball.agent import FTNNAgent
+    from blueball import collision
+    scene = TrainScene(
+        headless_pygame,
+        _level_path(),
+        pop_size=4,
+        n_visible=4,
+        generations=2,
+        max_steps=60,
+    )
+    assert len(scene._players) == 4
+    for p in scene._players:
+        assert isinstance(p.agent, FTNNAgent)
+        assert p.shape.filter.group == collision.PLAYER_GROUP
+    # Multiple ticks should not raise. Don't rely on hitting a gen boundary
+    # here because frame_dt at 1/60 only advances 2 physics substeps per call.
+    for _ in range(10):
+        scene.update(1 / 60)
+
+
+def test_train_scene_advances_generation_after_max_steps(headless_pygame):
+    """After max_steps elapsed gen ticks, scene rebuilds the world for gen 1."""
+    from blueball.scenes.train import TrainScene
+    scene = TrainScene(
+        headless_pygame,
+        _level_path(),
+        pop_size=4,
+        n_visible=4,
+        generations=3,
+        max_steps=20,    # short enough to roll a generation in a handful of frames
+    )
+    initial_world = scene.world
+    # Each scene.update at 1/60s advances PHYS_HZ/60 = 2 physics ticks. So
+    # max_steps=20 advances in ~10 scene-updates. We give it a margin.
+    for _ in range(40):
+        scene.update(1 / 60)
+        if scene.current_gen >= 1:
+            break
+    assert scene.current_gen >= 1
+    assert scene.world is not initial_world
