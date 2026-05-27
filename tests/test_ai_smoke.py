@@ -215,3 +215,37 @@ def test_observation_to_inputs_rejects_wrong_ray_count():
     obs = _make_obs(rays=np.zeros(7, dtype=np.float32))
     with pytest.raises(AssertionError, match=r"\(8,\)"):
         observation_to_inputs(obs)
+
+
+# ----- Task 3: Fitness -----
+
+def test_fitness_all_zero_returns_zero():
+    from blueball.ai.fitness import fitness, FitnessInputs
+    f = fitness(FitnessInputs(
+        progress_x=0.0, collectibles=0, reached_goal=False,
+        died=False, steps_taken=0,
+    ))
+    assert f == 0.0
+
+
+def test_fitness_shape_matches_spec_formula():
+    from blueball.ai.fitness import fitness, FitnessInputs
+    f = fitness(FitnessInputs(
+        progress_x=500.0,
+        collectibles=3,
+        reached_goal=True,
+        died=False,
+        steps_taken=1000,
+    ))
+    # 500 + 50*3 + 200 - 0.01*1000 - 0  = 500 + 150 + 200 - 10 = 840
+    assert f == pytest.approx(840.0)
+
+
+def test_fitness_penalizes_death_and_charges_step_cost():
+    from blueball.ai.fitness import fitness, FitnessInputs
+    f = fitness(FitnessInputs(
+        progress_x=10.0, collectibles=0, reached_goal=False,
+        died=True, steps_taken=500,
+    ))
+    # 10 + 0 + 0 - 5 - 100 = -95
+    assert f == pytest.approx(-95.0)
