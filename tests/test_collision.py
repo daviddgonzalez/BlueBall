@@ -102,6 +102,27 @@ def test_player_receives_boost_on_pad_contact():
     assert pad.body in w.space.bodies  # body also not removed
 
 
+def test_one_way_platform_passes_rising_player():
+    """Player rising (velocity.y < 0) should pass through; falling should land."""
+    from blueball.entities.one_way_platform import OneWayPlatform
+    from blueball.entities.player import Player
+    from blueball.collision import register
+    from blueball.world import World
+
+    w = World()
+    register(w.space, world_ref=w)
+    plat = OneWayPlatform(w, position=(100, 500), width=200)
+    w.add_entity(plat)
+    p = Player(agent=_Idle(), spawn_xy=(100, 540))
+    w.add_entity(p)
+    # Give player upward velocity (rising in pymunk y-down)
+    p.body.velocity = (0, -300)
+    for _ in range(15):
+        w.step(1 / 60)
+    # The player should have passed through the platform y=500 (now y < 500)
+    assert p.body.position.y < 500
+
+
 def test_all_collision_type_constants_distinct():
     from blueball import collision as col
     names = [

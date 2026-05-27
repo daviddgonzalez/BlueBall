@@ -188,6 +188,12 @@ def test_ice_floor_attributes():
     assert IceFloor.difficulty == 1
 
 
+def test_one_way_platform_chunk_registered():
+    from blueball.levels.chunks.one_way_platform import OneWayPlatformChunk
+    assert "one_way_platform" in CHUNK_REGISTRY
+    assert OneWayPlatformChunk.difficulty == 1
+
+
 def test_vertical_column_builds_alternating_platforms():
     from blueball.levels.chunks.vertical_column import VerticalColumn
     from blueball.levels.chunks.flat import GROUND_Y

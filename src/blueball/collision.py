@@ -128,9 +128,27 @@ def register(space: pymunk.Space, world_ref) -> None:
             return True
         return True
 
+    def on_one_way_presolve(arbiter, space_, data):
+        # Identify the dynamic body (player or pushable box).  In pymunk y-down,
+        # rising means velocity.y < 0.  Suppress the collision (pass through)
+        # while the body is moving upward; allow it (solid landing) otherwise.
+        for shape in arbiter.shapes:
+            if shape.body.body_type == pymunk.Body.DYNAMIC:
+                if shape.body.velocity.y < 0:
+                    arbiter.process_collision = False
+                    return
+
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_SPIKE, begin=on_spike)
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_COLLECTIBLE, begin=on_collectible)
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_GOAL, begin=on_goal)
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_PATROLLER, begin=on_patroller)
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_ABILITY_PICKUP, begin=on_ability_pickup)
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_BOOST_PAD, begin=on_boost_pad)
+    space.on_collision(
+        collision_type_a=CT_PLAYER, collision_type_b=CT_ONE_WAY,
+        pre_solve=on_one_way_presolve,
+    )
+    space.on_collision(
+        collision_type_a=CT_PUSHABLE, collision_type_b=CT_ONE_WAY,
+        pre_solve=on_one_way_presolve,
+    )

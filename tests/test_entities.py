@@ -180,3 +180,13 @@ def test_spike_invalid_orientation_raises():
     w = World()
     with pytest.raises(ValueError, match="orientation"):
         Spike(w, position=(0, 0), width=32, height=24, orientation="diagonal")
+
+
+def test_one_way_platform_entity_has_correct_collision_type():
+    from blueball.entities.one_way_platform import OneWayPlatform
+    from blueball import collision as col
+    w = World()
+    p = OneWayPlatform(w, position=(100, 500), width=128)
+    assert p.shape.collision_type == col.CT_ONE_WAY
+    assert p.shape.body.body_type == pymunk.Body.STATIC
+    assert p.shape.friction == 1.0

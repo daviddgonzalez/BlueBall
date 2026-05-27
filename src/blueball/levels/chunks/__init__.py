@@ -14,4 +14,5 @@ from . import (  # noqa: F401
     platform,
     ice_floor,
     vertical_column,
+    one_way_platform,
 )
