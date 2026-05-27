@@ -14,6 +14,8 @@ from ..input_feel import JumpController
 from .base import Entity
 
 
+_PLAYER_RAY_GROUP = 1
+
 _MOVE_LEFT = {Action.LEFT, Action.LEFT_JUMP}
 _MOVE_RIGHT = {Action.RIGHT, Action.RIGHT_JUMP}
 _GROUNDED_TOL_COS = math.cos(math.radians(config.GROUNDED_NORMAL_TOLERANCE_DEG))
@@ -36,6 +38,8 @@ class Player(Entity):
         self.body = pymunk.Body(mass=config.BALL_MASS, moment=moment)
         self.body.position = spawn_xy
         self.shape = pymunk.Circle(self.body, config.BALL_RADIUS)
+        self.shape.filter = pymunk.ShapeFilter(group=_PLAYER_RAY_GROUP)
+        self._ray_filter = pymunk.ShapeFilter(group=_PLAYER_RAY_GROUP)
         self.shape.friction = config.BALL_FRICTION
         self.shape.elasticity = config.BALL_ELASTICITY
         # collision_type=1 matches CT_PLAYER in collision.py (added in Task 8)

@@ -282,3 +282,13 @@ def test_add_entity_wires_world_reference():
     p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
     w.add_entity(p)
     assert p._world is w
+
+
+def test_player_ray_filter_excludes_own_shape():
+    w = World()
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    w.add_entity(p)
+    hit = w.space.segment_query_first(
+        (100, 100), (200, 100), 0.5, p._ray_filter,
+    )
+    assert hit is None  # filter excluded our own shape; nothing else in world
