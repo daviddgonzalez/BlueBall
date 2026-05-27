@@ -219,3 +219,31 @@ def register(space: pymunk.Space, world_ref) -> None:
     space.on_collision(
         collision_type_a=CT_PLAYER, collision_type_b=CT_KEY, begin=on_key,
     )
+
+    def on_door(arbiter, space_, data):
+        # If the door is already open (shape removed), contact won't reach here;
+        # but guard anyway.
+        player = _find_player_entity(arbiter, world_ref)
+        for shape in arbiter.shapes:
+            entity = _find_entity_for_shape(shape, world_ref)
+            if entity is None or entity is player:
+                continue
+            if not hasattr(entity, "key_id"):
+                continue
+            if entity.is_open:
+                # Already open — pass through (sensor-like)
+                arbiter.process_collision = False
+                return False
+            if player is not None and player.has_key(entity.key_id):
+                entity._opening = True
+                # Shape is still in space this tick; remove it in next update().
+                # Suppress physical response where the API supports it.
+                arbiter.process_collision = False
+                return False
+            # No key — door is solid
+            return True
+        return True
+
+    space.on_collision(
+        collision_type_a=CT_PLAYER, collision_type_b=CT_DOOR, begin=on_door,
+    )

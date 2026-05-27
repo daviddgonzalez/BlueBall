@@ -439,3 +439,56 @@ def test_key_update_noop_when_not_collected():
     shape = k.shapes[0]
     k.update(1 / 60)
     assert shape in w.space.shapes
+
+
+# ---------------------------------------------------------------------------
+# Door
+# ---------------------------------------------------------------------------
+
+def test_door_is_static_segment_with_ct_door():
+    from blueball.entities.door import Door
+    from blueball import collision as col
+    w = World()
+    d = Door(w, position=(100, 500), height=128, key_id=0)
+    w.add_entity(d)
+    assert d.shapes[0].body.body_type == pymunk.Body.STATIC
+    assert d.shapes[0].collision_type == col.CT_DOOR
+
+
+def test_door_has_friction_one():
+    from blueball.entities.door import Door
+    w = World()
+    d = Door(w, position=(100, 500), height=128, key_id=1)
+    assert d.shapes[0].friction == 1.0
+
+
+def test_door_stores_key_id_and_default_flags():
+    from blueball.entities.door import Door
+    w = World()
+    d = Door(w, position=(50, 50), height=64, key_id=3)
+    assert d.key_id == 3
+    assert d.is_open is False
+    assert d._opening is False
+
+
+def test_door_update_removes_shape_when_opening():
+    from blueball.entities.door import Door
+    w = World()
+    d = Door(w, position=(100, 500), height=64, key_id=0)
+    w.add_entity(d)
+    assert d.shapes[0] in w.space.shapes
+    d._opening = True
+    d.update(1 / 60)
+    assert d.is_open is True
+    assert d.shapes[0] not in w.space.shapes
+
+
+def test_door_update_noop_when_not_opening():
+    from blueball.entities.door import Door
+    w = World()
+    d = Door(w, position=(100, 500), height=64, key_id=0)
+    w.add_entity(d)
+    shape = d.shapes[0]
+    d.update(1 / 60)
+    assert d.is_open is False
+    assert shape in w.space.shapes

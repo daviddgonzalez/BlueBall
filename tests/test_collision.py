@@ -263,3 +263,77 @@ def test_key_already_collected_not_double_counted():
     keys_before = p.keys_held
     p.collect_key(2)
     assert p.keys_held == keys_before
+
+
+def test_door_blocks_player_without_key():
+    """Player without the matching key must be stopped by the door (solid)."""
+    from blueball.entities.door import Door
+    w, p = _player_world()
+    # Place door at x=150, y=100 with height=200; player is at x=100 falling
+    # We need a floor and a door next to the player, then push player rightward.
+    floor = pymunk.Segment(w.space.static_body, (-2000, 600), (2000, 600), 5)
+    floor.friction = 1.0
+    w.space.add(floor)
+    d = Door(w, position=(200, 600), height=200, key_id=7)
+    w.add_entity(d)
+    p.body.position = (150, 580)
+    p.body.velocity = (300, 0)
+    start_x = p.body.position.x
+    for _ in range(30):
+        w.step(1 / 60)
+    # Player should NOT have passed through x=200 because the door is solid
+    assert p.body.position.x < 195
+
+
+def test_door_opens_when_player_holds_matching_key():
+    """Player with matching key causes door._opening=True on contact."""
+    from blueball.entities.door import Door
+    w, p = _player_world()
+    floor = pymunk.Segment(w.space.static_body, (-2000, 600), (2000, 600), 5)
+    floor.friction = 1.0
+    w.space.add(floor)
+    d = Door(w, position=(200, 600), height=200, key_id=5)
+    w.add_entity(d)
+    p.collect_key(5)  # player has the key
+    p.body.position = (150, 580)
+    p.body.velocity = (300, 0)
+    for _ in range(30):
+        w.step(1 / 60)
+        if d._opening or d.is_open:
+            break
+    assert d._opening or d.is_open
+
+
+def test_door_shape_removed_after_opening():
+    """After _opening is set, the door shape is removed from the physics space."""
+    from blueball.entities.door import Door
+    w, p = _player_world()
+    floor = pymunk.Segment(w.space.static_body, (-2000, 600), (2000, 600), 5)
+    floor.friction = 1.0
+    w.space.add(floor)
+    d = Door(w, position=(200, 600), height=200, key_id=2)
+    w.add_entity(d)
+    p.collect_key(2)
+    p.body.position = (150, 580)
+    p.body.velocity = (300, 0)
+    shape = d.shapes[0]
+    for _ in range(60):
+        w.step(1 / 60)
+        if d.is_open:
+            break
+    assert d.is_open is True
+    assert shape not in w.space.shapes
+
+
+def test_open_door_does_not_re_trigger():
+    """Once is_open, extra update() calls are no-ops."""
+    from blueball.entities.door import Door
+    w = World()
+    d = Door(w, position=(100, 500), height=64, key_id=0)
+    w.add_entity(d)
+    d._opening = True
+    d.update(1 / 60)
+    assert d.is_open is True
+    # Extra updates must not raise
+    d.update(1 / 60)
+    d.update(1 / 60)

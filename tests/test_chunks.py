@@ -344,3 +344,40 @@ def test_key_chunk_key_id_stored():
     chunk.build(w, x_offset=0.0)
     keys = [e for e in w.entities if isinstance(e, Key)]
     assert keys[0].key_id == 5
+
+
+# ---------------------------------------------------------------------------
+# Door chunk
+# ---------------------------------------------------------------------------
+
+def test_door_chunk_in_registry():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "door" in CHUNK_REGISTRY
+
+
+def test_door_chunk_sampler_include_false_and_difficulty():
+    from blueball.levels.chunks.door import DoorChunk
+    assert DoorChunk.sampler_include is False
+    assert DoorChunk.difficulty == 0
+
+
+def test_door_chunk_builds_one_door_entity():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY, TILE
+    from blueball.entities.door import Door
+    w = World()
+    chunk = CHUNK_REGISTRY["door"](width_tiles=2, key_id=0)
+    width = chunk.build(w, x_offset=0.0)
+    assert width == 2 * TILE
+    doors = [e for e in w.entities if isinstance(e, Door)]
+    assert len(doors) == 1
+    assert doors[0].key_id == 0
+
+
+def test_door_chunk_key_id_stored():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    from blueball.entities.door import Door
+    w = World()
+    chunk = CHUNK_REGISTRY["door"](width_tiles=3, key_id=4)
+    chunk.build(w, x_offset=0.0)
+    doors = [e for e in w.entities if isinstance(e, Door)]
+    assert doors[0].key_id == 4

@@ -21,4 +21,5 @@ from . import (  # noqa: F401
     moving_platform,
     pushable_box,
     key,
+    door,
 )
