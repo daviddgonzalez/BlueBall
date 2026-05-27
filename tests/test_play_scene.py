@@ -96,3 +96,33 @@ def test_play_scene_does_not_persist_unlocks_on_death(headless_pygame, tmp_save)
     # After respawn, the new player should have NO abilities (save is empty).
     assert scene.player.abilities == set()
     assert not path.exists()
+
+
+def test_play_scene_accepts_level_data(monkeypatch, tmp_path):
+    import os
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    pygame.display.init()
+    screen = pygame.display.set_mode((800, 600))
+    monkeypatch.setenv("BLUEBALL_SAVE_PATH", str(tmp_path / "save.json"))
+    data = {
+        "name": "Test", "background": "#000000", "ground": "#111111",
+        "spawn": [80, 540],
+        "chunks": [{"type": "flat", "width_tiles": 3}, {"type": "goal"}],
+    }
+    scene = PlayScene(screen, level_data=data, sampler_seed=12345)
+    assert scene.sampler_seed == 12345
+    assert scene.level_data is data
+    pygame.display.quit()
+
+
+def test_play_scene_esc_returns_menu_scene(monkeypatch, tmp_path):
+    import os
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    pygame.display.init()
+    screen = pygame.display.set_mode((800, 600))
+    monkeypatch.setenv("BLUEBALL_SAVE_PATH", str(tmp_path / "save.json"))
+    from blueball.scenes.menu import MenuScene
+    scene = PlayScene(screen, level_path=_level_path())
+    result = scene.handle_events([pygame.event.Event(pygame.KEYDOWN, {"key": pygame.K_ESCAPE})])
+    assert isinstance(result, MenuScene)
+    pygame.display.quit()
