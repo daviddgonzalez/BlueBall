@@ -572,3 +572,38 @@ def test_swinging_hazard_moment_is_correct():
     )
     expected_moment = pymunk.moment_for_circle(mass, 0, radius)
     assert abs(sh.bob_body.moment - expected_moment) < 1e-6
+
+
+# ---------------------------------------------------------------------------
+# Charger
+# ---------------------------------------------------------------------------
+
+def test_charger_patrols_when_player_absent():
+    from blueball.entities.charger import Charger
+    w = World()
+    c = Charger(w, position=(300, 588), left_bound=200, right_bound=400, facing="right", sight_range=200, sight_arc_deg=60, charge_speed=180, patrol_speed=40)
+    w.add_entity(c)
+    start_x = c.body.position.x
+    for _ in range(60):
+        w.step(1 / 60)
+    assert c.body.position.x != start_x
+    assert c.state == "patrol"
+
+
+def test_charger_switches_to_charge_when_player_in_cone():
+    from blueball.entities.charger import Charger
+    from blueball.entities.player import Player
+    from blueball.agent import Action, Agent
+
+    class Idle(Agent):
+        def act(self, obs):
+            return Action.IDLE
+
+    w = World()
+    c = Charger(w, position=(300, 588), left_bound=200, right_bound=600, facing="right", sight_range=300, sight_arc_deg=90, charge_speed=180, patrol_speed=40)
+    w.add_entity(c)
+    p = Player(agent=Idle(), spawn_xy=(400, 588))  # in the cone, to the right
+    w.add_entity(p)
+    for _ in range(10):
+        w.step(1 / 60)
+    assert c.state == "charge"

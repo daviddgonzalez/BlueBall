@@ -257,3 +257,33 @@ def register(space: pymunk.Space, world_ref) -> None:
     space.on_collision(
         collision_type_a=CT_PLAYER, collision_type_b=CT_SWINGING, begin=on_swinging,
     )
+
+    def on_charger(arbiter, space_, data):
+        player = _find_player_entity(arbiter, world_ref)
+        if player is None:
+            return True
+        n = arbiter.contact_point_set.normal
+        for shape in arbiter.shapes:
+            entity = _find_entity_for_shape(shape, world_ref)
+            if entity is None or entity is player:
+                continue
+            if shape.collision_type != CT_CHARGER:
+                continue
+            # Normal points from shape_a into shape_b. If the charger is shape_a,
+            # n points from charger toward player; player stomped from top iff n
+            # points upward (negative y in pymunk y-down).
+            if arbiter.shapes[0] is shape:
+                if -n.y >= _TOP_NORMAL_COS:
+                    entity.die()
+                    return True
+            else:
+                # Charger is shape_b; n points from player into charger.
+                # Player on top iff direction is downward (positive y).
+                if n.y >= _TOP_NORMAL_COS:
+                    entity.die()
+                    return True
+            player.die()
+            return True
+        return True
+
+    space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_CHARGER, begin=on_charger)

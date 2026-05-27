@@ -371,3 +371,54 @@ def test_swinging_hazard_handler_registered():
     col.register(w.space, world_ref=w)
     # Registering again should not blow up — idempotent
     col.register(w.space, world_ref=w)
+
+
+def test_charger_top_stomp_kills_charger():
+    """Stomping the charger from above kills it (entity.die() removes shape)."""
+    from blueball.entities.charger import Charger
+    from blueball.agent import Action, Agent
+
+    class Idle(Agent):
+        def act(self, obs):
+            return Action.IDLE
+
+    w = World()
+    collision.register(w.space, world_ref=w)
+    c = Charger(w, position=(100, 560), left_bound=50, right_bound=200, facing="right",
+                sight_range=10, sight_arc_deg=10, charge_speed=180, patrol_speed=40)
+    w.add_entity(c)
+    p = Player(agent=Idle(), spawn_xy=(100, 520))
+    w.add_entity(p)
+    # Give the player downward velocity so it lands on top of the charger
+    p.body.velocity = (0, 200)
+    for _ in range(30):
+        w.step(1 / 60)
+        if not c.alive:
+            break
+    assert not c.alive
+    assert c.shape not in w.space.shapes
+
+
+def test_charger_side_contact_kills_player():
+    """Side contact with charger kills the player."""
+    from blueball.entities.charger import Charger
+    from blueball.agent import Action, Agent
+
+    class Idle(Agent):
+        def act(self, obs):
+            return Action.IDLE
+
+    w = World()
+    collision.register(w.space, world_ref=w)
+    c = Charger(w, position=(130, 100), left_bound=50, right_bound=200, facing="right",
+                sight_range=10, sight_arc_deg=10, charge_speed=180, patrol_speed=40)
+    w.add_entity(c)
+    p = Player(agent=Idle(), spawn_xy=(100, 100))
+    w.add_entity(p)
+    # Give player rightward velocity to run into the charger's side
+    p.body.velocity = (300, 0)
+    for _ in range(20):
+        w.step(1 / 60)
+        if p.dead:
+            break
+    assert p.dead

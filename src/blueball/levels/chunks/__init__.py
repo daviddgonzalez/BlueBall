@@ -23,4 +23,5 @@ from . import (  # noqa: F401
     key,
     door,
     swinging_hazard,
+    charger_platform,
 )

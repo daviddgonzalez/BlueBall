@@ -416,3 +416,36 @@ def test_swinging_hazard_chunk_random_params():
     assert 60 <= params["rope_length"] <= 150
     assert 1.0 <= params["bob_mass"] <= 3.0
     assert -30 <= params["initial_angle_deg"] <= 30
+
+
+# ---------------------------------------------------------------------------
+# charger_platform
+# ---------------------------------------------------------------------------
+
+def test_charger_platform_in_registry():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "charger_platform" in CHUNK_REGISTRY
+
+
+def test_charger_platform_chunk_difficulty():
+    from blueball.levels.chunks.charger_platform import ChargerPlatformChunk
+    assert ChargerPlatformChunk.difficulty == 3
+
+
+def test_charger_platform_chunk_builds_one_charger():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY, TILE
+    from blueball.entities.charger import Charger
+    w = World()
+    chunk = CHUNK_REGISTRY["charger_platform"](length_tiles=8, facing="right")
+    width = chunk.build(w, x_offset=0.0)
+    assert width == 8 * TILE
+    chargers = [e for e in w.entities if isinstance(e, Charger)]
+    assert len(chargers) == 1
+
+
+def test_charger_platform_chunk_random_params():
+    import random as _rng
+    from blueball.levels.chunks.charger_platform import ChargerPlatformChunk
+    params = ChargerPlatformChunk.random_params(_rng.Random(42))
+    assert 6 <= params["length_tiles"] <= 10
+    assert params["facing"] in ("left", "right")
