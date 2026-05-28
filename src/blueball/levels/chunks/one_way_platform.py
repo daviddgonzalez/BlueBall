@@ -19,8 +19,8 @@ class OneWayPlatformChunk(Chunk):
     def random_params(cls, rng) -> dict:
         return {"width_tiles": rng.randint(3, 5), "y_offset": rng.choice([64, 96, 128])}
 
-    def build(self, world, x_offset: float) -> float:
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.width_tiles * TILE
-        y = GROUND_Y - self.y_offset
+        y = base_y - self.y_offset
         world.add_entity(OneWayPlatform(world, position=(x_offset + w / 2, y), width=w))
         return w

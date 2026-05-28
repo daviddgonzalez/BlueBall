@@ -18,9 +18,11 @@ class CheckpointChunk(Chunk):
         self,
         width_tiles: int = 2,
         id: int = 0,
+        y_offset: int = 32,
     ) -> None:
         self.width_tiles = width_tiles
         self.id = id
+        self.y_offset = y_offset
 
     def build(self, world, x_offset: float) -> float:
         w = self.width_tiles * TILE
@@ -34,7 +36,7 @@ class CheckpointChunk(Chunk):
         world.space.add(seg)
         world.add_entity(Checkpoint(
             world,
-            position=(x_offset + w / 2, GROUND_Y - 32),
+            position=(x_offset + w / 2, GROUND_Y - self.y_offset),
             id=self.id,
         ))
         return w

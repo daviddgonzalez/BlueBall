@@ -18,9 +18,11 @@ class KeyChunk(Chunk):
         self,
         width_tiles: int = 2,
         key_id: int = 0,
+        y_offset: int = 48,
     ) -> None:
         self.width_tiles = width_tiles
         self.key_id = key_id
+        self.y_offset = y_offset
 
     def build(self, world, x_offset: float) -> float:
         w = self.width_tiles * TILE
@@ -34,7 +36,7 @@ class KeyChunk(Chunk):
         world.space.add(seg)
         world.add_entity(Key(
             world,
-            position=(x_offset + w / 2, GROUND_Y - 48),
+            position=(x_offset + w / 2, GROUND_Y - self.y_offset),
             key_id=self.key_id,
         ))
         return w

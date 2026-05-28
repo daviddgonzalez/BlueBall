@@ -29,21 +29,26 @@ class SwingingHazardChunk(Chunk):
         bob_mass: float = 2.0,
         bob_radius: int = 14,
         initial_angle_deg: float = 15.0,
+        anchor_y_offset: int | None = None,
     ) -> None:
         self.width_tiles = width_tiles
         self.rope_length = rope_length
         self.bob_mass = bob_mass
         self.bob_radius = bob_radius
         self.initial_angle_deg = initial_angle_deg
+        self.anchor_y_offset = anchor_y_offset
 
-    def build(self, world, x_offset: float) -> float:
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.width_tiles * TILE
-        seg = pymunk.Segment(world.space.static_body, (x_offset, GROUND_Y), (x_offset + w, GROUND_Y), 5)
+        seg = pymunk.Segment(world.space.static_body, (x_offset, base_y), (x_offset + w, base_y), 5)
         seg.friction = 1.0
         world.space.add(seg)
 
         anchor_x = x_offset + w / 2
-        anchor_y = GROUND_Y - self.rope_length - 30  # anchor hangs above ground
+        if self.anchor_y_offset is not None:
+            anchor_y = base_y - self.anchor_y_offset
+        else:
+            anchor_y = base_y - self.rope_length - 30  # anchor hangs above ground
 
         world.add_entity(
             SwingingHazard(

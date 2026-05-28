@@ -19,10 +19,15 @@ class DoorChunk(Chunk):
         width_tiles: int = 2,
         key_id: int = 0,
         door_height: int = 128,
+        height_tiles: int | None = None,
     ) -> None:
         self.width_tiles = width_tiles
         self.key_id = key_id
-        self.door_height = door_height
+        # height_tiles is a convenience alias: 1 tile = 32 px
+        if height_tiles is not None:
+            self.door_height = height_tiles * 32
+        else:
+            self.door_height = door_height
 
     def build(self, world, x_offset: float) -> float:
         w = self.width_tiles * TILE

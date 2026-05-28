@@ -21,14 +21,14 @@ class SpikePit(Chunk):
         self.width_tiles = width_tiles
         self.spikes = spikes
 
-    def build(self, world, x_offset: float) -> float:
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.width_tiles * TILE
         # Add the ground segment beneath the spikes
-        seg = pymunk.Segment(world.space.static_body, (x_offset, GROUND_Y), (x_offset + w, GROUND_Y), 5)
+        seg = pymunk.Segment(world.space.static_body, (x_offset, base_y), (x_offset + w, base_y), 5)
         seg.friction = 1.0
         world.space.add(seg)
         # Space spikes evenly across the span
         for i in range(self.spikes):
             cx = x_offset + (i + 0.5) * w / self.spikes
-            world.add_entity(Spike(world, position=(cx, GROUND_Y), width=24, height=24))
+            world.add_entity(Spike(world, position=(cx, base_y), width=24, height=24))
         return w

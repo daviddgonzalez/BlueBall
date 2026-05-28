@@ -26,6 +26,15 @@ class Chunk(abc.ABC):
     difficulty: int = 0
     sampler_include: bool = True
 
+    # Ground-height offsets (world y, "up" is negative) of this chunk's left
+    # and right ground edges relative to the base_y passed to build(). Both 0
+    # means the chunk enters and exits at the same ground level (the common
+    # case). The streaming builder reads these to carry a running ground height
+    # across chunk seams (Infinite Run). Only elevation-changing chunks (stairs)
+    # override them.
+    entry_dy: float = 0.0
+    exit_dy: float = 0.0
+
     @classmethod
     def random_params(cls, rng) -> dict:
         """Return a kwargs dict the sampler should pass to __init__.

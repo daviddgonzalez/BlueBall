@@ -29,12 +29,12 @@ class SpringChunk(Chunk):
             "impulse": rng.choice([500.0, 600.0, 720.0]),
         }
 
-    def build(self, world, x_offset: float) -> float:
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.width_tiles * TILE
         seg = pymunk.Segment(
             world.space.static_body,
-            (x_offset, GROUND_Y),
-            (x_offset + w, GROUND_Y),
+            (x_offset, base_y),
+            (x_offset + w, base_y),
             5,
         )
         seg.friction = 1.0
@@ -42,7 +42,7 @@ class SpringChunk(Chunk):
         world.add_entity(
             Spring(
                 world,
-                position=(x_offset + w / 2, GROUND_Y - 8),
+                position=(x_offset + w / 2, base_y - 8),
                 width=w,
                 impulse=self.impulse,
             )

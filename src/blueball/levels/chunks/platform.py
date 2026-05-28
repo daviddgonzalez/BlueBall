@@ -22,9 +22,9 @@ class Platform(Chunk):
     def random_params(cls, rng) -> dict:
         return {"width_tiles": rng.randint(3, 5), "y_offset": rng.choice([64, 96, 128])}
 
-    def build(self, world, x_offset: float) -> float:
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.width_tiles * TILE
-        y = GROUND_Y - self.y_offset
+        y = base_y - self.y_offset
         seg = pymunk.Segment(world.space.static_body, (x_offset, y), (x_offset + w, y), 5)
         seg.friction = 1.0
         world.space.add(seg)

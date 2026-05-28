@@ -26,13 +26,13 @@ class BoostPadChunk(Chunk):
         self.width_tiles = width_tiles
         self.multiplier = multiplier
 
-    def build(self, world, x_offset: float) -> float:
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.width_tiles * TILE
         # Ground segment under the pad
         seg = pymunk.Segment(
             world.space.static_body,
-            (x_offset, GROUND_Y),
-            (x_offset + w, GROUND_Y),
+            (x_offset, base_y),
+            (x_offset + w, base_y),
             5,
         )
         seg.friction = 1.0
@@ -42,7 +42,7 @@ class BoostPadChunk(Chunk):
         # pad's top edge at GROUND_Y.
         world.add_entity(BoostPad(
             world,
-            position=(x_offset + w / 2, GROUND_Y - config.BOOST_PAD_THICKNESS / 2),
+            position=(x_offset + w / 2, base_y - config.BOOST_PAD_THICKNESS / 2),
             width=w,
             multiplier=self.multiplier,
         ))

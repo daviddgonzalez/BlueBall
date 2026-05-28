@@ -31,12 +31,12 @@ class PushableBoxChunk(Chunk):
             "mass": round(rng.uniform(0.4, 0.8), 2),
         }
 
-    def build(self, world, x_offset: float) -> float:
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.width_tiles * TILE
         seg = pymunk.Segment(
             world.space.static_body,
-            (x_offset, GROUND_Y),
-            (x_offset + w, GROUND_Y),
+            (x_offset, base_y),
+            (x_offset + w, base_y),
             5,
         )
         seg.friction = 1.0
@@ -46,7 +46,7 @@ class PushableBoxChunk(Chunk):
         world.add_entity(
             PushableBox(
                 world,
-                position=(cx, GROUND_Y - self.size_px / 2 - 1),
+                position=(cx, base_y - self.size_px / 2 - 1),
                 size=self.size_px,
                 mass=self.mass,
             )

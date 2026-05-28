@@ -28,16 +28,16 @@ class SpikeWall(Chunk):
             "ceiling_y_offset": rng.choice([128, 160, 200]),
         }
 
-    def build(self, world, x_offset: float) -> float:
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.width_tiles * TILE
         # For "up" behave like spike_pit (spikes at ground level).
         # For "down"/"left"/"right" place spikes at ceiling height.
         if self.orientation == "up":
-            y = GROUND_Y
+            y = base_y
         else:
-            y = GROUND_Y - self.ceiling_y_offset
+            y = base_y - self.ceiling_y_offset
         # Flat ground segment beneath the spike row
-        seg = pymunk.Segment(world.space.static_body, (x_offset, GROUND_Y), (x_offset + w, GROUND_Y), 5)
+        seg = pymunk.Segment(world.space.static_body, (x_offset, base_y), (x_offset + w, base_y), 5)
         seg.friction = 1.0
         world.space.add(seg)
         for i in range(self.spikes):

@@ -39,11 +39,11 @@ class MovingPlatformChunk(Chunk):
             "y_offset": rng.choice([64, 96, 128]),
         }
 
-    def build(self, world, x_offset: float) -> float:
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         slot_w = self.width_tiles * TILE
         plat_len = self.length_tiles * TILE
         cx = x_offset + slot_w / 2
-        cy = GROUND_Y - self.y_offset
+        cy = base_y - self.y_offset
         world.add_entity(
             MovingPlatform(
                 world,

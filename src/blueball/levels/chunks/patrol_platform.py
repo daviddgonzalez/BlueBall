@@ -22,9 +22,9 @@ class PatrolPlatform(Chunk):
         self.length_tiles = length_tiles
         self.patroller_speed = patroller_speed
 
-    def build(self, world, x_offset: float) -> float:
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.length_tiles * TILE
-        seg = pymunk.Segment(world.space.static_body, (x_offset, GROUND_Y), (x_offset + w, GROUND_Y), 5)
+        seg = pymunk.Segment(world.space.static_body, (x_offset, base_y), (x_offset + w, base_y), 5)
         seg.friction = 1.0
         world.space.add(seg)
         left = x_offset + 16
@@ -32,7 +32,7 @@ class PatrolPlatform(Chunk):
         world.add_entity(
             Patroller(
                 world,
-                position=((left + right) / 2, GROUND_Y - 12),
+                position=((left + right) / 2, base_y - 12),
                 left_bound=left,
                 right_bound=right,
                 speed=self.patroller_speed,
