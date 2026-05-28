@@ -5,6 +5,7 @@ materializing all of them at level load.
 
 from __future__ import annotations
 
+import random
 from pathlib import Path
 
 import pygame
@@ -30,6 +31,9 @@ _LOAD_AHEAD = 2000.0
 _LOAD_BEHIND = 800.0
 # How many chunks to materialize at level start, before the player has moved.
 _INITIAL_BUILD_CHUNKS = 6
+# Max height the running ground may rise above the baseline before stairs are
+# biased back down (keeps elevation in a sane band, never below the baseline).
+_MAX_GROUND_ELEV = 280.0
 
 
 class PlayScene(Scene):
@@ -53,6 +57,11 @@ class PlayScene(Scene):
         self.renderer = Renderer(screen, self.camera)
         self._last_respawn_xy: tuple[float, float] | None = None
         self._exit_to_menu: bool = False
+        # Infinite Run score = 10 * furthest x reached this run; best persists
+        # per the local user's save across runs.
+        self._best_score: int = save.get_best_score() if self._streaming else 0
+        self._run_max_x: float = 0.0
+        self._score: int = 0
         self._reset()
 
     def _reset(self) -> None:
@@ -101,10 +110,16 @@ class PlayScene(Scene):
             total_width=0.0,
         )
 
-        self._sampler = ChunkSampler(seed=int(self.sampler_seed))
+        # Infinite Run has no checkpoints — death re-randomizes the whole run
+        # (see update()), so a mid-run respawn anchor would be meaningless.
+        self._sampler = ChunkSampler(seed=int(self.sampler_seed), emit_checkpoints=False)
         self._chunk_iter = iter(self._sampler)
         self._built_chunks: list[dict] = []
         self._build_x: float = 0.0
+        # Running ground height at the current seam; carried across chunks so
+        # surfaces connect (stairs raise/lower it, everything else keeps it).
+        from ..levels.chunks.flat import GROUND_Y
+        self._base_y: float = GROUND_Y
         # Guarantee a ground segment at the spawn point. The sampler can pick
         # a chunk like `platform` (floating, no ground) as its first emission,
         # which would drop the player into the void on frame 1.
@@ -117,13 +132,22 @@ class PlayScene(Scene):
     def _materialize_chunk(self, chunk) -> float:
         """Build *chunk* at the current cursor and append a tracking record
         to ``_built_chunks``. Returns the chunk's width.
+
+        Threads the running ground height: the chunk is placed so its left edge
+        meets the current seam, and the seam advances by the chunk's net
+        elevation change so the next chunk connects.
         """
+        entry_dy = getattr(chunk, "entry_dy", 0.0)
+        exit_dy = getattr(chunk, "exit_dy", 0.0)
+        chunk_base = self._base_y - entry_dy
+
         pre_shapes = set(self.world.space.shapes)
         pre_bodies = set(self.world.space.bodies)
         pre_entities = set(self.world.entities)
         pre_constraints = set(self.world.space.constraints)
 
-        width = chunk.build(self.world, x_offset=self._build_x)
+        width = chunk.build(self.world, x_offset=self._build_x, base_y=chunk_base)
+        self._base_y = chunk_base + exit_dy
 
         new_shapes = set(self.world.space.shapes) - pre_shapes
         new_bodies = set(self.world.space.bodies) - pre_bodies
@@ -149,6 +173,7 @@ class PlayScene(Scene):
         chunk_dict = next(self._chunk_iter, None)
         if chunk_dict is None:
             return False
+        chunk_dict = self._bias_stairs(chunk_dict)
         type_name = chunk_dict["type"]
         kwargs = {k: v for k, v in chunk_dict.items() if k != "type"}
         chunk_cls = CHUNK_REGISTRY.get(type_name)
@@ -156,6 +181,21 @@ class PlayScene(Scene):
             return False
         self._materialize_chunk(chunk_cls(**kwargs))
         return True
+
+    def _bias_stairs(self, chunk_dict: dict) -> dict:
+        """Keep the running ground height in [GROUND_Y - _MAX_GROUND_ELEV,
+        GROUND_Y] by flipping a staircase that would climb too high or descend
+        below the baseline. Non-stairs chunks pass through unchanged."""
+        from ..levels.chunks.flat import GROUND_Y
+        t = chunk_dict["type"]
+        if t not in ("stairs_up", "stairs_down"):
+            return chunk_dict
+        rise = chunk_dict.get("steps", 3) * chunk_dict.get("step_height", 32)
+        if t == "stairs_up" and self._base_y - rise < GROUND_Y - _MAX_GROUND_ELEV:
+            return {**chunk_dict, "type": "stairs_down"}
+        if t == "stairs_down" and self._base_y + rise > GROUND_Y:
+            return {**chunk_dict, "type": "stairs_up"}
+        return chunk_dict
 
     def _maintain_streaming(self, player_x: float) -> None:
         """Per-tick: build more chunks ahead, cull old chunks behind."""
@@ -201,8 +241,23 @@ class PlayScene(Scene):
         if self._streaming:
             self._maintain_streaming(self.player.body.position.x)
         self.world.step(frame_dt)
+        if self._streaming:
+            self._run_max_x = max(self._run_max_x, self.player.body.position.x)
+            self._score = int(10 * self._run_max_x)
         if self.player.dead:
-            self._last_respawn_xy = self.player.respawn_xy
+            if self._streaming:
+                # Bank the run's score, then re-randomize the run on death
+                # instead of replaying the same deterministic layout; no
+                # checkpoint respawn in Infinite Run.
+                if self._score > self._best_score:
+                    self._best_score = self._score
+                    save.set_best_score(self._score)
+                self._run_max_x = 0.0
+                self._score = 0
+                self.sampler_seed = random.randrange(1 << 32)
+                self._last_respawn_xy = None
+            else:
+                self._last_respawn_xy = self.player.respawn_xy
             self._reset()
             return
         if self.world.level_complete:
@@ -223,4 +278,6 @@ class PlayScene(Scene):
         alpha = self.world.alpha
         for entity in self.world.entities:
             entity.draw(self.renderer, alpha)
+        if self._streaming:
+            self.renderer.draw_score(self._score, max(self._best_score, self._score))
         pygame.display.flip()

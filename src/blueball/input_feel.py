@@ -54,6 +54,12 @@ class JumpController:
             if self._air_jumps_remaining < self._max_air_jumps():
                 self._air_jumps_remaining = self._max_air_jumps()
 
+    def refresh_air_jumps(self) -> None:
+        """Restock air jumps as if the player had just left the ground. Used for
+        landings that never register as 'grounded' — spring launches and enemy
+        stomps — so the double jump still refreshes off them."""
+        self._air_jumps_remaining = self._max_air_jumps()
+
     def tick(self, action: Action, grounded: bool, dt: float) -> JumpDecision:
         jump_held = action in _JUMP_ACTIONS
 

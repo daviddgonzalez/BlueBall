@@ -171,6 +171,70 @@ def test_play_scene_streaming_first_chunk_has_spawn_ground(headless_pygame, tmp_
     assert ground_segments, "first chunk must include a ground segment at GROUND_Y"
 
 
+def test_play_scene_streaming_rerandomizes_seed_on_death(headless_pygame, tmp_save):
+    """In Infinite Run, dying picks a NEW sampler seed (fresh layout) rather
+    than replaying the same deterministic run."""
+    data = {
+        "name": "Infinite", "background": "#202028", "ground": "#666c70",
+        "spawn": [80, 540], "chunks": [],
+    }
+    scene = PlayScene(headless_pygame, level_data=data, sampler_seed=12345)
+    assert scene.sampler_seed == 12345
+    scene.player.dead = True
+    pygame.event.clear()
+    scene.update(frame_dt=1 / 60)
+    assert scene.sampler_seed != 12345          # re-randomized
+    assert scene._last_respawn_xy is None       # no checkpoint respawn
+    assert not scene.player.dead                # fresh player after reset
+
+
+def test_play_scene_streaming_has_no_checkpoints(headless_pygame, tmp_save):
+    """The streaming sampler is built with checkpoints disabled."""
+    data = {
+        "name": "Infinite", "background": "#202028", "ground": "#666c70",
+        "spawn": [80, 540], "chunks": [],
+    }
+    scene = PlayScene(headless_pygame, level_data=data, sampler_seed=7)
+    assert scene._sampler.emit_checkpoints is False
+
+
+def test_play_scene_streaming_carries_ground_height(headless_pygame, tmp_save):
+    """After a stairs_up the running ground seam rises, and a following flat is
+    built at that raised height — surfaces connect across the seam."""
+    import pymunk
+    from blueball.levels.chunks.flat import GROUND_Y, Flat
+    from blueball.levels.chunks.stairs import StairsUp
+
+    data = {
+        "name": "Infinite", "background": "#202028", "ground": "#666c70",
+        "spawn": [80, 540], "chunks": [],
+    }
+    scene = PlayScene(headless_pygame, level_data=data, sampler_seed=1)
+    base0 = scene._base_y
+    scene._materialize_chunk(StairsUp(steps=3, step_height=40, rounded=True))
+    assert scene._base_y == base0 - 120  # seam climbed 120px (up = -y)
+    scene._materialize_chunk(Flat(width_tiles=2))
+    flat_chunk = scene._built_chunks[-1]
+    ground = [s for s in flat_chunk["shapes"] if isinstance(s, pymunk.Segment)][0]
+    assert ground.a.y == base0 - 120  # flat sits at the raised seam
+
+
+def test_play_scene_streaming_ground_stays_in_band(headless_pygame, tmp_save):
+    """Over a long stream the running ground height never goes underground or
+    above the elevation cap (stairs are biased to stay in band)."""
+    from blueball.levels.chunks.flat import GROUND_Y
+    from blueball.scenes.play import _MAX_GROUND_ELEV
+
+    data = {
+        "name": "Infinite", "background": "#202028", "ground": "#666c70",
+        "spawn": [80, 540], "chunks": [],
+    }
+    scene = PlayScene(headless_pygame, level_data=data, sampler_seed=3)
+    for _ in range(400):
+        scene._maintain_streaming(scene._build_x + 50)
+        assert GROUND_Y - _MAX_GROUND_ELEV - 1e-6 <= scene._base_y <= GROUND_Y + 1e-6
+
+
 def test_play_scene_streaming_builds_ahead(headless_pygame, tmp_save):
     """Infinite Run uses sampler_seed and streams chunks. After construction,
     only the initial buffer is built (NOT all 500). Advancing the player

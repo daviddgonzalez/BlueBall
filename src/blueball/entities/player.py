@@ -118,6 +118,14 @@ class Player(Entity):
         self.body.apply_impulse_at_world_point(
             (0, -impulse * self.body.mass), self.body.position
         )
+        # A spring launch is a "landing" — refresh the air jump so the double
+        # jump works off a spring even though it never registers as grounded.
+        self.jump_ctrl.refresh_air_jumps()
+
+    def refresh_air_jumps(self) -> None:
+        """Restore the air jump after landing on a non-ground surface (e.g.
+        stomping an enemy) that doesn't produce a sustained 'grounded' tick."""
+        self.jump_ctrl.refresh_air_jumps()
 
     def receive_boost(self, multiplier: float) -> None:
         """Apply a boost-pad's multiplier, take-the-max'd against any active
@@ -130,6 +138,8 @@ class Player(Entity):
         immediate instead of waiting for ground force to push the ball up to
         the higher cap.
         """
+        # Landing on a boost pad refreshes the air jump like any landing.
+        self.jump_ctrl.refresh_air_jumps()
         if multiplier > self._boost_multiplier:
             self._boost_multiplier = multiplier
             self._aerial_since_pickup = not self.grounded
@@ -253,15 +263,16 @@ class Player(Entity):
             vx, vy = self.body.velocity
             self.body.velocity = (vx, vy * config.JUMP_CUT_FACTOR)
 
-        # Cap linear-velocity magnitude so air force and long falls can't
-        # accelerate the ball indefinitely. Boost pads raise this cap until
-        # the next airborne→grounded transition.
-        max_speed = config.MAX_LINEAR_SPEED * self._boost_multiplier
-        v = self.body.velocity
-        speed = math.hypot(v.x, v.y)
-        if speed > max_speed:
-            scale = max_speed / speed
-            self.body.velocity = (v.x * scale, v.y * scale)
+        # Cap horizontal velocity only. A magnitude cap would clip a spring's
+        # upward kick proportionally with horizontal velocity, dragging |vx|
+        # down whenever the player hit a spring at speed. Vertical velocity
+        # is naturally bounded by gravity, JUMP_IMPULSE, and FALL_DEATH_Y.
+        max_vx = config.MAX_LINEAR_SPEED * self._boost_multiplier
+        vx, vy = self.body.velocity
+        if vx > max_vx:
+            self.body.velocity = (max_vx, vy)
+        elif vx < -max_vx:
+            self.body.velocity = (-max_vx, vy)
 
     def draw(self, renderer, alpha: float) -> None:
         renderer.draw_ball(self.body, alpha)

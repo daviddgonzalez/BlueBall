@@ -44,6 +44,37 @@ def test_unknown_chunk_raises(tmp_path):
     assert "not_a_real_chunk" in str(ei.value)
 
 
+def test_load_vertical_climb_smoke():
+    from pathlib import Path
+    from blueball.levels.loader import load_level
+    from blueball.world import World
+    path = Path(__file__).parent.parent / "src" / "blueball" / "levels" / "vertical_climb.json"
+    w = World()
+    meta = load_level(path, w)
+    assert meta.name == "Vertical Climb"
+    assert meta.total_width > 0
+
+
+def test_load_speed_run_smoke():
+    from pathlib import Path
+    from blueball.levels.loader import load_level
+    from blueball.world import World
+    path = Path(__file__).parent.parent / "src" / "blueball" / "levels" / "speed_run.json"
+    w = World()
+    meta = load_level(path, w)
+    assert meta.name == "Speed Run"
+
+
+def test_load_maze_smoke():
+    from pathlib import Path
+    from blueball.levels.loader import load_level
+    from blueball.world import World
+    path = Path(__file__).parent.parent / "src" / "blueball" / "levels" / "maze.json"
+    w = World()
+    meta = load_level(path, w)
+    assert meta.name == "Maze"
+
+
 def test_load_level_accepts_dict():
     data = {
         "name": "Test",

@@ -25,6 +25,8 @@ CT_CHARGER = 12
 CT_CHECKPOINT = 13
 CT_KEY = 14
 CT_DOOR = 15
+CT_LAVA = 16
+CT_PROJECTILE = 17
 
 
 _TOP_NORMAL_COS = math.cos(math.radians(config.GROUNDED_NORMAL_TOLERANCE_DEG))
@@ -116,6 +118,7 @@ def register(space: pymunk.Space, world_ref) -> None:
                 if -n.y >= _TOP_NORMAL_COS:
                     if hasattr(entity, "die"):
                         entity.die()
+                    player.refresh_air_jumps()  # stomping is a landing
                     return True
             else:
                 # `shape` is shape_b; n points from player into patroller.
@@ -123,6 +126,7 @@ def register(space: pymunk.Space, world_ref) -> None:
                 if n.y >= _TOP_NORMAL_COS:
                     if hasattr(entity, "die"):
                         entity.die()
+                    player.refresh_air_jumps()  # stomping is a landing
                     return True
             player.die()
             return True
@@ -276,15 +280,33 @@ def register(space: pymunk.Space, world_ref) -> None:
             if arbiter.shapes[0] is shape:
                 if -n.y >= _TOP_NORMAL_COS:
                     entity.die()
+                    player.refresh_air_jumps()  # stomping is a landing
                     return True
             else:
                 # Charger is shape_b; n points from player into charger.
                 # Player on top iff direction is downward (positive y).
                 if n.y >= _TOP_NORMAL_COS:
                     entity.die()
+                    player.refresh_air_jumps()  # stomping is a landing
                     return True
             player.die()
             return True
         return True
 
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_CHARGER, begin=on_charger)
+
+    def on_lava(arbiter, space_, data):
+        player = _find_player_entity(arbiter, world_ref)
+        if player is not None:
+            player.die()
+        return False  # sensor
+
+    space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_LAVA, begin=on_lava)
+
+    def on_projectile(arbiter, space_, data):
+        player = _find_player_entity(arbiter, world_ref)
+        if player is not None:
+            player.die()
+        return False  # sensor
+
+    space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_PROJECTILE, begin=on_projectile)

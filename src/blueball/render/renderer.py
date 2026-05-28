@@ -36,6 +36,7 @@ class Renderer:
         # Track previous positions per body for interpolation
         self._prev_pos: dict[int, tuple[float, float]] = {}
         self._prev_angle: dict[int, float] = {}
+        self._hud_font = None  # lazily created (needs pygame.font init)
 
     def begin_frame(self, world) -> None:
         """Snapshot previous positions for next frame's interpolation."""
@@ -300,3 +301,49 @@ class Renderer:
         color = (255, 120, 120) if state == "charge" else (200, 80, 80)
         pygame.draw.circle(self.screen, color, (int(sx), int(sy)), radius)
         pygame.draw.circle(self.screen, (255, 200, 200), (int(sx), int(sy)), radius, 2)
+
+    def draw_lava(self, body: pymunk.Body, alpha: float, width: float, height: float) -> None:
+        """Wide orange rectangle. Top edge of the rectangle is the lava's
+        deadly surface; body.position is the top-edge center.
+        """
+        wx, wy = self._interp_body_pos(body, alpha)
+        top_left = self._w2s((wx - width / 2, wy))
+        rect = pygame.Rect(int(top_left[0]), int(top_left[1]), int(width), int(height))
+        pygame.draw.rect(self.screen, (240, 90, 30), rect)
+        # Bright top edge for visibility
+        pygame.draw.line(
+            self.screen,
+            (255, 220, 100),
+            (int(top_left[0]), int(top_left[1])),
+            (int(top_left[0] + width), int(top_left[1])),
+            3,
+        )
+
+    def draw_projectile(self, body: pymunk.Body, alpha: float, radius: int = 10) -> None:
+        """Interpolated fiery orb fired by a cannon."""
+        wx, wy = self._interp_body_pos(body, alpha)
+        sx, sy = self._w2s((wx, wy))
+        pygame.draw.circle(self.screen, (255, 140, 40), (int(sx), int(sy)), radius)
+        pygame.draw.circle(self.screen, (255, 230, 150), (int(sx), int(sy)), radius, 2)
+
+    def draw_cannon(self, position, direction: str) -> None:
+        """Wall-mounted barrel pointing in the firing direction. The cannon is
+        fixed, so its position is drawn directly (no interpolation)."""
+        sx, sy = self._w2s(position)
+        barrel_w, barrel_h = 18, 12
+        if direction == "right":
+            rect = pygame.Rect(int(sx), int(sy - barrel_h / 2), barrel_w, barrel_h)
+        else:
+            rect = pygame.Rect(int(sx - barrel_w), int(sy - barrel_h / 2), barrel_w, barrel_h)
+        pygame.draw.rect(self.screen, (90, 90, 110), rect)
+        pygame.draw.circle(self.screen, (60, 60, 80), (int(sx), int(sy)), 9)
+        pygame.draw.circle(self.screen, (120, 120, 150), (int(sx), int(sy)), 9, 2)
+
+    def draw_score(self, score: int, best: int) -> None:
+        """Top-left HUD: current run score and the persisted best."""
+        if self._hud_font is None:
+            self._hud_font = pygame.font.SysFont(None, 32)
+        score_surf = self._hud_font.render(f"Score: {score}", True, (255, 255, 255))
+        self.screen.blit(score_surf, (16, 12))
+        best_surf = self._hud_font.render(f"Best: {best}", True, (255, 220, 80))
+        self.screen.blit(best_surf, (16, 44))

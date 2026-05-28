@@ -9,6 +9,7 @@ from typing import Union
 
 # Importing the chunks package registers every chunk type
 from . import chunks  # noqa: F401
+from ..entities.lava import Lava
 from .chunks.base import CHUNK_REGISTRY
 
 
@@ -43,6 +44,37 @@ def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
         chunk = CHUNK_REGISTRY[type_name](**kwargs)
         width = chunk.build(world, x_offset=x)
         x += width
+
+    # Optional level-feature: rising lava.
+    if "lava" in data:
+        lava_cfg = data["lava"]
+        start_y = float(lava_cfg.get("start_y", 1100))
+        rise_speed = float(lava_cfg.get("rise_speed", 20))
+        overflow = float(lava_cfg.get("width_overflow", 200))
+        lava_width = x + 2 * overflow
+        world.add_entity(Lava(
+            world,
+            position=(x / 2, start_y),
+            width=lava_width,
+            rise_speed=rise_speed,
+        ))
+
+    # Optional level-feature: periodic projectile cannons.
+    if "cannons" in data:
+        from ..entities.cannon import Cannon
+        from .chunks.flat import GROUND_Y
+        for c in data["cannons"]:
+            world.add_entity(Cannon(
+                world,
+                position=(float(c["x"]), GROUND_Y - float(c.get("y_offset", 0))),
+                direction=c.get("dir", "right"),
+                interval_s=float(c.get("interval_s", 2.0)),
+                speed=float(c.get("speed", 220.0)),
+                pulse_period_s=float(c.get("pulse_period_s", 0.6)),
+                max_travel=float(c.get("max_travel", 200.0)),
+                projectile_radius=int(c.get("radius", 10)),
+                phase_s=float(c.get("phase_s", 0.0)),
+            ))
 
     spawn = tuple(data["spawn"])
     return LevelMeta(
