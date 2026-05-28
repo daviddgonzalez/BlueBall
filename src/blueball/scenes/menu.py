@@ -22,6 +22,7 @@ class MenuScene(Scene):
             ("Vertical Climb", levels_dir / "vertical_climb.json"),
             ("Speed Run", levels_dir / "speed_run.json"),
             ("Maze", levels_dir / "maze.json"),
+            ("Lava Rising", levels_dir / "lava_rising.json"),
             ("Infinite Run", self.INFINITE_RUN),
         ]
         self.cursor: int = 0
@@ -42,15 +43,17 @@ class MenuScene(Scene):
                 elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                     _, target = self.entries[self.cursor]
                     if target == self.INFINITE_RUN:
-                        from ..levels.sampler import ChunkSampler
+                        # Streaming infinite: PlayScene builds chunks as the
+                        # player approaches them. We only pass metadata
+                        # (palette, spawn, name); the chunk list is empty.
+                        # sampler_seed signals streaming mode.
                         seed = int(time.time() * 1000) & 0xFFFFFFFF
-                        sampler = ChunkSampler(seed=seed)
                         level_data = {
                             "name": f"Infinite Run (seed={seed})",
                             "background": "#202028",
                             "ground": "#666c70",
                             "spawn": [80, 540],
-                            "chunks": list(sampler),
+                            "chunks": [],
                         }
                         return PlayScene(self.screen, level_data=level_data, sampler_seed=seed)
                     return PlayScene(self.screen, level_path=target)

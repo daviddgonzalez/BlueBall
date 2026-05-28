@@ -1,0 +1,19 @@
+{
+  "name": "Vertical Climb",
+  "background": "#1a1a2e",
+  "ground": "#3a3a52",
+  "spawn": [80, 540],
+  "lava": {"start_y": 820, "rise_speed": 26, "width_overflow": 400},
+  "cannons": [
+    {"x": 98, "y_offset": 520, "dir": "right", "interval_s": 2.2, "speed": 240, "pulse_period_s": 0.5, "max_travel": 200, "phase_s": 0.0},
+    {"x": 286, "y_offset": 980, "dir": "left", "interval_s": 2.2, "speed": 240, "pulse_period_s": 0.5, "max_travel": 200, "phase_s": 1.1},
+    {"x": 98, "y_offset": 1440, "dir": "right", "interval_s": 2.0, "speed": 250, "pulse_period_s": 0.45, "max_travel": 200, "phase_s": 0.5},
+    {"x": 286, "y_offset": 1900, "dir": "left", "interval_s": 2.0, "speed": 250, "pulse_period_s": 0.45, "max_travel": 200, "phase_s": 1.4},
+    {"x": 98, "y_offset": 2360, "dir": "right", "interval_s": 1.8, "speed": 260, "pulse_period_s": 0.45, "max_travel": 200, "phase_s": 0.9}
+  ],
+  "chunks": [
+    {"type": "flat", "width_tiles": 3},
+    {"type": "vertical_column", "width_tiles": 6, "steps": 32, "step_height": 86, "bottom_offset": 64, "platform_tiles": 2, "pattern": [0, 4, [1, 4], 2, 4, [0, 3], 1, 4]},
+    {"type": "goal", "width_tiles": 2, "y_offset": 2730}
+  ]
+}

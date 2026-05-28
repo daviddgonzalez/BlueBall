@@ -36,15 +36,23 @@ def test_menu_enter_on_normal_level_returns_playscene():
     assert result.level_path is not None
 
 
-def test_menu_enter_on_infinite_run_returns_playscene_with_level_data():
+def test_menu_enter_on_infinite_run_returns_streaming_playscene():
+    """Infinite Run uses streaming — PlayScene materializes chunks lazily.
+    The MenuScene hands over only the level metadata (no chunks list) and
+    PlayScene's sampler iterator emits them as the player advances.
+    """
     m = MenuScene(pygame.display.get_surface())
     # Infinite Run is the last entry
     m.cursor = len(m.entries) - 1
     result = m.handle_events([_key_event(pygame.K_RETURN)])
     assert isinstance(result, PlayScene)
     assert result.level_data is not None
-    assert result.level_data["chunks"][-1]["type"] == "goal"
     assert result.sampler_seed is not None
+    assert result._streaming is True
+    # Empty chunks list — PlayScene will stream them in
+    assert result.level_data["chunks"] == []
+    # Initial buffer of chunks has been built into the world
+    assert len(result._built_chunks) > 0
 
 
 def test_menu_esc_returns_none():

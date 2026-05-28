@@ -46,13 +46,13 @@
     {
       "id": 7,
       "subject": "Task 7: New CT_* constants in collision.py",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Add 8 new collision-type constants: CT_ONE_WAY=8, CT_SPRING=9, CT_PUSHABLE=10, CT_SWINGING=11, CT_CHARGER=12, CT_CHECKPOINT=13, CT_KEY=14, CT_DOOR=15.\n\n**Files:**\n- Modify: `src/blueball/collision.py`\n- Modify: `tests/test_collision.py`\n\n**Acceptance Criteria:**\n- [ ] All 8 constants defined with correct values.\n- [ ] All distinct from each other and existing CTs.\n\n**Verify:** `pytest -q tests/test_collision.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/collision.py\", \"tests/test_collision.py\"], \"verifyCommand\": \"pytest -q tests/test_collision.py -v\", \"acceptanceCriteria\": [\"CT_ONE_WAY=8\", \"CT_DOOR=15\", \"all 8 constants distinct\"]}\n```"
     },
     {
       "id": 8,
       "subject": "Task 8: platform chunk \u2014 floating segment",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         1
       ],
@@ -61,7 +61,7 @@
     {
       "id": 9,
       "subject": "Task 9: ice_floor chunk + Phase 3 config tunables",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         1
       ],
@@ -70,7 +70,7 @@
     {
       "id": 10,
       "subject": "Task 10: vertical_column chunk \u2014 stacked platforms macro",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         8
       ],
@@ -79,7 +79,7 @@
     {
       "id": 11,
       "subject": "Task 11: one_way_platform \u2014 entity + chunk + pre_solve filter",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         7
       ],
@@ -88,7 +88,7 @@
     {
       "id": 12,
       "subject": "Task 12: Spring \u2014 entity + chunk + handler",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         3,
         7
@@ -98,7 +98,7 @@
     {
       "id": 13,
       "subject": "Task 13: Checkpoint \u2014 entity + chunk + handler",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         3,
         7
@@ -108,7 +108,7 @@
     {
       "id": 14,
       "subject": "Task 14: CrumblingPlatform \u2014 entity + chunk",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         4
       ],
@@ -117,13 +117,13 @@
     {
       "id": 15,
       "subject": "Task 15: MovingPlatform \u2014 entity + chunk",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Kinematic body oscillating between waypoints on x or y axis at constant speed.\n\n**Files:**\n- Create: `src/blueball/entities/moving_platform.py`\n- Create: `src/blueball/levels/chunks/moving_platform.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: tests/\n\n**Acceptance Criteria:**\n- [ ] MovingPlatform has kinematic body and Segment shape.\n- [ ] Oscillates within range_px/2 of spawn.\n- [ ] axis \u2208 {x, y}; raises on invalid.\n- [ ] Chunk difficulty=2.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/moving_platform.py\", \"src/blueball/levels/chunks/moving_platform.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"moving platform oscillates\", \"position bounded by range_px\"]}\n```"
     },
     {
       "id": 16,
       "subject": "Task 16: PushableBox \u2014 entity + chunk",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         7
       ],
@@ -132,7 +132,7 @@
     {
       "id": 17,
       "subject": "Task 17: Key \u2014 entity + chunk + handler",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         3,
         7
@@ -142,7 +142,7 @@
     {
       "id": 18,
       "subject": "Task 18: Door \u2014 entity + chunk + handler",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         3,
         7
@@ -152,7 +152,7 @@
     {
       "id": 19,
       "subject": "Task 19: SwingingHazard \u2014 entity + chunk + handler",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         7
       ],
@@ -161,7 +161,7 @@
     {
       "id": 20,
       "subject": "Task 20: Charger \u2014 enemy with FOV + LOS",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         4,
         7
@@ -171,7 +171,7 @@
     {
       "id": 21,
       "subject": "Task 21: spike_wall chunk",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         6
       ],
@@ -180,7 +180,7 @@
     {
       "id": 22,
       "subject": "Task 22: HitType enum + enriched Observation dataclass",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         7
       ],
@@ -189,7 +189,7 @@
     {
       "id": 23,
       "subject": "Task 23: Player._observe \u2014 raycasts + scalars + bitfields",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         3,
         5,
@@ -200,13 +200,13 @@
     {
       "id": 24,
       "subject": "Task 24: Loader accepts dict source",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** load_level(source, world) accepts Path | str | dict.\n\n**Files:**\n- Modify: `src/blueball/levels/loader.py`\n- Modify: `tests/test_level_loader.py`\n\n**Acceptance Criteria:**\n- [ ] Path/str usage unchanged.\n- [ ] dict source builds without file I/O.\n\n**Verify:** `pytest -q tests/test_level_loader.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/loader.py\", \"tests/test_level_loader.py\"], \"verifyCommand\": \"pytest -q tests/test_level_loader.py -v\", \"acceptanceCriteria\": [\"load_level accepts dict\", \"existing path-based usage unchanged\"]}\n```"
     },
     {
       "id": 25,
       "subject": "Task 25: ChunkSampler \u2014 deterministic procedural emitter",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         1,
         2,
@@ -230,7 +230,7 @@
     {
       "id": 26,
       "subject": "Task 26: MenuScene + main.py entry",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         25,
         27
@@ -240,7 +240,7 @@
     {
       "id": 27,
       "subject": "Task 27: PlayScene updates \u2014 level_data, esc-to-menu, checkpoint respawn",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         3,
         13,
@@ -251,7 +251,7 @@
     {
       "id": 28,
       "subject": "Task 28: Renderer additions for new entities",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         11,
         12,
@@ -269,7 +269,7 @@
     {
       "id": 29,
       "subject": "Task 29: Vertical Climb level JSON",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         10,
         11,
@@ -285,7 +285,7 @@
     {
       "id": 30,
       "subject": "Task 30: Speed Run level JSON",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         9,
         14,
@@ -297,7 +297,7 @@
     {
       "id": 31,
       "subject": "Task 31: Maze level JSON",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         10,
         11,
@@ -314,7 +314,7 @@
     {
       "id": 32,
       "subject": "Task 32: Determinism re-runs \u2014 speed_run + sampler level",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         25,
         30
@@ -322,5 +322,5 @@
       "description": "**Goal:** Determinism guards for speed_run.json and a sampler-built level. Two World instances with identical seed + action stream produce identical Player state.\n\n**Files:**\n- Modify: `tests/test_world_determinism.py`\n\n**Acceptance Criteria:**\n- [ ] test_speed_run_world_determinism passes.\n- [ ] test_sampler_level_world_determinism passes.\n\n**Verify:** `pytest -q tests/test_world_determinism.py -v`\n\n```json:metadata\n{\"files\": [\"tests/test_world_determinism.py\"], \"verifyCommand\": \"pytest -q tests/test_world_determinism.py -v\", \"acceptanceCriteria\": [\"speed_run deterministic\", \"sampler-built level deterministic\"]}\n```"
     }
   ],
-  "lastUpdated": "2026-05-27T18:09:16.954196+00:00"
+  "lastUpdated": "2026-05-27T21:10:10.608539+00:00"
 }
