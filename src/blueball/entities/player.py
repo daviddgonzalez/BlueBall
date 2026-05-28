@@ -45,6 +45,7 @@ def _abilities_to_bitfield(abilities: set[Ability]) -> int:
 _MOVE_LEFT = {Action.LEFT, Action.LEFT_JUMP}
 _MOVE_RIGHT = {Action.RIGHT, Action.RIGHT_JUMP}
 _GROUNDED_TOL_COS = math.cos(math.radians(config.GROUNDED_NORMAL_TOLERANCE_DEG))
+_ON_SURFACE_TOL_COS = math.cos(math.radians(config.AIR_JUMP_REFRESH_TOLERANCE_DEG))
 
 
 class Player(Entity):
@@ -179,6 +180,16 @@ class Player(Entity):
                 return True
         return False
 
+    @property
+    def on_surface(self) -> bool:
+        """True if touching any walkable-ish surface (a much more lenient angle
+        than `grounded`). Used only to refresh the air jump, so landing on a
+        steep slope (e.g. a bump side) still gives the double jump back."""
+        for n in self._contact_normals:
+            if -n.y >= _ON_SURFACE_TOL_COS:
+                return True
+        return False
+
     def _refresh_contact_normals(self) -> None:
         """Walk this body's current arbiters and snapshot their normals.
 
@@ -212,30 +223,32 @@ class Player(Entity):
         action = self.agent.act(observation)
 
         # Horizontal: torque (so the ball visibly spins) plus a direct
-        # horizontal force. On the ground the force bypasses the friction
-        # ceiling for snappy reversals. In the air the force is asymmetric:
-        # high when the input opposes current velocity (BRAKE / correction),
-        # low when input matches velocity (ACCEL), so the player can fix a
-        # bad jump arc but can't freely accelerate horizontally in midair.
+        # horizontal force. The force is asymmetric both on the ground and in
+        # the air: BRAKE when the input opposes current velocity (a reversal /
+        # arc correction), ACCEL when the input matches velocity. Ground forces
+        # bypass the friction ceiling so reversals stay snappy; the air ACCEL is
+        # kept low so the player can't freely accelerate horizontally midair.
         grounded = self.grounded
         air_factor = 1.0 if grounded else config.AIR_CONTROL
         vx = self.body.velocity.x
         if action in _MOVE_LEFT:
             self.body.torque -= config.MOVE_TORQUE * air_factor
+            opposing = vx > 0
             if grounded:
-                force = config.GROUND_MOVE_FORCE
+                force = config.GROUND_MOVE_FORCE_BRAKE if opposing else config.GROUND_MOVE_FORCE
             else:
-                force = config.AIR_MOVE_FORCE_BRAKE if vx > 0 else config.AIR_MOVE_FORCE_ACCEL
+                force = config.AIR_MOVE_FORCE_BRAKE if opposing else config.AIR_MOVE_FORCE_ACCEL
             if force > 0:
                 self.body.apply_force_at_world_point(
                     (-force, 0), self.body.position
                 )
         if action in _MOVE_RIGHT:
             self.body.torque += config.MOVE_TORQUE * air_factor
+            opposing = vx < 0
             if grounded:
-                force = config.GROUND_MOVE_FORCE
+                force = config.GROUND_MOVE_FORCE_BRAKE if opposing else config.GROUND_MOVE_FORCE
             else:
-                force = config.AIR_MOVE_FORCE_BRAKE if vx < 0 else config.AIR_MOVE_FORCE_ACCEL
+                force = config.AIR_MOVE_FORCE_BRAKE if opposing else config.AIR_MOVE_FORCE_ACCEL
             if force > 0:
                 self.body.apply_force_at_world_point(
                     (force, 0), self.body.position
@@ -252,7 +265,7 @@ class Player(Entity):
             self.body.angular_velocity = -max_ang_vel
 
         # Jump
-        decision = self.jump_ctrl.tick(action, grounded, dt)
+        decision = self.jump_ctrl.tick(action, grounded, dt, on_surface=self.on_surface)
         if decision.fire:
             # World-frame impulse so the ball's spin doesn't rotate the impulse
             # into horizontal components. Pymunk y-down -> up is negative y.

@@ -32,7 +32,10 @@ class BoostPad(Entity):
         self.body.position = position
         hw = width / 2
         hh = config.BOOST_PAD_THICKNESS / 2
-        shape = pymunk.Poly(self.body, [(-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)])
+        # Extend the sensor upward (toward -y) so a ball gliding just over the
+        # pad still triggers it; the visible strip stays at the pad surface.
+        catch = config.BOOST_PAD_CATCH_HEIGHT
+        shape = pymunk.Poly(self.body, [(-hw, -hh - catch), (hw, -hh - catch), (hw, hh), (-hw, hh)])
         shape.sensor = True
         shape.collision_type = CT_BOOST_PAD
         self.bodies.append(self.body)

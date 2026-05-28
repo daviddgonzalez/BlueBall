@@ -20,25 +20,28 @@ BALL_MASS = 1.0
 BALL_FRICTION = 0.9
 BALL_ELASTICITY = 0.05
 MOVE_TORQUE = 6784.0
-MAX_ANGULAR_VEL = 28.125
+MAX_ANGULAR_VEL = 19.6875
 # Hard cap on the ball's linear-velocity magnitude. Matched to the ground-roll
-# top speed (MAX_ANGULAR_VEL * BALL_RADIUS = 450 px/s) so the ball doesn't
+# top speed (MAX_ANGULAR_VEL * BALL_RADIUS = 315 px/s) so the ball doesn't
 # spin faster than it can translate (which would look like slipping).
-MAX_LINEAR_SPEED = 450.0
+MAX_LINEAR_SPEED = 315.0
 # Torque multiplier while airborne. 0 = no torque in air, so the ball's spin
 # is frozen during a jump and there's no slip-induced "kick" on landing.
 AIR_CONTROL = 0.0
 # Direct horizontal force applied while grounded - bypasses the friction
 # acceleration ceiling so reversals don't feel mushy. Torque is still applied
-# in parallel so the ball visibly spins as it rolls.
+# in parallel so the ball visibly spins as it rolls. Asymmetric like the air
+# forces: BRAKE when the input opposes current velocity (reversal), ACCEL when
+# it matches.
 GROUND_MOVE_FORCE = 420.0
+GROUND_MOVE_FORCE_BRAKE = 750.0
 # Horizontal force in midair. Asymmetric: BRAKE is applied when the input
 # direction is opposite the current horizontal velocity (correcting a wrong
 # jump arc); ACCEL when the input matches velocity (or velocity is ~0).
 # Higher brake than accel keeps air control responsive for corrections
 # without letting the player accelerate freely in midair.
-AIR_MOVE_FORCE_BRAKE = 300.0
-AIR_MOVE_FORCE_ACCEL = 120.0
+AIR_MOVE_FORCE_BRAKE = 750.0
+AIR_MOVE_FORCE_ACCEL = 218.4
 
 # Jump
 JUMP_IMPULSE = 315.0
@@ -50,7 +53,12 @@ FALL_DEATH_Y = 1200
 # Input feel (seconds)
 JUMP_BUFFER_TIME = 0.10
 COYOTE_TIME = 0.08
+# Surfaces within this angle of flat count as "ground" for jumping/coyote.
 GROUNDED_NORMAL_TOLERANCE_DEG = 30.0
+# A more lenient angle for "I touched down" — used only to refresh the air
+# jump. Touching any slope up to this steepness (e.g. a bump side) refreshes
+# the double jump, even though it's too steep to push off as primary ground.
+AIR_JUMP_REFRESH_TOLERANCE_DEG = 70.0
 
 # Camera
 CAMERA_DEAD_ZONE_W = 200
@@ -72,6 +80,9 @@ ABILITY_PICKUP_DEFAULT_HEIGHT = 64    # px above ground where pickups float
 
 # Boost pads
 BOOST_PAD_THICKNESS = 16  # px — how thick the floor strip is in world units
+# Extra sensor height ABOVE the pad, so a ball passing just over the pad
+# (airborne after a bump/launch) still triggers the boost instead of missing it.
+BOOST_PAD_CATCH_HEIGHT = 28
 BOOST_PAD_DEFAULT_MULTIPLIER = 2.0
 # Fraction of the (target - current) velocity gap closed by the immediate
 # kick at pickup time. 1.0 = snap to the new cap; 0.5 = halve the kick.

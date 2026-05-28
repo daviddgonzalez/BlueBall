@@ -34,6 +34,7 @@ class JumpController:
         self._buffer_remaining = 0.0      # seconds until buffered jump expires
         self._coyote_remaining = 0.0      # seconds we still allow a jump after walking off
         self._was_grounded = False
+        self._was_on_surface = False
         self._was_jump_held = False
         # Initialize with a full stock so a player spawned mid-air with
         # DOUBLE_JUMP unlocked still has their air jump on tick 1.
@@ -60,7 +61,16 @@ class JumpController:
         stomps — so the double jump still refreshes off them."""
         self._air_jumps_remaining = self._max_air_jumps()
 
-    def tick(self, action: Action, grounded: bool, dt: float) -> JumpDecision:
+    def tick(
+        self,
+        action: Action,
+        grounded: bool,
+        dt: float,
+        on_surface: bool | None = None,
+    ) -> JumpDecision:
+        # on_surface defaults to grounded for callers/tests that don't pass it.
+        if on_surface is None:
+            on_surface = grounded
         jump_held = action in _JUMP_ACTIONS
 
         # Coyote timer: starts when we lose grounding while previously grounded
@@ -69,10 +79,11 @@ class JumpController:
         else:
             self._coyote_remaining = max(0.0, self._coyote_remaining - dt)
 
-        # Air-jump counter: reset on the grounded→airborne transition. Walking
-        # off a ledge restocks the air jump; landing does too (handled below
-        # by the next grounded→airborne transition).
-        if self._was_grounded and not grounded:
+        # Air-jump counter: restocked when leaving any walkable surface
+        # (the lenient on_surface, not the strict grounded), so landing on a
+        # steep slope (e.g. a bump) still gives the double jump back. Walking
+        # off a ledge restocks it; a brief slope touch then airborne does too.
+        if self._was_on_surface and not on_surface:
             self._air_jumps_remaining = self._max_air_jumps()
 
         # Jump buffer: a fresh press while airborne starts (or refreshes) the buffer
@@ -116,5 +127,6 @@ class JumpController:
         cut = released
 
         self._was_grounded = grounded
+        self._was_on_surface = on_surface
         self._was_jump_held = jump_held
         return JumpDecision(fire=fire, cut=cut)
