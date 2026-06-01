@@ -1,0 +1,45 @@
+{
+  "planPath": "docs/superpowers/plans/2026-06-01-box-puzzle-chunks.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1: box_lava_gap chunk",
+      "status": "pending",
+      "description": "**Goal:** A long, shallow lava pit with a solid floor; a box shoved in rests on the floor as a mid-pit stepping stone. In the Infinite Run sampler.\n\n**Files:** Create src/blueball/levels/chunks/box_lava_gap.py; Modify src/blueball/levels/chunks/__init__.py; Test tests/test_chunks.py.\n\n**Acceptance Criteria:** registered + sampler_include True + difficulty 3; build returns total width and adds 5 segments + 1 Lava sensor + 1 PushableBox; resting box top above lava surface; box rests on pit floor not destroyed; build accepts base_y.\n\n**Verify:** .venv/bin/python -m pytest tests/test_chunks.py -k box_lava_gap -v\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/box_lava_gap.py\", \"src/blueball/levels/chunks/__init__.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_chunks.py -k box_lava_gap -v\", \"acceptanceCriteria\": [\"registered, sampler_include True, difficulty 3\", \"5 segs + Lava sensor + PushableBox; width\", \"box top above lava surface\", \"box rests on floor not destroyed\", \"base_y accepted\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Wire box_lava_gap into maze.json + streaming-cull test",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "**Goal:** Place a box_lava_gap in maze.json and prove its chunk-spawned Lava + PushableBox cull correctly under Infinite Run streaming.\n\n**Files:** Modify src/blueball/levels/maze.json; Test tests/test_play_scene.py.\n\n**Acceptance Criteria:** maze.json has one box_lava_gap and loads; lava+box tracked in _built_chunks record; after culling, entities removed from world.entities and bodies from space.\n\n**Verify:** .venv/bin/python -m pytest tests/test_play_scene.py -k box_lava_gap -v ; .venv/bin/python -m pytest tests/test_loader.py -q\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/maze.json\", \"tests/test_play_scene.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_play_scene.py -k box_lava_gap -v\", \"acceptanceCriteria\": [\"maze has box_lava_gap and loads\", \"lava+box tracked\", \"entities+bodies culled\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: box_spring_trampoline chunk",
+      "status": "pending",
+      "description": "**Goal:** A spring + box on the ground + a high exit ledge unreachable without bouncing off the box. Hand-authored only (sampler_include False).\n\n**Files:** Create src/blueball/levels/chunks/box_spring_trampoline.py; Modify __init__.py; Test tests/test_chunks.py.\n\n**Acceptance Criteria:** registered + sampler_include False + difficulty 4; build adds ground + exit ledge + Spring + PushableBox; width = width_tiles*TILE; base_y; box on spring gains vy<=-impulse.\n\n**Verify:** .venv/bin/python -m pytest tests/test_chunks.py -k box_spring_trampoline -v\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/box_spring_trampoline.py\", \"src/blueball/levels/chunks/__init__.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_chunks.py -k box_spring_trampoline -v\", \"acceptanceCriteria\": [\"registered, sampler_include False, difficulty 4\", \"ground+exit+Spring+box; width; base_y\", \"box launched by spring\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: box_spring_relay chunk",
+      "status": "pending",
+      "description": "**Goal:** Two springs (ground + raised platform) + guide walls; the box relays from spring 1 up to spring 2 to reach a higher exit. Hand-authored only.\n\n**Files:** Create src/blueball/levels/chunks/box_spring_relay.py; Modify __init__.py; Test tests/test_chunks.py.\n\n**Acceptance Criteria:** registered + sampler_include False + difficulty 5; build adds 3 horizontal segs + 2 guide-wall verticals + two Springs + one PushableBox; width; base_y; spring2 higher than spring1.\n\n**Verify:** .venv/bin/python -m pytest tests/test_chunks.py -k box_spring_relay -v\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/box_spring_relay.py\", \"src/blueball/levels/chunks/__init__.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_chunks.py -k box_spring_relay -v\", \"acceptanceCriteria\": [\"registered, sampler_include False, difficulty 5\", \"2 Springs + box + 5 segs (2 verticals); width; base_y\", \"spring2 higher than spring1\"]}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Wire spring puzzles into vertical_climb.json",
+      "status": "pending",
+      "blockedBy": [3, 4],
+      "description": "**Goal:** Add box_spring_trampoline and box_spring_relay chunk entries to vertical_climb.json.\n\n**Files:** Modify src/blueball/levels/vertical_climb.json; Test tests/test_loader.py.\n\n**Acceptance Criteria:** chunks include one trampoline + one relay; level loads via load_level without raising.\n\n**Verify:** .venv/bin/python -m pytest tests/test_loader.py -q\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/vertical_climb.json\", \"tests/test_loader.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_loader.py -q\", \"acceptanceCriteria\": [\"chunks include trampoline + relay\", \"vertical_climb loads\"]}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: Playtest tuning pass (solvability + feel)",
+      "status": "pending",
+      "blockedBy": [2, 5],
+      "description": "**Goal:** Run the levels via /run and tune each chunk's constants so all three puzzles are reliably solvable and feel fair.\n\n**Files (tuning only):** box_lava_gap.py, box_spring_trampoline.py, box_spring_relay.py, maze.json, vertical_climb.json.\n\n**Acceptance Criteria:** lava gap solvable via box and not single-jumpable, lava fatal; trampoline exit reachable only via bounce; relay solvable OR simplified+noted; full suite green.\n\n**Verify:** Manual /run on maze.json + vertical_climb.json; then .venv/bin/python -m pytest -q.\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/box_lava_gap.py\", \"src/blueball/levels/chunks/box_spring_trampoline.py\", \"src/blueball/levels/chunks/box_spring_relay.py\", \"src/blueball/levels/maze.json\", \"src/blueball/levels/vertical_climb.json\"], \"verifyCommand\": \".venv/bin/python -m pytest -q\", \"acceptanceCriteria\": [\"lava gap solvable, not single-jumpable, lava fatal\", \"trampoline exit only via bounce\", \"relay solvable or simplified+noted\", \"full suite green\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-06-01"
+}
