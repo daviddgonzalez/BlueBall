@@ -86,10 +86,11 @@ def test_best_score_persisted_on_death(tmp_save, headless_screen):
     pygame.event.clear()
     scene.player.body.position = (600, 540)
     scene.update(1 / 60)
-    assert scene._score == 6000
+    banked = scene._score  # ~10*furthest_x; exact value depends on terrain
+    assert banked > 0
     scene.player.dead = True
     scene.update(1 / 60)  # death banks the score + re-randomizes
-    assert save_mod.get_best_score() == 6000
+    assert save_mod.get_best_score() == banked
     assert scene._score == 0  # new run reset
 
 
