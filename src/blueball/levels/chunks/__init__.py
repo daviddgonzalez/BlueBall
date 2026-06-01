@@ -25,4 +25,5 @@ from . import (  # noqa: F401
     swinging_hazard,
     charger_platform,
     spike_wall,
+    cannon_lane,
 )

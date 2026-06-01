@@ -30,6 +30,48 @@ def test_registry_has_all_v1_chunks():
         assert name in CHUNK_REGISTRY
 
 
+def test_ability_pickup_chunk_sampler_included_and_uses_base_y():
+    from blueball.levels.chunks.ability_pickup import AbilityPickupChunk
+    assert AbilityPickupChunk.sampler_include is True
+    w = World()
+    base_y = 500.0
+    width = AbilityPickupChunk(width_tiles=2, ability="double_jump", height=64).build(
+        w, x_offset=0, base_y=base_y
+    )
+    assert width == 2 * TILE
+    pickups = [e for e in w.entities if isinstance(e, AbilityPickup)]
+    assert len(pickups) == 1
+    assert pickups[0].body.position.y == base_y - 64
+    # Ground segment sits at base_y, not the default GROUND_Y.
+    segs = [s for s in w.space.shapes if isinstance(s, pymunk.Segment)]
+    assert any(abs(s.a.y - base_y) < 1e-6 for s in segs)
+
+
+def test_ability_pickup_random_params_picks_valid_ability():
+    from blueball.levels.chunks.ability_pickup import AbilityPickupChunk
+    import random
+    params = AbilityPickupChunk.random_params(random.Random(3))
+    # Must be constructible and yield a real Ability.
+    chunk = AbilityPickupChunk(**params)
+    assert isinstance(chunk.ability, Ability)
+
+
+def test_cannon_lane_chunk_registered_and_spawns_a_cannon():
+    from blueball.levels.chunks.cannon_lane import CannonLane
+    from blueball.entities.cannon import Cannon
+    assert "cannon_lane" in CHUNK_REGISTRY
+    assert CannonLane.sampler_include is True
+    w = World()
+    base_y = 480.0
+    width = CannonLane(width_tiles=6, direction="left").build(w, x_offset=0, base_y=base_y)
+    assert width == 6 * TILE
+    cannons = [e for e in w.entities if isinstance(e, Cannon)]
+    assert len(cannons) == 1
+    # Ground segment at base_y.
+    segs = [s for s in w.space.shapes if isinstance(s, pymunk.Segment)]
+    assert any(abs(s.a.y - base_y) < 1e-6 for s in segs)
+
+
 def test_flat_adds_one_segment_and_reports_width():
     w = World()
     width = Flat(width_tiles=8).build(w, x_offset=100)
@@ -134,10 +176,16 @@ def test_existing_chunks_difficulty_assigned():
     assert FallingHazardChunk.difficulty == 3
 
 
-def test_goal_and_ability_pickup_excluded_from_sampler():
-    from blueball.levels.chunks.ability_pickup import AbilityPickupChunk
+def test_structural_and_puzzle_chunks_excluded_from_sampler():
+    """Goal is the run terminator; checkpoint/key/door are structural or
+    soft-lock-prone, so the random sampler must never emit them standalone."""
+    from blueball.levels.chunks.checkpoint import CheckpointChunk
+    from blueball.levels.chunks.key import KeyChunk
+    from blueball.levels.chunks.door import DoorChunk
     assert GoalChunk.sampler_include is False
-    assert AbilityPickupChunk.sampler_include is False
+    assert CheckpointChunk.sampler_include is False
+    assert KeyChunk.sampler_include is False
+    assert DoorChunk.sampler_include is False
 
 
 def test_flat_random_params_returns_width_in_range():
