@@ -669,3 +669,46 @@ def test_box_lava_gap_random_params():
     from blueball.levels.chunks.box_lava_gap import BoxLavaGap
     params = BoxLavaGap.random_params(random.Random(42))
     assert 5 <= params["pit_tiles"] <= 7
+
+
+# ---------------------------------------------------------------------------
+# box_spring_trampoline chunk
+# ---------------------------------------------------------------------------
+
+def test_box_spring_trampoline_registry_and_flags():
+    from blueball.levels.chunks.box_spring_trampoline import BoxSpringTrampoline
+    assert "box_spring_trampoline" in CHUNK_REGISTRY
+    assert BoxSpringTrampoline.sampler_include is False
+    assert BoxSpringTrampoline.difficulty == 4
+
+
+def test_box_spring_trampoline_builds_spring_box_and_exit():
+    from blueball.entities.spring import Spring
+    from blueball.entities.pushable_box import PushableBox
+    w = World()
+    width = CHUNK_REGISTRY["box_spring_trampoline"](width_tiles=6).build(w, x_offset=0.0)
+    assert width == 6 * TILE
+    assert len([e for e in w.entities if isinstance(e, Spring)]) == 1
+    assert len([e for e in w.entities if isinstance(e, PushableBox)]) == 1
+    segs = [s for s in w.space.shapes
+            if isinstance(s, pymunk.Segment) and s.body is w.space.static_body]
+    assert len(segs) == 2  # ground + exit ledge
+
+
+def test_box_spring_trampoline_box_launched_by_spring():
+    import blueball.collision as collision
+    from blueball.entities.spring import Spring
+    from blueball.entities.pushable_box import PushableBox
+    w = World()
+    collision.register(w.space, w)
+    CHUNK_REGISTRY["box_spring_trampoline"](width_tiles=6, impulse=720.0).build(w, x_offset=0.0)
+    spring = next(e for e in w.entities if isinstance(e, Spring))
+    box = next(e for e in w.entities if isinstance(e, PushableBox))
+    box.body.position = (spring.position[0], spring.position[1] - box.size)
+    launched = False
+    for _ in range(240):
+        w.step(1 / 120)
+        if box.body.velocity.y <= -700:
+            launched = True
+            break
+    assert launched
