@@ -82,6 +82,9 @@ class Player(Entity):
         self.collectibles_collected = 0
         self._boost_multiplier: float = 1.0
         self._aerial_since_pickup: bool = False
+        # Set when a boost is granted; consumed on the next _update_boost so the
+        # boost can't be cleared on the very frame it was picked up.
+        self._boost_just_received: bool = False
         self._contact_normals: list = []
         self.keys_held: int = 0
         self.respawn_xy: tuple[float, float] | None = None
@@ -148,6 +151,14 @@ class Player(Entity):
         self.jump_ctrl.refresh_air_jumps()
         self._boost_multiplier = max(multiplier, self._boost_multiplier)
         self._aerial_since_pickup = not self.grounded
+        # receive_boost runs inside the physics step's collision callback, where
+        # the player's contact normals haven't been refreshed yet this frame —
+        # so self.grounded above can read stale/empty contacts and report False
+        # for a ball that is actually resting on the pad. That would let
+        # _update_boost clear the boost on the SAME frame it was granted (the
+        # boost-pad bug: contact registers but no boost sticks). Defer the
+        # aerial/clear decision one frame so it uses freshly-collected contacts.
+        self._boost_just_received = True
 
         mult = self._boost_multiplier
         cap = config.MAX_LINEAR_SPEED * mult
@@ -169,6 +180,15 @@ class Player(Entity):
     def _update_boost(self, grounded: bool) -> None:
         """Per-tick: if a boost is active, track aerial state and clear on the
         first airborne→grounded transition."""
+        if self._boost_just_received:
+            # First tick after a pickup: contacts are now freshly collected, so
+            # re-derive the aerial flag from the accurate grounded state and skip
+            # the clear-on-landing test this frame. A boost granted while resting
+            # on the pad therefore persists instead of being revoked instantly.
+            self._boost_just_received = False
+            if self._boost_multiplier > 1.0:
+                self._aerial_since_pickup = not grounded
+            return
         if self._boost_multiplier <= 1.0:
             return
         if not grounded:

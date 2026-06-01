@@ -102,6 +102,51 @@ def test_player_receives_boost_on_pad_contact():
     assert pad.body in w.space.bodies  # body also not removed
 
 
+def test_player_resting_on_pad_keeps_boost():
+    """Regression: a ball that is on the ground when it first overlaps the pad
+    (rolling across / coming to rest on it) must KEEP the boost.
+
+    The boost-pad collision callback runs during space.step(), before the
+    player's contact normals are refreshed that frame, so player.grounded read
+    stale/empty contacts and reported False. That made _update_boost treat the
+    grounded pickup as an airborne→grounded landing and clear the boost on the
+    same frame — contact registered but no speed-up stuck. Mirrors the chunk's
+    geometry: ground segment with the pad seated flush on top of it.
+    """
+    from blueball import config
+    from blueball.entities.boost_pad import BoostPad
+    from blueball.levels.chunks.flat import GROUND_Y
+
+    w = World()
+    collision.register(w.space, world_ref=w)
+    seg = pymunk.Segment(
+        w.space.static_body, (-200, GROUND_Y), (600, GROUND_Y), 5
+    )
+    seg.friction = 1.0
+    w.space.add(seg)
+    cx = 300.0
+    pad = BoostPad(
+        w,
+        position=(cx, GROUND_Y - config.BOOST_PAD_THICKNESS / 2),
+        width=128,
+        multiplier=2.0,
+        direction="right",
+    )
+    w.add_entity(pad)
+    # Player resting on the ground, centered over the pad (pre-existing overlap).
+    p = Player(agent=_Idle(), spawn_xy=(cx, GROUND_Y - config.BALL_RADIUS))
+    w.add_entity(p)
+
+    for _ in range(20):
+        w.step(1 / 60)
+
+    # Boost must stick: it was granted while grounded, so it persists until the
+    # next airborne→grounded cycle (which never happens here).
+    assert p._boost_multiplier == 2.0
+    # And the directional kick actually moved the grounded ball rightward.
+    assert p.body.velocity.x > 0
+
+
 def test_one_way_platform_passes_rising_player():
     """Player rising (velocity.y < 0) should pass through; falling should land."""
     from blueball.entities.one_way_platform import OneWayPlatform
