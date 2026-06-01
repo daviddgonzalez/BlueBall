@@ -287,7 +287,7 @@ def test_play_scene_culls_box_lava_gap_entities(headless_pygame, tmp_save):
     assert my_lava in scene.world.entities
     assert my_box in scene.world.entities
 
-    far = rec["x_end"] + 5000
+    far = rec["x_end"] + 5000  # well past _LOAD_BEHIND (800 px)
     scene.player.body.position = (far, 540)
     scene._maintain_streaming(far)
 
@@ -295,3 +295,4 @@ def test_play_scene_culls_box_lava_gap_entities(headless_pygame, tmp_save):
     assert my_box not in scene.world.entities
     assert my_lava.body not in scene.world.space.bodies
     assert my_box.body not in scene.world.space.bodies
+    assert my_lava.shape not in scene.world.space.shapes
