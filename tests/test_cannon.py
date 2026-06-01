@@ -62,6 +62,48 @@ def test_cannon_fires_on_interval():
     assert sum(1 for e in world.entities if isinstance(e, Projectile)) == before + 1
 
 
+def test_cannon_randomizes_interval_within_range():
+    """With interval_min_s/interval_max_s set, each gap between shots is a fresh
+    uniform draw in [min, max] — not a fixed cadence."""
+    world = World()
+    c = Cannon(world, position=(98, 300), direction="right",
+               interval_min_s=0.3, interval_max_s=2.0)
+    fire_times = []
+    t = {"v": 0.0}
+    c._fire = lambda: fire_times.append(t["v"])
+    dt = 1 / 240
+    for _ in range(60000):  # ~250 s of sim
+        t["v"] += dt
+        c.update(dt)
+    gaps = [b - a for a, b in zip(fire_times, fire_times[1:])]
+    assert len(gaps) > 50
+    assert min(gaps) >= 0.3 - 1e-2
+    assert max(gaps) <= 2.0 + 1e-2
+    # Actually spread across the range, not a constant.
+    assert max(gaps) - min(gaps) > 1.0
+
+
+def test_cannon_random_interval_is_deterministic():
+    """Two cannons with the same world seed and position fire identically."""
+    w1 = World()
+    w2 = World()
+    c1 = Cannon(w1, position=(98, 300), direction="right",
+                interval_min_s=0.3, interval_max_s=2.0)
+    c2 = Cannon(w2, position=(98, 300), direction="right",
+                interval_min_s=0.3, interval_max_s=2.0)
+    f1, f2 = [], []
+    t = {"v": 0.0}
+    c1._fire = lambda: f1.append(round(t["v"], 5))
+    c2._fire = lambda: f2.append(round(t["v"], 5))
+    dt = 1 / 240
+    for _ in range(20000):
+        t["v"] += dt
+        c1.update(dt)
+        c2.update(dt)
+    assert len(f1) > 20
+    assert f1 == f2
+
+
 def test_cannon_direction_validation():
     world = World()
     try:
