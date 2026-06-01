@@ -49,6 +49,17 @@ def test_projectile_despawns_after_max_travel():
     assert abs(proj.body.position.x - 100) >= 120.0
 
 
+def test_cannon_default_projectile_range():
+    """Default projectile range is the tuned 500.0 (2.5x the original 200.0),
+    and the cannon hands that range straight to the projectiles it fires."""
+    world = World()
+    cannon = Cannon(world, position=(98, 300), direction="right", interval_s=1.0)
+    assert cannon.max_travel == 500.0
+    cannon.update(1.1)  # cross one interval -> one shot
+    proj = next(e for e in world.entities if isinstance(e, Projectile))
+    assert proj.max_travel == 500.0
+
+
 def test_cannon_fires_on_interval():
     world = World()
     cannon = Cannon(world, position=(98, 300), direction="right", interval_s=1.0)

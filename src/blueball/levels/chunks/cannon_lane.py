@@ -61,7 +61,7 @@ class CannonLane(Chunk):
             interval_max_s=2.0,
             speed=self.speed,
             pulse_period_s=0.5,
-            max_travel=w,
+            max_travel=w * 2.5,
             projectile_radius=10,
         ))
         return w

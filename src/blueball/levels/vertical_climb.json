@@ -5,11 +5,11 @@
   "spawn": [80, 540],
   "lava": {"start_y": 820, "rise_speed": 26, "width_overflow": 400},
   "cannons": [
-    {"x": 0, "y_offset": 520, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 240, "pulse_period_s": 0.5, "max_travel": 320, "phase_s": 0.0},
-    {"x": 384, "y_offset": 980, "dir": "left", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 240, "pulse_period_s": 0.5, "max_travel": 320, "phase_s": 1.1},
-    {"x": 0, "y_offset": 1440, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 250, "pulse_period_s": 0.45, "max_travel": 320, "phase_s": 0.5},
-    {"x": 384, "y_offset": 1900, "dir": "left", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 250, "pulse_period_s": 0.45, "max_travel": 320, "phase_s": 1.4},
-    {"x": 0, "y_offset": 2360, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 260, "pulse_period_s": 0.45, "max_travel": 320, "phase_s": 0.9}
+    {"x": 0, "y_offset": 520, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 240, "pulse_period_s": 0.5, "max_travel": 800, "phase_s": 0.0},
+    {"x": 384, "y_offset": 980, "dir": "left", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 240, "pulse_period_s": 0.5, "max_travel": 800, "phase_s": 1.1},
+    {"x": 0, "y_offset": 1440, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 250, "pulse_period_s": 0.45, "max_travel": 800, "phase_s": 0.5},
+    {"x": 384, "y_offset": 1900, "dir": "left", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 250, "pulse_period_s": 0.45, "max_travel": 800, "phase_s": 1.4},
+    {"x": 0, "y_offset": 2360, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 260, "pulse_period_s": 0.45, "max_travel": 800, "phase_s": 0.9}
   ],
   "chunks": [
     {"type": "flat", "width_tiles": 3},

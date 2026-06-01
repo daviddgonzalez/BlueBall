@@ -22,7 +22,7 @@ class Cannon(Entity):
         interval_max_s: float | None = None,
         speed: float = 220.0,
         pulse_period_s: float = 0.6,
-        max_travel: float = 200.0,
+        max_travel: float = 500.0,
         projectile_radius: int = 10,
         phase_s: float = 0.0,
     ) -> None:
