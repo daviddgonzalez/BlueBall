@@ -633,14 +633,18 @@ def test_box_lava_gap_builds_segments_lava_and_box():
 
 
 def test_box_lava_gap_box_top_above_lava_surface():
+    from blueball.levels.chunks.flat import GROUND_Y
+    from blueball.levels.chunks.box_lava_gap import _PIT_DEPTH
     from blueball.entities.lava import Lava
     from blueball.entities.pushable_box import PushableBox
     w = World()
     CHUNK_REGISTRY["box_lava_gap"]().build(w, x_offset=0.0)
     lava = next(e for e in w.entities if isinstance(e, Lava))
     box = next(e for e in w.entities if isinstance(e, PushableBox))
-    box_top = box.body.position.y - box.size / 2
-    assert box_top < lava.position[1]  # smaller y = higher = above the lava
+    # When the box rests on the pit floor, its top must be above (smaller y
+    # than) the lava surface so standing on it is never fatal.
+    resting_top = (GROUND_Y + _PIT_DEPTH) - box.size
+    assert resting_top < lava.position[1]
 
 
 def test_box_lava_gap_box_rests_on_pit_floor():
@@ -654,5 +658,14 @@ def test_box_lava_gap_box_rests_on_pit_floor():
     for _ in range(360):
         w.step(1 / 120)
     assert box in w.entities                      # not destroyed by lava
-    floor_y = 600 + 72                            # base_y + default depth
+    from blueball.levels.chunks.flat import GROUND_Y
+    from blueball.levels.chunks.box_lava_gap import _PIT_DEPTH
+    floor_y = GROUND_Y + _PIT_DEPTH
     assert box.body.position.y <= floor_y - box.size / 2 + 3
+
+
+def test_box_lava_gap_random_params():
+    import random
+    from blueball.levels.chunks.box_lava_gap import BoxLavaGap
+    params = BoxLavaGap.random_params(random.Random(42))
+    assert 5 <= params["pit_tiles"] <= 7

@@ -82,6 +82,7 @@ class BoxLavaGap(Chunk):
         ))
 
         # Box starts on the approach ledge at the pit edge, ready to shove in.
+        # -2 px so the box doesn't clip the near pit wall; -1 y so it doesn't intersect the ledge segment.
         world.add_entity(PushableBox(
             world,
             position=(pit_left - self.box_size / 2 - 2, base_y - self.box_size / 2 - 1),
