@@ -26,4 +26,5 @@ from . import (  # noqa: F401
     charger_platform,
     spike_wall,
     cannon_lane,
+    box_lava_gap,
 )

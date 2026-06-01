@@ -603,3 +603,56 @@ def test_spike_wall_chunk_random_params():
     assert 2 <= params["spikes"] <= 4
     assert params["orientation"] in ("down", "left", "right")
     assert params["ceiling_y_offset"] in (128, 160, 200)
+
+
+# ---------------------------------------------------------------------------
+# box_lava_gap chunk
+# ---------------------------------------------------------------------------
+
+def test_box_lava_gap_in_registry_and_sampler():
+    from blueball.levels.chunks.box_lava_gap import BoxLavaGap
+    assert "box_lava_gap" in CHUNK_REGISTRY
+    assert BoxLavaGap.sampler_include is True
+    assert BoxLavaGap.difficulty == 3
+
+
+def test_box_lava_gap_builds_segments_lava_and_box():
+    from blueball.entities.lava import Lava
+    from blueball.entities.pushable_box import PushableBox
+    w = World()
+    chunk = CHUNK_REGISTRY["box_lava_gap"](approach_tiles=2, pit_tiles=6, exit_tiles=2)
+    width = chunk.build(w, x_offset=0.0)
+    assert width == 10 * TILE
+    segs = [s for s in w.space.shapes
+            if isinstance(s, pymunk.Segment) and s.body is w.space.static_body]
+    assert len(segs) == 5  # approach, exit, near wall, far wall, pit floor
+    lavas = [e for e in w.entities if isinstance(e, Lava)]
+    boxes = [e for e in w.entities if isinstance(e, PushableBox)]
+    assert len(lavas) == 1 and len(boxes) == 1
+    assert lavas[0].shape.sensor is True
+
+
+def test_box_lava_gap_box_top_above_lava_surface():
+    from blueball.entities.lava import Lava
+    from blueball.entities.pushable_box import PushableBox
+    w = World()
+    CHUNK_REGISTRY["box_lava_gap"]().build(w, x_offset=0.0)
+    lava = next(e for e in w.entities if isinstance(e, Lava))
+    box = next(e for e in w.entities if isinstance(e, PushableBox))
+    box_top = box.body.position.y - box.size / 2
+    assert box_top < lava.position[1]  # smaller y = higher = above the lava
+
+
+def test_box_lava_gap_box_rests_on_pit_floor():
+    import blueball.collision as collision
+    from blueball.entities.pushable_box import PushableBox
+    w = World()
+    collision.register(w.space, w)
+    CHUNK_REGISTRY["box_lava_gap"](pit_tiles=6).build(w, x_offset=0.0)
+    box = next(e for e in w.entities if isinstance(e, PushableBox))
+    box.body.velocity = (200, 0)  # shove it into the pit
+    for _ in range(360):
+        w.step(1 / 120)
+    assert box in w.entities                      # not destroyed by lava
+    floor_y = 600 + 72                            # base_y + default depth
+    assert box.body.position.y <= floor_y - box.size / 2 + 3
