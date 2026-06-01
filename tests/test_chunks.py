@@ -30,9 +30,12 @@ def test_registry_has_all_v1_chunks():
         assert name in CHUNK_REGISTRY
 
 
-def test_ability_pickup_chunk_sampler_included_and_uses_base_y():
+def test_ability_pickup_chunk_sampler_excluded_and_uses_base_y():
     from blueball.levels.chunks.ability_pickup import AbilityPickupChunk
-    assert AbilityPickupChunk.sampler_include is True
+    # Excluded from the Infinite Run sampler: double jump is already unlocked by
+    # the time the player reaches procedural Infinite Run, so pickups there are
+    # redundant. The base_y build support stays regardless.
+    assert AbilityPickupChunk.sampler_include is False
     w = World()
     base_y = 500.0
     width = AbilityPickupChunk(width_tiles=2, ability="double_jump", height=64).build(
@@ -178,14 +181,17 @@ def test_existing_chunks_difficulty_assigned():
 
 def test_structural_and_puzzle_chunks_excluded_from_sampler():
     """Goal is the run terminator; checkpoint/key/door are structural or
-    soft-lock-prone, so the random sampler must never emit them standalone."""
+    soft-lock-prone; ability_pickup is redundant once double jump is unlocked,
+    so the random sampler must never emit any of them standalone."""
     from blueball.levels.chunks.checkpoint import CheckpointChunk
     from blueball.levels.chunks.key import KeyChunk
     from blueball.levels.chunks.door import DoorChunk
+    from blueball.levels.chunks.ability_pickup import AbilityPickupChunk
     assert GoalChunk.sampler_include is False
     assert CheckpointChunk.sampler_include is False
     assert KeyChunk.sampler_include is False
     assert DoorChunk.sampler_include is False
+    assert AbilityPickupChunk.sampler_include is False
 
 
 def test_flat_random_params_returns_width_in_range():

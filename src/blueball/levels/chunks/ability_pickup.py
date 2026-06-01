@@ -13,6 +13,10 @@ from .flat import GROUND_Y
 
 @register_chunk("ability_pickup")
 class AbilityPickupChunk(Chunk):
+    # Excluded from the Infinite Run sampler: by the time the player reaches
+    # procedural Infinite Run, double jump is already unlocked, so spawning
+    # ability pickups there is redundant.
+    sampler_include: bool = False
     difficulty: int = 1
 
     def __init__(
