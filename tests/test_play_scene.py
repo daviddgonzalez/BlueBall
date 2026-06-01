@@ -266,3 +266,32 @@ def test_play_scene_streaming_builds_ahead(headless_pygame, tmp_save):
     for info in scene._built_chunks:
         # No chunk should end more than LOAD_BEHIND px behind the player
         assert info["x_end"] >= far_x - 800 - 1
+
+
+def test_play_scene_culls_box_lava_gap_entities(headless_pygame, tmp_save):
+    """A chunk-spawned static Lava + PushableBox must be diff-tracked and culled
+    once the player slides far past the chunk."""
+    from blueball.entities.lava import Lava
+    from blueball.entities.pushable_box import PushableBox
+    from blueball.levels.chunks.box_lava_gap import BoxLavaGap
+
+    data = {
+        "name": "Infinite", "background": "#202028", "ground": "#666c70",
+        "spawn": [80, 540], "chunks": [],
+    }
+    scene = PlayScene(headless_pygame, level_data=data, sampler_seed=42)
+    scene._materialize_chunk(BoxLavaGap(pit_tiles=6))
+    rec = scene._built_chunks[-1]
+    my_lava = next(e for e in rec["entities"] if isinstance(e, Lava))
+    my_box = next(e for e in rec["entities"] if isinstance(e, PushableBox))
+    assert my_lava in scene.world.entities
+    assert my_box in scene.world.entities
+
+    far = rec["x_end"] + 5000
+    scene.player.body.position = (far, 540)
+    scene._maintain_streaming(far)
+
+    assert my_lava not in scene.world.entities
+    assert my_box not in scene.world.entities
+    assert my_lava.body not in scene.world.space.bodies
+    assert my_box.body not in scene.world.space.bodies
