@@ -23,13 +23,13 @@
     {
       "id": 4,
       "subject": "Task 4: box_spring_relay chunk",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Two springs (ground + raised platform) + guide walls; the box relays from spring 1 up to spring 2 to reach a higher exit. Hand-authored only.\n\n**Files:** Create src/blueball/levels/chunks/box_spring_relay.py; Modify __init__.py; Test tests/test_chunks.py.\n\n**Acceptance Criteria:** registered + sampler_include False + difficulty 5; build adds 3 horizontal segs + 2 guide-wall verticals + two Springs + one PushableBox; width; base_y; spring2 higher than spring1.\n\n**Verify:** .venv/bin/python -m pytest tests/test_chunks.py -k box_spring_relay -v\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/box_spring_relay.py\", \"src/blueball/levels/chunks/__init__.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_chunks.py -k box_spring_relay -v\", \"acceptanceCriteria\": [\"registered, sampler_include False, difficulty 5\", \"2 Springs + box + 5 segs (2 verticals); width; base_y\", \"spring2 higher than spring1\"]}\n```"
     },
     {
       "id": 5,
       "subject": "Task 5: Wire spring puzzles into vertical_climb.json",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [3, 4],
       "description": "**Goal:** Add box_spring_trampoline and box_spring_relay chunk entries to vertical_climb.json.\n\n**Files:** Modify src/blueball/levels/vertical_climb.json; Test tests/test_loader.py.\n\n**Acceptance Criteria:** chunks include one trampoline + one relay; level loads via load_level without raising.\n\n**Verify:** .venv/bin/python -m pytest tests/test_loader.py -q\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/vertical_climb.json\", \"tests/test_loader.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_loader.py -q\", \"acceptanceCriteria\": [\"chunks include trampoline + relay\", \"vertical_climb loads\"]}\n```"
     },
