@@ -712,3 +712,39 @@ def test_box_spring_trampoline_box_launched_by_spring():
             launched = True
             break
     assert launched
+
+
+# ---------------------------------------------------------------------------
+# box_spring_relay chunk
+# ---------------------------------------------------------------------------
+
+def test_box_spring_relay_registry_and_flags():
+    from blueball.levels.chunks.box_spring_relay import BoxSpringRelay
+    assert "box_spring_relay" in CHUNK_REGISTRY
+    assert BoxSpringRelay.sampler_include is False
+    assert BoxSpringRelay.difficulty == 5
+
+
+def test_box_spring_relay_builds_two_springs_and_box():
+    from blueball.entities.spring import Spring
+    from blueball.entities.pushable_box import PushableBox
+    w = World()
+    width = CHUNK_REGISTRY["box_spring_relay"](width_tiles=8).build(w, x_offset=0.0)
+    assert width == 8 * TILE
+    springs = [e for e in w.entities if isinstance(e, Spring)]
+    boxes = [e for e in w.entities if isinstance(e, PushableBox)]
+    assert len(springs) == 2 and len(boxes) == 1
+    # Spring 2 is higher (smaller y) than spring 1.
+    ys = sorted(s.position[1] for s in springs)
+    assert ys[0] < ys[1]
+
+
+def test_box_spring_relay_has_guide_walls_and_platform():
+    w = World()
+    CHUNK_REGISTRY["box_spring_relay"](width_tiles=8).build(w, x_offset=0.0)
+    segs = [s for s in w.space.shapes
+            if isinstance(s, pymunk.Segment) and s.body is w.space.static_body]
+    # ground + raised platform + exit ledge + 2 guide walls = 5
+    assert len(segs) == 5
+    verticals = [s for s in segs if abs(s.a.x - s.b.x) < 1e-6]
+    assert len(verticals) == 2  # two guide walls

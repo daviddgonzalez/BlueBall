@@ -28,4 +28,5 @@ from . import (  # noqa: F401
     cannon_lane,
     box_lava_gap,
     box_spring_trampoline,
+    box_spring_relay,
 )
