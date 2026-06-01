@@ -98,14 +98,16 @@ class Charger(Entity):
             self.state = "charge"
             dir_x = 1.0 if dx > 0 else -1.0
             self.body.velocity = (self.charge_speed * dir_x, 0)
+            # A charge pursues the player past the patrol bounds; only patrol
+            # turnaround is bounded.
         else:
             self.state = "patrol"
             self._patrol_tick()
-        # Always respect bounds
-        if self.body.position.x <= self.left_bound:
-            self.body.velocity = (abs(self.body.velocity.x) or self.patrol_speed, 0)
-        elif self.body.position.x >= self.right_bound:
-            self.body.velocity = (-(abs(self.body.velocity.x) or self.patrol_speed), 0)
+            # Respect patrol bounds (turnaround) only while patrolling.
+            if self.body.position.x <= self.left_bound:
+                self.body.velocity = (abs(self.body.velocity.x) or self.patrol_speed, 0)
+            elif self.body.position.x >= self.right_bound:
+                self.body.velocity = (-(abs(self.body.velocity.x) or self.patrol_speed), 0)
 
     def _patrol_tick(self) -> None:
         # Maintain patrol speed magnitude in the current direction

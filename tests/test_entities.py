@@ -2,6 +2,7 @@ import pymunk
 import pytest
 
 from blueball import collision
+from blueball import config
 from blueball.abilities import Ability
 from blueball.entities.ability_pickup import AbilityPickup
 from blueball.entities.base import Entity
@@ -607,6 +608,47 @@ def test_charger_switches_to_charge_when_player_in_cone():
     for _ in range(10):
         w.step(1 / 60)
     assert c.state == "charge"
+
+
+def test_charger_charges_all_the_way_to_player_past_patrol_bound():
+    """A charging charger must reach the player even when the player stands
+    beyond the patrol bound (e.g. near the platform edge). The patrol bounds
+    must not cap an active charge."""
+    from blueball.entities.charger import Charger
+    from blueball.entities.player import Player
+    from blueball.agent import Action, Agent
+
+    class Idle(Agent):
+        def act(self, obs):
+            return Action.IDLE
+
+    w = World()
+    # Player sits to the right, just past the charger's right patrol bound
+    # (right_bound=350, player at 400), but well within sight_range and in the
+    # cone. No collision handler registered: we measure the raw charge reach,
+    # so the kinematic charger pushes the dynamic player on contact instead of
+    # killing it.
+    c = Charger(w, position=(300, 588), left_bound=200, right_bound=350,
+                facing="right", sight_range=300, sight_arc_deg=90,
+                charge_speed=180, patrol_speed=40)
+    w.add_entity(c)
+    p = Player(agent=Idle(), spawn_xy=(400, 588))
+    p.body.velocity = (0, 0)
+    w.add_entity(p)
+
+    closest_gap = float("inf")
+    for _ in range(120):
+        w.step(1 / 60)
+        closest_gap = min(closest_gap, abs(p.body.position.x - c.body.position.x))
+
+    # contact distance = charger radius (12) + ball radius. The charge must
+    # close to contact. Before the fix the patrol bound reversed the charge at
+    # x=350, leaving the gap stuck at ~50px (player at 400) — stopping short.
+    contact = 12 + config.BALL_RADIUS
+    assert closest_gap <= contact + 8, (
+        f"charger stopped short of player; closest gap was {closest_gap} "
+        f"(contact distance is {contact})"
+    )
 
 
 def test_charger_draw_does_not_render_after_death():
