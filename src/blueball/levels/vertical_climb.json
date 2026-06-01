@@ -13,6 +13,10 @@
   ],
   "chunks": [
     {"type": "flat", "width_tiles": 3},
+    {"type": "box_spring_trampoline", "width_tiles": 6, "impulse": 720, "exit_height": 220},
+    {"type": "flat", "width_tiles": 2},
+    {"type": "box_spring_relay", "width_tiles": 8, "platform_height": 200, "exit_height": 360},
+    {"type": "flat", "width_tiles": 2},
     {"type": "vertical_column", "width_tiles": 6, "steps": 32, "step_height": 86, "bottom_offset": 64, "platform_tiles": 2, "pattern": [0, 4, [1, 4], 2, 4, [0, 3], 1, 4]},
     {"type": "goal", "width_tiles": 2, "y_offset": 2730}
   ]
