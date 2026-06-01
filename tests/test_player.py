@@ -181,43 +181,41 @@ def test_player_boost_persists_while_grounded_until_jump_land_cycle():
     assert p._aerial_since_pickup is False
 
 
-def test_player_receive_boost_kicks_horizontal_velocity_toward_new_cap_when_moving_right():
-    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
-    p.body.velocity = (200.0, 50.0)
-    p.body.angular_velocity = 10.0
-    p.receive_boost(2.0)
-    # vx interpolates BOOST_PAD_KICK_FACTOR of the way from current to new cap
-    new_max_speed = config.MAX_LINEAR_SPEED * 2.0
-    new_max_ang = config.MAX_ANGULAR_VEL * 2.0
-    expected_vx = 200.0 + (new_max_speed - 200.0) * config.BOOST_PAD_KICK_FACTOR
-    expected_ang = 10.0 + (new_max_ang - 10.0) * config.BOOST_PAD_KICK_FACTOR
-    assert p.body.velocity.x == expected_vx
-    assert p.body.velocity.y == 50.0  # vy preserved
-    assert p.body.angular_velocity == expected_ang
-
-
-def test_player_receive_boost_kicks_horizontal_velocity_when_moving_left():
-    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
-    p.body.velocity = (-200.0, 50.0)
-    p.body.angular_velocity = -10.0
-    p.receive_boost(2.0)
-    new_max_speed = config.MAX_LINEAR_SPEED * 2.0
-    new_max_ang = config.MAX_ANGULAR_VEL * 2.0
-    expected_vx = -200.0 + (-new_max_speed - -200.0) * config.BOOST_PAD_KICK_FACTOR
-    expected_ang = -10.0 + (-new_max_ang - -10.0) * config.BOOST_PAD_KICK_FACTOR
-    assert p.body.velocity.x == expected_vx
-    assert p.body.velocity.y == 50.0
-    assert p.body.angular_velocity == expected_ang
-
-
-def test_player_receive_boost_no_bump_when_stationary():
+def test_player_receive_boost_kicks_in_pad_direction_right():
+    """A right-arrow pad launches you rightward (even from a standstill): the
+    instant kick follows the pad's arrow, not the player's current motion."""
     p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
     p.body.velocity = (0.0, 50.0)
     p.body.angular_velocity = 0.0
-    p.receive_boost(2.0)
-    assert p.body.velocity.x == 0.0
+    p.receive_boost(2.0, direction=1.0)
+    cap = config.MAX_LINEAR_SPEED * 2.0
+    cap_ang = config.MAX_ANGULAR_VEL * 2.0
+    assert p.body.velocity.x == cap * config.BOOST_PAD_KICK_FACTOR
+    assert p.body.velocity.x > 0
+    assert p.body.velocity.y == 50.0  # vy preserved
+    assert p.body.angular_velocity == cap_ang * config.BOOST_PAD_KICK_FACTOR
+
+
+def test_player_receive_boost_kicks_in_pad_direction_left():
+    """A left-arrow pad launches you leftward even while you're moving right."""
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.body.velocity = (300.0, 50.0)
+    p.body.angular_velocity = 18.0
+    p.receive_boost(2.0, direction=-1.0)
+    # Kicked toward the leftward cap: redirected left (vx and ang both drop).
+    assert p.body.velocity.x < 300.0
+    assert p.body.angular_velocity < 18.0
     assert p.body.velocity.y == 50.0
-    assert p.body.angular_velocity == 0.0
+
+
+def test_player_receive_boost_launches_stationary_player_along_arrow():
+    """A directional pad launches even a stationary player along its arrow."""
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.body.velocity = (0.0, 50.0)
+    p.body.angular_velocity = 0.0
+    p.receive_boost(2.0, direction=1.0)
+    assert p.body.velocity.x > 0.0  # kicked rightward from standstill
+    assert p.body.velocity.y == 50.0
     assert p._boost_multiplier == 2.0
 
 
@@ -225,7 +223,8 @@ def test_player_receive_boost_does_not_slow_already_fast_player():
     p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
     overshoot = config.MAX_LINEAR_SPEED * 3.0
     p.body.velocity = (overshoot, 0.0)
-    p.receive_boost(2.0)
+    # Right-arrow pad while already faster-than-cap rightward: kick must not slow.
+    p.receive_boost(2.0, direction=1.0)
     assert p.body.velocity.x == overshoot
 
 
@@ -275,6 +274,28 @@ def test_player_receive_spring_applies_upward_impulse():
     # pymunk y-down: upward velocity is negative
     # Player mass is 1.0; impulse = 400 * 1.0 = 400 => delta-v = -400 y
     assert p.body.velocity.y == -400.0
+
+
+def test_player_receive_spring_is_consistent_regardless_of_incoming_velocity():
+    """The spring sets a floor launch speed rather than adding an impulse, so the
+    bounce is the same whether you fall fast onto it or walk on. An already-faster
+    upward motion is preserved (the spring never slows a strong rise)."""
+    launch = 600.0
+    # Falling fast onto the spring.
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.body.velocity = (0, 500)
+    p.receive_spring(impulse=launch)
+    assert p.body.velocity.y == -launch
+    # Walking on with ~zero vertical speed.
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.body.velocity = (0, 0)
+    p.receive_spring(impulse=launch)
+    assert p.body.velocity.y == -launch
+    # Already rising faster than the launch -> keep the faster rise.
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.body.velocity = (0, -900)
+    p.receive_spring(impulse=launch)
+    assert p.body.velocity.y == -900
 
 
 def test_add_entity_wires_world_reference():

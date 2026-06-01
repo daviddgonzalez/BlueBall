@@ -112,13 +112,14 @@ class Player(Entity):
         return bool(self.keys_held & (1 << key_id))
 
     def receive_spring(self, impulse: float) -> None:
-        """Vertical upward impulse, mass-scaled so the resulting delta-v
-        is the same regardless of body mass. Pymunk y-down → up is -y.
-        World-frame so the ball's rotation doesn't twist the impulse into
-        a horizontal component opposite the roll direction."""
-        self.body.apply_impulse_at_world_point(
-            (0, -impulse * self.body.mass), self.body.position
-        )
+        """Set a floor upward launch speed instead of adding an impulse, so the
+        bounce is identical regardless of incoming velocity (an additive impulse
+        made a fast-falling ball barely bounce and a rising ball over-bounce).
+        `impulse` is the target launch speed in px/s. An already-faster upward
+        motion is kept — the spring never slows a strong rise. Pymunk y-down →
+        up is -y; vy is the more-negative of the current rise and -launch."""
+        vx, vy = self.body.velocity
+        self.body.velocity = (vx, min(vy, -impulse))
         # A spring launch is a "landing" — refresh the air jump so the double
         # jump works off a spring even though it never registers as grounded.
         self.jump_ctrl.refresh_air_jumps()
@@ -128,37 +129,42 @@ class Player(Entity):
         stomping an enemy) that doesn't produce a sustained 'grounded' tick."""
         self.jump_ctrl.refresh_air_jumps()
 
-    def receive_boost(self, multiplier: float) -> None:
-        """Apply a boost-pad's multiplier, take-the-max'd against any active
-        boost. Arms "ends on next landing" tracking: if we're already airborne
-        when the boost lands, the next grounded tick ends it; if we're grounded
-        we have to jump and land before it ends.
+    def receive_boost(self, multiplier: float, direction: float = 1.0) -> None:
+        """Activate a boost-pad's multiplier (take-the-max'd against any active
+        boost) and apply an instant directional kick along the pad's arrow.
 
-        Also snaps horizontal velocity (and matching angular velocity) up to
-        the new cap in the direction of current motion, so the boost feels
-        immediate instead of waiting for ground force to push the ball up to
-        the higher cap.
+        `direction` is the pad's arrow: +1 launches right, -1 launches left. The
+        kick is keyed on the pad direction, NOT the player's current motion, so a
+        pad always launches you the way its arrow points — even from a standstill
+        or against your current velocity. It closes BOOST_PAD_KICK_FACTOR of the
+        gap to the raised cap and never pulls you back below your current speed in
+        the pad's direction (so a same-direction overspeed is preserved). Angular
+        velocity is kicked in lockstep so the ball doesn't visibly slip.
+
+        Fires on EVERY touch (not just when the multiplier increases) so re-firing
+        a pad is never dead. Re-arms "ends on next landing" tracking each touch.
         """
         # Landing on a boost pad refreshes the air jump like any landing.
         self.jump_ctrl.refresh_air_jumps()
-        if multiplier > self._boost_multiplier:
-            self._boost_multiplier = multiplier
-            self._aerial_since_pickup = not self.grounded
-            vx, vy = self.body.velocity
-            ang = self.body.angular_velocity
-            new_max_speed = config.MAX_LINEAR_SPEED * multiplier
-            new_max_ang = config.MAX_ANGULAR_VEL * multiplier
-            kick = config.BOOST_PAD_KICK_FACTOR
-            if vx > 0:
-                target_vx = vx + (new_max_speed - vx) * kick
-                target_ang = ang + (new_max_ang - ang) * kick
-                self.body.velocity = (max(vx, target_vx), vy)
-                self.body.angular_velocity = max(ang, target_ang)
-            elif vx < 0:
-                target_vx = vx + (-new_max_speed - vx) * kick
-                target_ang = ang + (-new_max_ang - ang) * kick
-                self.body.velocity = (min(vx, target_vx), vy)
-                self.body.angular_velocity = min(ang, target_ang)
+        self._boost_multiplier = max(multiplier, self._boost_multiplier)
+        self._aerial_since_pickup = not self.grounded
+
+        mult = self._boost_multiplier
+        cap = config.MAX_LINEAR_SPEED * mult
+        cap_ang = config.MAX_ANGULAR_VEL * mult
+        kick = config.BOOST_PAD_KICK_FACTOR
+        vx, vy = self.body.velocity
+        ang = self.body.angular_velocity
+        if direction >= 0:
+            target_vx = vx + (cap - vx) * kick
+            target_ang = ang + (cap_ang - ang) * kick
+            self.body.velocity = (max(vx, target_vx), vy)
+            self.body.angular_velocity = max(ang, target_ang)
+        else:
+            target_vx = vx + (-cap - vx) * kick
+            target_ang = ang + (-cap_ang - ang) * kick
+            self.body.velocity = (min(vx, target_vx), vy)
+            self.body.angular_velocity = min(ang, target_ang)
 
     def _update_boost(self, grounded: bool) -> None:
         """Per-tick: if a boost is active, track aerial state and clear on the
