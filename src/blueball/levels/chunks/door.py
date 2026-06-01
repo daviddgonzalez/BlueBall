@@ -8,6 +8,11 @@ from ...entities.door import Door
 from .base import Chunk, TILE, register_chunk
 from .flat import GROUND_Y
 
+# Top of the playfield. A locked door fills only its (short) opening near the
+# ground; the wall above seals everything from the door's top up to here so the
+# player cannot jump over the gate.
+CEILING_Y = 0
+
 
 @register_chunk("door")
 class DoorChunk(Chunk):
@@ -39,10 +44,23 @@ class DoorChunk(Chunk):
         )
         seg.friction = 1.0
         world.space.add(seg)
+        cx = x_offset + w / 2
         world.add_entity(Door(
             world,
-            position=(x_offset + w / 2, GROUND_Y),
+            position=(cx, GROUND_Y),
             height=self.door_height,
             key_id=self.key_id,
         ))
+        # Permanent wall sealing the gap above the door opening. This is static
+        # geometry (not part of the Door entity, which removes only its own
+        # shapes when it opens), so the gate stays closed above the doorway and
+        # the player must use the key rather than jumping over.
+        wall = pymunk.Segment(
+            world.space.static_body,
+            (cx, GROUND_Y - self.door_height),
+            (cx, CEILING_Y),
+            4,
+        )
+        wall.friction = 1.0
+        world.space.add(wall)
         return w

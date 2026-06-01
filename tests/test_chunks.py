@@ -383,6 +383,38 @@ def test_door_chunk_key_id_stored():
     assert doors[0].key_id == 4
 
 
+def test_door_chunk_adds_wall_above_door():
+    """A locked door must be a true gate: a permanent static wall fills the
+    space from the top of the door up to the ceiling so the player cannot
+    simply jump over the (short) door opening."""
+    import pymunk
+    from blueball.levels.chunks.base import CHUNK_REGISTRY, TILE
+    from blueball.levels.chunks.flat import GROUND_Y
+    from blueball.entities.door import Door
+    w = World()
+    chunk = CHUNK_REGISTRY["door"](width_tiles=2, key_id=0, height_tiles=4)
+    chunk.build(w, x_offset=0.0)
+
+    cx = 2 * TILE / 2
+    door_top = GROUND_Y - 4 * 32
+    walls = [
+        s for s in w.space.static_body.shapes
+        if isinstance(s, pymunk.Segment)
+        and abs(s.a.x - cx) < 1 and abs(s.b.x - cx) < 1  # vertical, at door center
+    ]
+    assert walls, "expected a vertical wall segment above the door"
+    wall = walls[0]
+    bottom, top = max(wall.a.y, wall.b.y), min(wall.a.y, wall.b.y)
+    assert abs(bottom - door_top) < 1, "wall should start at the door's top"
+    assert top <= 0, "wall should reach the ceiling"
+
+    # The wall is permanent static geometry, NOT part of the Door entity
+    # (the Door removes only its own shapes when it opens), so the gate
+    # stays sealed above the opening forever.
+    door = next(e for e in w.entities if isinstance(e, Door))
+    assert wall not in door.shapes
+
+
 # ---------------------------------------------------------------------------
 # SwingingHazardChunk
 # ---------------------------------------------------------------------------
