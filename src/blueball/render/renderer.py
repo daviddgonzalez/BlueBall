@@ -104,8 +104,8 @@ class Renderer:
         points = [(sx, sy - r), (sx + r, sy), (sx, sy + r), (sx - r, sy)]
         pygame.draw.polygon(self.screen, color, points)
 
-    def draw_boost_pad(self, pos, width) -> None:
-        # Flat cyan strip with a forward-pointing chevron at the center.
+    def draw_boost_pad(self, pos, width, direction: float = 1.0) -> None:
+        # Flat cyan strip with a chevron pointing along the pad's launch arrow.
         x, y = pos
         hw = width / 2
         pad_h = config.BOOST_PAD_THICKNESS / 2
@@ -115,10 +115,11 @@ class Renderer:
         p4 = self._w2s((x - hw, y + pad_h))
         pygame.draw.polygon(self.screen, _BOOST_PAD_COLOR, [p1, p2, p3, p4])
         cx, cy = self._w2s((x, y))
+        s = -1 if direction < 0 else 1
         pygame.draw.polygon(
             self.screen,
             _BOOST_PAD_EDGE,
-            [(cx - 8, cy - 6), (cx + 6, cy), (cx - 8, cy + 6)],
+            [(cx - 8 * s, cy - 6), (cx + 6 * s, cy), (cx - 8 * s, cy + 6)],
         )
 
     def draw_goal(self, pos, width, height):

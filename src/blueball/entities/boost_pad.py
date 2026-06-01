@@ -21,12 +21,15 @@ class BoostPad(Entity):
         position: tuple[float, float],
         width: int = 128,
         multiplier: float = 2.0,
+        direction: str = "right",
     ) -> None:
         super().__init__()
         self._world = world
         self.position = position
         self.width = width
         self.multiplier = multiplier
+        # Arrow direction the pad launches the player: +1 right, -1 left.
+        self.direction = -1.0 if str(direction).lower() == "left" else 1.0
 
         self.body = pymunk.Body(body_type=pymunk.Body.STATIC)
         self.body.position = position
@@ -42,4 +45,4 @@ class BoostPad(Entity):
         self.shapes.append(shape)
 
     def draw(self, renderer, alpha: float) -> None:
-        renderer.draw_boost_pad(self.position, self.width)
+        renderer.draw_boost_pad(self.position, self.width, self.direction)

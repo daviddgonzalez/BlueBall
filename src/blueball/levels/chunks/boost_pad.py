@@ -22,9 +22,11 @@ class BoostPadChunk(Chunk):
         self,
         width_tiles: int = 4,
         multiplier: float = config.BOOST_PAD_DEFAULT_MULTIPLIER,
+        direction: str = "right",
     ) -> None:
         self.width_tiles = width_tiles
         self.multiplier = multiplier
+        self.direction = direction
 
     def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.width_tiles * TILE
@@ -45,5 +47,6 @@ class BoostPadChunk(Chunk):
             position=(x_offset + w / 2, base_y - config.BOOST_PAD_THICKNESS / 2),
             width=w,
             multiplier=self.multiplier,
+            direction=self.direction,
         ))
         return w

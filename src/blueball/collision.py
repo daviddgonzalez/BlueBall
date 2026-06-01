@@ -99,7 +99,9 @@ def register(space: pymunk.Space, world_ref) -> None:
             if not hasattr(entity, "multiplier"):
                 continue
             if player is not None:
-                player.receive_boost(entity.multiplier)
+                player.receive_boost(
+                    entity.multiplier, getattr(entity, "direction", 1.0)
+                )
         return False  # sensor — no physical response
 
     def on_patroller(arbiter, space_, data):
@@ -157,15 +159,15 @@ def register(space: pymunk.Space, world_ref) -> None:
         if player is not None:
             player.receive_spring(spring_entity.impulse)
         else:
-            # Non-player dynamic body (e.g. pushable box)
+            # Non-player dynamic body (e.g. pushable box). Set a floor launch
+            # speed (same as the player path) so the bounce is consistent
+            # regardless of incoming velocity or body mass.
             for shape in arbiter.shapes:
                 if shape.collision_type == CT_SPRING:
                     continue
                 if shape.body.body_type == pymunk.Body.DYNAMIC:
-                    shape.body.apply_impulse_at_world_point(
-                        (0, -spring_entity.impulse * shape.body.mass),
-                        shape.body.position,
-                    )
+                    bvx, bvy = shape.body.velocity
+                    shape.body.velocity = (bvx, min(bvy, -spring_entity.impulse))
         return False  # sensor — no physical response
 
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_SPRING, begin=on_spring)

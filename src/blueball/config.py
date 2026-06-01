@@ -84,9 +84,10 @@ BOOST_PAD_THICKNESS = 16  # px — how thick the floor strip is in world units
 # (airborne after a bump/launch) still triggers the boost instead of missing it.
 BOOST_PAD_CATCH_HEIGHT = 28
 BOOST_PAD_DEFAULT_MULTIPLIER = 2.0
-# Fraction of the (target - current) velocity gap closed by the immediate
-# kick at pickup time. 1.0 = snap to the new cap; 0.5 = halve the kick.
-BOOST_PAD_KICK_FACTOR = 0.5
+# Fraction of the (directional cap - current) velocity gap closed by the
+# instant kick at pickup time. The kick is applied along the pad's arrow
+# direction. 1.0 = snap to the new cap; lower = gentler launch.
+BOOST_PAD_KICK_FACTOR = 0.3
 
 # Phase 3 chunks
 ICE_FLOOR_FRICTION = 0.05

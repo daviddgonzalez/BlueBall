@@ -64,11 +64,15 @@ def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
         from ..entities.cannon import Cannon
         from .chunks.flat import GROUND_Y
         for c in data["cannons"]:
+            imin = c.get("interval_min_s")
+            imax = c.get("interval_max_s")
             world.add_entity(Cannon(
                 world,
                 position=(float(c["x"]), GROUND_Y - float(c.get("y_offset", 0))),
                 direction=c.get("dir", "right"),
                 interval_s=float(c.get("interval_s", 2.0)),
+                interval_min_s=float(imin) if imin is not None else None,
+                interval_max_s=float(imax) if imax is not None else None,
                 speed=float(c.get("speed", 220.0)),
                 pulse_period_s=float(c.get("pulse_period_s", 0.6)),
                 max_travel=float(c.get("max_travel", 200.0)),
