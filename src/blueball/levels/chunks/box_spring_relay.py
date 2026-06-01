@@ -60,7 +60,7 @@ class BoxSpringRelay(Chunk):
         seg((x_offset, base_y), (x_offset + w, base_y))
 
         # Spring 1 near the left, on the ground.
-        s1_cx = x_offset + 1.5 * TILE
+        s1_cx = x_offset + 2.5 * TILE
         world.add_entity(Spring(
             world, position=(s1_cx, base_y - 8), width=2 * TILE, impulse=self.impulse1
         ))
@@ -81,10 +81,13 @@ class BoxSpringRelay(Chunk):
         seg((x_offset, base_y), (x_offset, base_y - self.wall_height))
         seg((x_offset + w, base_y), (x_offset + w, base_y - self.wall_height))
 
-        # Box starts just right of spring 1, ready to shove onto it.
+        # Box starts just LEFT of spring 1's sensor (clear of it, so the spring
+        # doesn't fire at spawn). The player pushes it RIGHT onto spring 1, which
+        # launches it rightward toward spring 2.
+        box_cx = s1_cx - TILE - self.box_size / 2 - 4  # right edge 4px left of sensor
         world.add_entity(PushableBox(
             world,
-            position=(s1_cx + TILE, base_y - self.box_size / 2 - 1),
+            position=(box_cx, base_y - self.box_size / 2 - 1),
             size=self.box_size,
             mass=self.box_mass,
         ))

@@ -748,3 +748,19 @@ def test_box_spring_relay_has_guide_walls_and_platform():
     assert len(segs) == 5
     verticals = [s for s in segs if abs(s.a.x - s.b.x) < 1e-6]
     assert len(verticals) == 2  # two guide walls
+
+
+def test_box_spring_relay_box_does_not_self_launch_at_spawn():
+    """The box must NOT overlap spring 1 at spawn, or the spring would fire it
+    into the air at level load before the player pushes it."""
+    import blueball.collision as collision
+    from blueball.entities.pushable_box import PushableBox
+    w = World()
+    collision.register(w.space, w)
+    CHUNK_REGISTRY["box_spring_relay"](width_tiles=8).build(w, x_offset=0.0)
+    box = next(e for e in w.entities if isinstance(e, PushableBox))
+    for _ in range(10):
+        w.step(1 / 120)
+    # A spring launch would drive vy to roughly -impulse (<= -700). Resting on
+    # the ground keeps vy near zero. Assert it was NOT launched upward.
+    assert box.body.velocity.y > -100
