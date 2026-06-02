@@ -1,8 +1,37 @@
 import pickle
+from pathlib import Path
+
 import pymunk
 
 from blueball import config
 from blueball.world import World
+from blueball.entities.player import Player
+from blueball.agent import Action, Agent
+from blueball.collision import register
+from blueball.levels.loader import load_level
+from blueball.levels.sampler import ChunkSampler
+
+
+class _Scripted(Agent):
+    def __init__(self, actions):
+        self.actions = list(actions)
+        self.i = 0
+
+    def act(self, obs):
+        a = self.actions[self.i] if self.i < len(self.actions) else Action.IDLE
+        self.i += 1
+        return a
+
+
+def _run(level_source, actions, n_ticks=300):
+    w = World(seed=1)
+    register(w.space, world_ref=w)
+    meta = load_level(level_source, w)
+    p = Player(agent=_Scripted(actions), spawn_xy=tuple(meta.spawn))
+    w.add_entity(p)
+    for _ in range(n_ticks):
+        w.step(1 / 60)
+    return (p.body.position.x, p.body.position.y, p.body.velocity.x, p.body.velocity.y)
 
 
 def _add_test_ball(world: World, x: float, y: float) -> pymunk.Body:
@@ -61,3 +90,25 @@ def test_spiral_of_death_guard():
     body = _add_test_ball(w, 100, 100)
     substeps = w.step(10.0)  # would be 1200 substeps without the guard
     assert substeps == config.MAX_ACCUMULATED_STEPS
+
+
+def test_speed_run_world_determinism():
+    actions = [Action.RIGHT] * 600
+    path = Path(__file__).parent.parent / "src" / "blueball" / "levels" / "speed_run.json"
+    a = _run(path, actions)
+    b = _run(path, actions)
+    assert a == b
+
+
+def test_sampler_level_world_determinism():
+    actions = [Action.RIGHT] * 600
+    seq1 = list(ChunkSampler(seed=12345, target_chunks=80))
+    seq2 = list(ChunkSampler(seed=12345, target_chunks=80))
+    data = {
+        "name": "Det", "background": "#000000", "ground": "#111111",
+        "spawn": [80, 540], "chunks": seq1,
+    }
+    a = _run(data, actions)
+    data2 = {**data, "chunks": seq2}
+    b = _run(data2, actions)
+    assert a == b

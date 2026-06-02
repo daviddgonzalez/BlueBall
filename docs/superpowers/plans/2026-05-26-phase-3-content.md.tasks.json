@@ -1,0 +1,326 @@
+{
+  "planPath": "docs/superpowers/plans/2026-05-26-phase-3-content.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1: Chunk base \u2014 difficulty, sampler_include, random_params",
+      "status": "completed",
+      "description": "**Goal:** Add `difficulty: int = 0`, `sampler_include: bool = True`, and `random_params(cls, rng) -> dict` (default returns `{}`) to the `Chunk` base class.\n\n**Files:**\n- Modify: `src/blueball/levels/chunks/base.py`\n- Modify: `tests/test_chunks.py`\n\n**Acceptance Criteria:**\n- [ ] Chunk exposes class attrs difficulty=0 and sampler_include=True.\n- [ ] Chunk.random_params(rng) is a classmethod returning {}.\n- [ ] Test asserts defaults on Flat.\n\n**Verify:** `pytest -q tests/test_chunks.py -v`\n\n**Steps:** Failing test \u2192 add attrs + classmethod \u2192 run test \u2192 commit.\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/base.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \"pytest -q tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"Chunk has difficulty=0 default\", \"Chunk has sampler_include=True default\", \"Chunk.random_params(rng) returns {} by default\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Assign difficulty values to existing chunks",
+      "status": "completed",
+      "blockedBy": [
+        1
+      ],
+      "description": "**Goal:** Tag every existing chunk type with its difficulty and sampler_include per the spec tables; override random_params on chunks the sampler must randomize.\n\n**Files:**\n- Modify: all 10 existing chunk modules under `src/blueball/levels/chunks/`\n- Modify: `tests/test_chunks.py`\n\n**Acceptance Criteria:**\n- [ ] Difficulty and sampler_include match spec table.\n- [ ] random_params overridden on flat, gap, spike_pit, bump, boost_pad, falling_hazard, patrol_platform, stairs_up, stairs_down.\n- [ ] Tests assert one representative per tier and excludes for goal/ability_pickup.\n\n**Verify:** `pytest -q tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/flat.py\", \"src/blueball/levels/chunks/gap.py\", \"src/blueball/levels/chunks/spike_pit.py\", \"src/blueball/levels/chunks/patrol_platform.py\", \"src/blueball/levels/chunks/stairs.py\", \"src/blueball/levels/chunks/bump.py\", \"src/blueball/levels/chunks/falling_hazard.py\", \"src/blueball/levels/chunks/goal.py\", \"src/blueball/levels/chunks/ability_pickup.py\", \"src/blueball/levels/chunks/boost_pad.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \"pytest -q tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"Flat.difficulty=0\", \"Gap.difficulty=1\", \"SpikePit.difficulty=2\", \"FallingHazardChunk.difficulty=3\", \"GoalChunk.sampler_include=False\", \"AbilityPickupChunk.sampler_include=False\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Player API additions \u2014 keys, respawn, key methods, receive_spring",
+      "status": "completed",
+      "description": "**Goal:** Extend Player with keys_held bitfield, respawn_xy, collect_key, has_key, receive_spring. No motion changes.\n\n**Files:**\n- Modify: `src/blueball/entities/player.py`\n- Modify: `tests/test_player.py`\n\n**Acceptance Criteria:**\n- [ ] Player initializes keys_held=0, respawn_xy=None.\n- [ ] collect_key(id) sets bit; idempotent.\n- [ ] has_key(id) returns matching boolean.\n- [ ] receive_spring(impulse) applies (0, -impulse*mass) at body center.\n\n**Verify:** `pytest -q tests/test_player.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/player.py\", \"tests/test_player.py\"], \"verifyCommand\": \"pytest -q tests/test_player.py -v\", \"acceptanceCriteria\": [\"Player.keys_held=0 at init\", \"Player.respawn_xy=None at init\", \"collect_key sets bit\", \"has_key reads bit\", \"receive_spring applies mass-scaled upward impulse\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: World.add_entity wires entity._world",
+      "status": "completed",
+      "description": "**Goal:** World.add_entity sets entity._world = self so entities can query space.\n\n**Files:**\n- Modify: `src/blueball/world.py`\n- Modify: `tests/test_player.py`\n\n**Acceptance Criteria:**\n- [ ] After world.add_entity(p), p._world is world.\n- [ ] Existing entities unaffected.\n\n**Verify:** `pytest -q tests/ -v` (no regressions)\n\n```json:metadata\n{\"files\": [\"src/blueball/world.py\", \"tests/test_player.py\"], \"verifyCommand\": \"pytest -q tests/ -v\", \"acceptanceCriteria\": [\"Player._world == world after add_entity\"]}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Player ShapeFilter group for raycast self-exclusion",
+      "status": "completed",
+      "blockedBy": [
+        4
+      ],
+      "description": "**Goal:** Assign Player.shape a unique ShapeFilter group; expose Player._ray_filter for use in segment_query_first.\n\n**Files:**\n- Modify: `src/blueball/entities/player.py`\n- Modify: `tests/test_player.py`\n\n**Acceptance Criteria:**\n- [ ] `_PLAYER_RAY_GROUP = 1` constant defined.\n- [ ] Player.shape.filter.group == _PLAYER_RAY_GROUP.\n- [ ] Player._ray_filter is a ShapeFilter(group=_PLAYER_RAY_GROUP).\n- [ ] segment_query_first through the ball with _ray_filter returns None.\n\n**Verify:** `pytest -q tests/test_player.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/player.py\", \"tests/test_player.py\"], \"verifyCommand\": \"pytest -q tests/test_player.py -v\", \"acceptanceCriteria\": [\"Player shape filter group set\", \"_ray_filter excludes own shape\"]}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: Spike orientation parameter",
+      "status": "completed",
+      "description": "**Goal:** Add orientation parameter to Spike entity; vertex set rotates per orientation.\n\n**Files:**\n- Modify: `src/blueball/entities/spike.py`\n- Modify: `tests/test_entities.py`\n\n**Acceptance Criteria:**\n- [ ] Spike accepts orientation \u2208 {up, down, left, right}; default up.\n- [ ] Vertex set rotates so tip faces away from wall.\n- [ ] Invalid orientation raises ValueError.\n- [ ] Existing spike_pit tests still pass.\n\n**Verify:** `pytest -q tests/ -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/spike.py\", \"tests/test_entities.py\"], \"verifyCommand\": \"pytest -q tests/ -v\", \"acceptanceCriteria\": [\"Spike default orientation up\", \"down/left/right inverts tip\", \"invalid orientation raises ValueError\"]}\n```"
+    },
+    {
+      "id": 7,
+      "subject": "Task 7: New CT_* constants in collision.py",
+      "status": "completed",
+      "description": "**Goal:** Add 8 new collision-type constants: CT_ONE_WAY=8, CT_SPRING=9, CT_PUSHABLE=10, CT_SWINGING=11, CT_CHARGER=12, CT_CHECKPOINT=13, CT_KEY=14, CT_DOOR=15.\n\n**Files:**\n- Modify: `src/blueball/collision.py`\n- Modify: `tests/test_collision.py`\n\n**Acceptance Criteria:**\n- [ ] All 8 constants defined with correct values.\n- [ ] All distinct from each other and existing CTs.\n\n**Verify:** `pytest -q tests/test_collision.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/collision.py\", \"tests/test_collision.py\"], \"verifyCommand\": \"pytest -q tests/test_collision.py -v\", \"acceptanceCriteria\": [\"CT_ONE_WAY=8\", \"CT_DOOR=15\", \"all 8 constants distinct\"]}\n```"
+    },
+    {
+      "id": 8,
+      "subject": "Task 8: platform chunk \u2014 floating segment",
+      "status": "completed",
+      "blockedBy": [
+        1
+      ],
+      "description": "**Goal:** platform chunk places one static Segment at GROUND_Y - y_offset; no ground beneath.\n\n**Files:**\n- Create: `src/blueball/levels/chunks/platform.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: `tests/test_chunks.py`\n\n**Acceptance Criteria:**\n- [ ] platform registered.\n- [ ] Builds one segment at GROUND_Y - y_offset.\n- [ ] difficulty=0, sampler_include=True.\n- [ ] random_params returns width_tiles in [3,5] and y_offset in {64,96,128}.\n\n**Verify:** `pytest -q tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/platform.py\", \"src/blueball/levels/chunks/__init__.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \"pytest -q tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"platform in CHUNK_REGISTRY\", \"one segment at GROUND_Y - y_offset\", \"difficulty=0\"]}\n```"
+    },
+    {
+      "id": 9,
+      "subject": "Task 9: ice_floor chunk + Phase 3 config tunables",
+      "status": "completed",
+      "blockedBy": [
+        1
+      ],
+      "description": "**Goal:** ice_floor chunk + add Phase 3 tunables block to config.py (ICE_FLOOR_FRICTION, SPRING_DEFAULT_IMPULSE, CRUMBLE_DEFAULT_DELAY_S, MOVING_PLATFORM_*, CHARGER_DEFAULT_*, MAX_RAY_LEN, NUM_RAYS).\n\n**Files:**\n- Modify: `src/blueball/config.py`\n- Create: `src/blueball/levels/chunks/ice_floor.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: `tests/test_chunks.py`\n\n**Acceptance Criteria:**\n- [ ] config.ICE_FLOOR_FRICTION=0.05 + other Phase 3 constants.\n- [ ] ice_floor registered, adds segment with low friction, difficulty=1.\n\n**Verify:** `pytest -q tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\", \"src/blueball/levels/chunks/ice_floor.py\", \"src/blueball/levels/chunks/__init__.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \"pytest -q tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"ICE_FLOOR_FRICTION=0.05\", \"ice_floor segment has low friction\", \"difficulty=1\"]}\n```"
+    },
+    {
+      "id": 10,
+      "subject": "Task 10: vertical_column chunk \u2014 stacked platforms macro",
+      "status": "completed",
+      "blockedBy": [
+        8
+      ],
+      "description": "**Goal:** Macro chunk placing N floating platforms alternating left/right at step_height intervals inside its slot.\n\n**Files:**\n- Create: `src/blueball/levels/chunks/vertical_column.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: `tests/test_chunks.py`\n\n**Acceptance Criteria:**\n- [ ] vertical_column registered, difficulty=2.\n- [ ] Builds N segments at GROUND_Y - (bottom_offset + i*step_height).\n- [ ] Even-i hug left, odd-i hug right.\n\n**Verify:** `pytest -q tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/vertical_column.py\", \"src/blueball/levels/chunks/__init__.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \"pytest -q tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"vertical_column places N segments\", \"alternating left/right\", \"difficulty=2\"]}\n```"
+    },
+    {
+      "id": 11,
+      "subject": "Task 11: one_way_platform \u2014 entity + chunk + pre_solve filter",
+      "status": "completed",
+      "blockedBy": [
+        7
+      ],
+      "description": "**Goal:** OneWayPlatform static segment with CT_ONE_WAY; pre_solve handler returns False when dynamic body velocity.y < 0.\n\n**Files:**\n- Create: `src/blueball/entities/one_way_platform.py`\n- Create: `src/blueball/levels/chunks/one_way_platform.py`\n- Modify: `src/blueball/collision.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: tests/test_entities.py, test_collision.py, test_chunks.py\n\n**Acceptance Criteria:**\n- [ ] OneWayPlatform shape has CT_ONE_WAY.\n- [ ] Rising body passes through; falling body lands.\n- [ ] Chunk registered, difficulty=1.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/one_way_platform.py\", \"src/blueball/levels/chunks/one_way_platform.py\", \"src/blueball/collision.py\", \"src/blueball/levels/chunks/__init__.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"pre_solve disables rising contact\", \"chunk registered\"]}\n```"
+    },
+    {
+      "id": 12,
+      "subject": "Task 12: Spring \u2014 entity + chunk + handler",
+      "status": "completed",
+      "blockedBy": [
+        3,
+        7
+      ],
+      "description": "**Goal:** Spring sensor strip launches any dynamic body upward via mass-scaled impulse on contact.\n\n**Files:**\n- Create: `src/blueball/entities/spring.py`\n- Create: `src/blueball/levels/chunks/spring.py`\n- Modify: `src/blueball/collision.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: tests/\n\n**Acceptance Criteria:**\n- [ ] Spring is sensor with CT_SPRING.\n- [ ] Player contact \u2192 receive_spring(impulse).\n- [ ] Other dynamic bodies receive mass-scaled impulse directly.\n- [ ] Re-triggerable.\n- [ ] Chunk difficulty=1.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_collision.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/spring.py\", \"src/blueball/levels/chunks/spring.py\", \"src/blueball/collision.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_collision.py -v\", \"acceptanceCriteria\": [\"spring launches player\", \"spring launches box mass-scaled\", \"re-triggerable\"]}\n```"
+    },
+    {
+      "id": 13,
+      "subject": "Task 13: Checkpoint \u2014 entity + chunk + handler",
+      "status": "completed",
+      "blockedBy": [
+        3,
+        7
+      ],
+      "description": "**Goal:** Checkpoint sensor sets player.respawn_xy on contact; never persisted to save.\n\n**Files:**\n- Create: `src/blueball/entities/checkpoint.py`\n- Create: `src/blueball/levels/chunks/checkpoint.py`\n- Modify: `src/blueball/collision.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: tests/\n\n**Acceptance Criteria:**\n- [ ] Checkpoint is sensor with CT_CHECKPOINT.\n- [ ] Contact sets player.respawn_xy to (checkpoint.x, GROUND_Y - BALL_RADIUS - 4).\n- [ ] No save-file write on contact.\n- [ ] Chunk sampler_include=False.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/checkpoint.py\", \"src/blueball/levels/chunks/checkpoint.py\", \"src/blueball/collision.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"checkpoint sets respawn_xy\", \"no save written on contact\", \"sampler_include=False\"]}\n```"
+    },
+    {
+      "id": 14,
+      "subject": "Task 14: CrumblingPlatform \u2014 entity + chunk",
+      "status": "completed",
+      "blockedBy": [
+        4
+      ],
+      "description": "**Goal:** Static platform starts a timer on first dynamic-body contact; removes its shape from space when timer expires. Removal in update(), not in collision callback.\n\n**Files:**\n- Create: `src/blueball/entities/crumbling_platform.py`\n- Create: `src/blueball/levels/chunks/crumbling_platform.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: tests/\n\n**Acceptance Criteria:**\n- [ ] CrumblingPlatform static segment.\n- [ ] AABB-overlap probe detects contact in update().\n- [ ] Removes after crumble_delay_s post-contact.\n- [ ] Chunk difficulty=2.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/crumbling_platform.py\", \"src/blueball/levels/chunks/crumbling_platform.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"crumbling platform removes after delay\", \"shape removed from space\"]}\n```"
+    },
+    {
+      "id": 15,
+      "subject": "Task 15: MovingPlatform \u2014 entity + chunk",
+      "status": "completed",
+      "description": "**Goal:** Kinematic body oscillating between waypoints on x or y axis at constant speed.\n\n**Files:**\n- Create: `src/blueball/entities/moving_platform.py`\n- Create: `src/blueball/levels/chunks/moving_platform.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: tests/\n\n**Acceptance Criteria:**\n- [ ] MovingPlatform has kinematic body and Segment shape.\n- [ ] Oscillates within range_px/2 of spawn.\n- [ ] axis \u2208 {x, y}; raises on invalid.\n- [ ] Chunk difficulty=2.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/moving_platform.py\", \"src/blueball/levels/chunks/moving_platform.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"moving platform oscillates\", \"position bounded by range_px\"]}\n```"
+    },
+    {
+      "id": 16,
+      "subject": "Task 16: PushableBox \u2014 entity + chunk",
+      "status": "completed",
+      "blockedBy": [
+        7
+      ],
+      "description": "**Goal:** PushableBox dynamic body with CT_PUSHABLE. Pymunk's default solid contact handles the push; no custom handler.\n\n**Files:**\n- Create: `src/blueball/entities/pushable_box.py`\n- Create: `src/blueball/levels/chunks/pushable_box.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: tests/\n\n**Acceptance Criteria:**\n- [ ] PushableBox is dynamic, CT_PUSHABLE, configurable mass.\n- [ ] Player rolling into box displaces it (box.x increases over time).\n- [ ] Chunk difficulty=2.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/pushable_box.py\", \"src/blueball/levels/chunks/pushable_box.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"box is dynamic\", \"player can push box laterally\"]}\n```"
+    },
+    {
+      "id": 17,
+      "subject": "Task 17: Key \u2014 entity + chunk + handler",
+      "status": "completed",
+      "blockedBy": [
+        3,
+        7
+      ],
+      "description": "**Goal:** Key sensor; on player contact sets bit in player.keys_held and removes itself.\n\n**Files:**\n- Create: `src/blueball/entities/key.py`\n- Create: `src/blueball/levels/chunks/key.py`\n- Modify: `src/blueball/collision.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: tests/\n\n**Acceptance Criteria:**\n- [ ] Key is sensor with CT_KEY and key_id attr.\n- [ ] Contact \u2192 player.collect_key(key.key_id), _collected=True.\n- [ ] Shape removed on next update tick.\n- [ ] Chunk sampler_include=False.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/key.py\", \"src/blueball/levels/chunks/key.py\", \"src/blueball/collision.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"key sets player.keys_held bit\", \"key removes itself after contact\"]}\n```"
+    },
+    {
+      "id": 18,
+      "subject": "Task 18: Door \u2014 entity + chunk + handler",
+      "status": "completed",
+      "blockedBy": [
+        3,
+        7
+      ],
+      "description": "**Goal:** Door solid Segment that opens when player has matching key.\n\n**Files:**\n- Create: `src/blueball/entities/door.py`\n- Create: `src/blueball/levels/chunks/door.py`\n- Modify: `src/blueball/collision.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: tests/\n\n**Acceptance Criteria:**\n- [ ] Door solid segment with CT_DOOR; is_open=False initially.\n- [ ] Without key: solid contact (handler returns True).\n- [ ] With key: handler sets _opening=True, returns False; shape removed in update().\n- [ ] Chunk sampler_include=False.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/door.py\", \"src/blueball/levels/chunks/door.py\", \"src/blueball/collision.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"door blocks without key\", \"door opens with key\"]}\n```"
+    },
+    {
+      "id": 19,
+      "subject": "Task 19: SwingingHazard \u2014 entity + chunk + handler",
+      "status": "completed",
+      "blockedBy": [
+        7
+      ],
+      "description": "**Goal:** Pendulum: static anchor + dynamic bob + PinJoint. Bob kills player on contact.\n\n**Files:**\n- Create: `src/blueball/entities/swinging_hazard.py`\n- Create: `src/blueball/levels/chunks/swinging_hazard.py`\n- Modify: `src/blueball/collision.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: tests/\n\n**Acceptance Criteria:**\n- [ ] anchor static, bob dynamic, PinJoint added to space.\n- [ ] Bob Circle has CT_SWINGING.\n- [ ] Bob contact \u2192 player.die().\n- [ ] Chunk difficulty=3.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/swinging_hazard.py\", \"src/blueball/levels/chunks/swinging_hazard.py\", \"src/blueball/collision.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"pendulum swings under gravity\", \"bob kills player on contact\"]}\n```"
+    },
+    {
+      "id": 20,
+      "subject": "Task 20: Charger \u2014 enemy with FOV + LOS",
+      "status": "completed",
+      "blockedBy": [
+        4,
+        7
+      ],
+      "description": "**Goal:** Kinematic enemy patrolling a bounded segment; charges at player when in FOV cone AND LOS clear. Top-stomp kills it; side contact kills player.\n\n**Files:**\n- Create: `src/blueball/entities/charger.py`\n- Create: `src/blueball/levels/chunks/charger_platform.py`\n- Modify: `src/blueball/collision.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: tests/\n\n**Acceptance Criteria:**\n- [ ] Patrols at patrol_speed within bounds.\n- [ ] State switches to charge when player in FOV cone + LOS clear.\n- [ ] Reverts to patrol on LOS loss / bound reached.\n- [ ] Top-stomp kills it (n.y \u2265 TOL).\n- [ ] Chunk difficulty=3.\n\n**Verify:** `pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/charger.py\", \"src/blueball/levels/chunks/charger_platform.py\", \"src/blueball/collision.py\"], \"verifyCommand\": \"pytest -q tests/test_entities.py tests/test_collision.py tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"charger patrols when no player\", \"charger switches to charge in FOV\", \"top-stomp kills charger\"]}\n```"
+    },
+    {
+      "id": 21,
+      "subject": "Task 21: spike_wall chunk",
+      "status": "completed",
+      "blockedBy": [
+        6
+      ],
+      "description": "**Goal:** spike_wall chunk places N oriented Spike entities along a wall.\n\n**Files:**\n- Create: `src/blueball/levels/chunks/spike_wall.py`\n- Modify: `src/blueball/levels/chunks/__init__.py`\n- Modify: `tests/test_chunks.py`\n\n**Acceptance Criteria:**\n- [ ] spike_wall registered, difficulty=2.\n- [ ] Places N Spike entities with given orientation.\n\n**Verify:** `pytest -q tests/test_chunks.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/chunks/spike_wall.py\", \"src/blueball/levels/chunks/__init__.py\", \"tests/test_chunks.py\"], \"verifyCommand\": \"pytest -q tests/test_chunks.py -v\", \"acceptanceCriteria\": [\"spike_wall places N oriented spikes\"]}\n```"
+    },
+    {
+      "id": 22,
+      "subject": "Task 22: HitType enum + enriched Observation dataclass",
+      "status": "completed",
+      "blockedBy": [
+        7
+      ],
+      "description": "**Goal:** Replace Observation dataclass with enriched shape. Add HitType IntEnum and _CT_TO_HITTYPE lookup. _observe stub returns new shape with placeholder values.\n\n**Files:**\n- Modify: `src/blueball/agent.py`\n- Modify: `src/blueball/entities/player.py`\n- Modify: `tests/test_player.py`\n\n**Acceptance Criteria:**\n- [ ] HitType IntEnum with MISS=0...DOOR=7.\n- [ ] _CT_TO_HITTYPE maps every existing CT to its category.\n- [ ] Observation has rays, ray_hit_types, vel, ang_vel, grounded, nearest_pickup, nearest_hazard, abilities, keys_held.\n- [ ] _observe returns new shape with stub zeros/Nones.\n\n**Verify:** `pytest -q tests/test_player.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/agent.py\", \"src/blueball/entities/player.py\", \"tests/test_player.py\"], \"verifyCommand\": \"pytest -q tests/test_player.py -v\", \"acceptanceCriteria\": [\"HitType enum complete\", \"Observation has all new fields\"]}\n```"
+    },
+    {
+      "id": 23,
+      "subject": "Task 23: Player._observe \u2014 raycasts + scalars + bitfields",
+      "status": "completed",
+      "blockedBy": [
+        3,
+        5,
+        22
+      ],
+      "description": "**Goal:** Populate enriched Observation from real raycasts, nearest-entity scans, abilities bitfield.\n\n**Files:**\n- Modify: `src/blueball/entities/player.py`\n- Modify: `tests/test_player.py`\n\n**Acceptance Criteria:**\n- [ ] 8 rays evenly spaced, from due-right counter-clockwise, normalized to MAX_RAY_LEN.\n- [ ] ray_hit_types derived from _CT_TO_HITTYPE.\n- [ ] nearest_pickup, nearest_hazard returned as world-frame deltas; pickup bucket {Collectible, AbilityPickup, BoostPad, Key, Spring, Checkpoint}, hazard bucket {Spike, FallingHazard, Patroller, SwingingHazard, Charger}.\n- [ ] abilities bitfield by Ability enum declaration order.\n\n**Verify:** `pytest -q tests/test_player.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/player.py\", \"tests/test_player.py\"], \"verifyCommand\": \"pytest -q tests/test_player.py -v\", \"acceptanceCriteria\": [\"raycasts hit nearby geometry\", \"nearest_pickup finds collectible\", \"abilities bit 0 set when DOUBLE_JUMP unlocked\"]}\n```"
+    },
+    {
+      "id": 24,
+      "subject": "Task 24: Loader accepts dict source",
+      "status": "completed",
+      "description": "**Goal:** load_level(source, world) accepts Path | str | dict.\n\n**Files:**\n- Modify: `src/blueball/levels/loader.py`\n- Modify: `tests/test_level_loader.py`\n\n**Acceptance Criteria:**\n- [ ] Path/str usage unchanged.\n- [ ] dict source builds without file I/O.\n\n**Verify:** `pytest -q tests/test_level_loader.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/loader.py\", \"tests/test_level_loader.py\"], \"verifyCommand\": \"pytest -q tests/test_level_loader.py -v\", \"acceptanceCriteria\": [\"load_level accepts dict\", \"existing path-based usage unchanged\"]}\n```"
+    },
+    {
+      "id": 25,
+      "subject": "Task 25: ChunkSampler \u2014 deterministic procedural emitter",
+      "status": "completed",
+      "blockedBy": [
+        1,
+        2,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+      ],
+      "description": "**Goal:** Deterministic sampler emitting chunk-dict sequence with soft difficulty ramp, periodic checkpoints, goal terminator.\n\n**Files:**\n- Create: `src/blueball/levels/sampler.py`\n- Create: `tests/test_sampler.py`\n\n**Acceptance Criteria:**\n- [ ] Two ChunkSampler(seed=N) instances yield identical sequences.\n- [ ] Sequence ends with one {type:goal}.\n- [ ] Every non-checkpoint/goal entry has sampler_include=True.\n- [ ] Last quartile avg difficulty > first quartile.\n- [ ] Checkpoints appear at progress indices N, 2N, ... per checkpoint_every.\n\n**Verify:** `pytest -q tests/test_sampler.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/sampler.py\", \"tests/test_sampler.py\"], \"verifyCommand\": \"pytest -q tests/test_sampler.py -v\", \"acceptanceCriteria\": [\"sampler deterministic per seed\", \"sequence ends with goal\", \"difficulty ramps with progress\"]}\n```"
+    },
+    {
+      "id": 26,
+      "subject": "Task 26: MenuScene + main.py entry",
+      "status": "completed",
+      "blockedBy": [
+        25,
+        27
+      ],
+      "description": "**Goal:** MenuScene with 5 entries; main.py starts in MenuScene; selecting builds and returns PlayScene.\n\n**Files:**\n- Create: `src/blueball/scenes/menu.py`\n- Modify: `main.py`\n- Create: `tests/test_menu_scene.py`\n\n**Acceptance Criteria:**\n- [ ] MenuScene lists 5 entries (Tutorial Hill, Vertical Climb, Speed Run, Maze, Infinite Run).\n- [ ] Up/Down + W/S move cursor; bounded.\n- [ ] Enter on normal level returns PlayScene with level_path.\n- [ ] Enter on Infinite Run returns PlayScene with level_data + sampler_seed.\n- [ ] Esc returns None.\n- [ ] main.py starts in MenuScene.\n\n**Verify:** `pytest -q tests/test_menu_scene.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/scenes/menu.py\", \"main.py\", \"tests/test_menu_scene.py\"], \"verifyCommand\": \"pytest -q tests/test_menu_scene.py -v\", \"acceptanceCriteria\": [\"5 menu entries\", \"infinite run wires sampler\", \"esc quits\"]}\n```"
+    },
+    {
+      "id": 27,
+      "subject": "Task 27: PlayScene updates \u2014 level_data, esc-to-menu, checkpoint respawn",
+      "status": "completed",
+      "blockedBy": [
+        3,
+        13,
+        24
+      ],
+      "description": "**Goal:** PlayScene accepts level_path OR level_data; returns to MenuScene on Esc and on level-complete; restores from respawn_xy on death.\n\n**Files:**\n- Modify: `src/blueball/scenes/play.py`\n- Modify: `tests/test_play_scene.py`\n\n**Acceptance Criteria:**\n- [ ] __init__(screen, level_path=None, level_data=None, sampler_seed=None); exactly one of path/data must be set.\n- [ ] _reset overrides player.body.position with _last_respawn_xy when set.\n- [ ] On death, snapshots respawn_xy before _reset.\n- [ ] On level_complete, sets _exit_to_menu, clears _last_respawn_xy.\n- [ ] handle_events returns MenuScene on _exit_to_menu or Esc.\n\n**Verify:** `pytest -q tests/test_play_scene.py -v`\n\n```json:metadata\n{\"files\": [\"src/blueball/scenes/play.py\", \"tests/test_play_scene.py\"], \"verifyCommand\": \"pytest -q tests/test_play_scene.py -v\", \"acceptanceCriteria\": [\"PlayScene accepts level_data\", \"esc returns MenuScene\", \"checkpoint respawn restores position\"]}\n```"
+    },
+    {
+      "id": 28,
+      "subject": "Task 28: Renderer additions for new entities",
+      "status": "completed",
+      "blockedBy": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "description": "**Goal:** Draw methods in Renderer for each new entity; entity.draw delegates. Flat-primitive style, no asset pipeline.\n\n**Files:**\n- Modify: `src/blueball/render/renderer.py`\n- Modify: each new entity module\n\n**Acceptance Criteria:**\n- [ ] All new entities have draw(renderer, alpha).\n- [ ] Spike.draw honors orientation.\n- [ ] App boots end-to-end without raising.\n\n**Verify:** `pytest -q tests/ -v` + manual smoke (`python main.py`)\n\n```json:metadata\n{\"files\": [\"src/blueball/render/renderer.py\", \"src/blueball/entities/\"], \"verifyCommand\": \"pytest -q tests/ -v\", \"acceptanceCriteria\": [\"all new entities draw without error\", \"spike honors orientation\"]}\n```"
+    },
+    {
+      "id": 29,
+      "subject": "Task 29: Vertical Climb level JSON",
+      "status": "completed",
+      "blockedBy": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        19,
+        28
+      ],
+      "description": "**Goal:** Hand-authored vertical_climb.json exercising vertical_column, platform, spring, moving_platform (y-axis), one_way_platform, crumbling_platform, checkpoint, swinging_hazard.\n\n**Files:**\n- Create: `src/blueball/levels/vertical_climb.json`\n- Modify: `tests/test_level_loader.py`\n\n**Acceptance Criteria:**\n- [ ] Loads via load_level without raising.\n- [ ] Smoke test confirms meta.name == 'Vertical Climb'.\n- [ ] Level is clearable in manual playtest (subjective).\n- [ ] Per Phase 2 memory: no auto-commit during feel-tuning \u2014 wait for explicit 'commit'.\n\n**Verify:** `pytest -q tests/test_level_loader.py -v` + manual playtest\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/vertical_climb.json\", \"tests/test_level_loader.py\"], \"verifyCommand\": \"pytest -q tests/test_level_loader.py -v\", \"acceptanceCriteria\": [\"loads cleanly\", \"smoke test passes\", \"clearable in manual play\"]}\n```"
+    },
+    {
+      "id": 30,
+      "subject": "Task 30: Speed Run level JSON",
+      "status": "completed",
+      "blockedBy": [
+        9,
+        14,
+        15,
+        28
+      ],
+      "description": "**Goal:** Hand-authored speed_run.json \u2014 momentum-focused, boost pads, ice floor, crumbling platforms over gaps.\n\n**Files:**\n- Create: `src/blueball/levels/speed_run.json`\n- Modify: `tests/test_level_loader.py`\n\n**Acceptance Criteria:**\n- [ ] Loads cleanly.\n- [ ] Uses boost_pad, ice_floor, crumbling_platform, moving_platform (x), bump, gap.\n- [ ] No auto-commit during feel-tuning.\n\n**Verify:** `pytest -q tests/test_level_loader.py -v` + manual playtest\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/speed_run.json\", \"tests/test_level_loader.py\"], \"verifyCommand\": \"pytest -q tests/test_level_loader.py -v\", \"acceptanceCriteria\": [\"loads cleanly\", \"smoke test passes\"]}\n```"
+    },
+    {
+      "id": 31,
+      "subject": "Task 31: Maze level JSON",
+      "status": "completed",
+      "blockedBy": [
+        10,
+        11,
+        13,
+        16,
+        17,
+        18,
+        20,
+        21,
+        28
+      ],
+      "description": "**Goal:** Hand-authored maze.json with at least 2 key+door pairs, pushable_box, charger_platform, boost_pad, one_way_platform, checkpoint, spike_wall.\n\n**Files:**\n- Create: `src/blueball/levels/maze.json`\n- Modify: `tests/test_level_loader.py`\n\n**Acceptance Criteria:**\n- [ ] Loads cleanly.\n- [ ] Smoke test passes.\n- [ ] No auto-commit during feel-tuning.\n\n**Verify:** `pytest -q tests/test_level_loader.py -v` + manual playtest\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/maze.json\", \"tests/test_level_loader.py\"], \"verifyCommand\": \"pytest -q tests/test_level_loader.py -v\", \"acceptanceCriteria\": [\"loads cleanly\", \"smoke test passes\"]}\n```"
+    },
+    {
+      "id": 32,
+      "subject": "Task 32: Determinism re-runs \u2014 speed_run + sampler level",
+      "status": "completed",
+      "blockedBy": [
+        25,
+        30
+      ],
+      "description": "**Goal:** Determinism guards for speed_run.json and a sampler-built level. Two World instances with identical seed + action stream produce identical Player state.\n\n**Files:**\n- Modify: `tests/test_world_determinism.py`\n\n**Acceptance Criteria:**\n- [ ] test_speed_run_world_determinism passes.\n- [ ] test_sampler_level_world_determinism passes.\n\n**Verify:** `pytest -q tests/test_world_determinism.py -v`\n\n```json:metadata\n{\"files\": [\"tests/test_world_determinism.py\"], \"verifyCommand\": \"pytest -q tests/test_world_determinism.py -v\", \"acceptanceCriteria\": [\"speed_run deterministic\", \"sampler-built level deterministic\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-05-27T21:10:10.608539+00:00"
+}

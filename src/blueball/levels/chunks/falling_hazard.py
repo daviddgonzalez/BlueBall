@@ -13,13 +13,19 @@ from .flat import GROUND_Y
 
 @register_chunk("falling_hazard")
 class FallingHazardChunk(Chunk):
+    difficulty: int = 3
+
+    @classmethod
+    def random_params(cls, rng) -> dict:
+        return {"width_tiles": rng.randint(3, 5), "hazard_height": rng.randint(160, 240)}
+
     def __init__(self, width_tiles: int = 4, hazard_height: int = 200) -> None:
         self.width_tiles = width_tiles
         self.hazard_height = hazard_height
 
-    def build(self, world, x_offset: float) -> float:
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.width_tiles * TILE
-        seg = pymunk.Segment(world.space.static_body, (x_offset, GROUND_Y), (x_offset + w, GROUND_Y), 5)
+        seg = pymunk.Segment(world.space.static_body, (x_offset, base_y), (x_offset + w, base_y), 5)
         seg.friction = 1.0
         world.space.add(seg)
 
@@ -38,7 +44,7 @@ class FallingHazardChunk(Chunk):
         world.add_entity(
             FallingHazard(
                 world,
-                position=(hazard_x, GROUND_Y - self.hazard_height),
+                position=(hazard_x, base_y - self.hazard_height),
                 trigger_x=trigger_x,
                 player_provider=find_player_body,
             )

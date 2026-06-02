@@ -1,0 +1,30 @@
+{
+  "name": "Speed Run",
+  "background": "#fed28b",
+  "ground": "#a17a3a",
+  "spawn": [80, 540],
+  "chunks": [
+    {"type": "flat", "width_tiles": 4},
+    {"type": "boost_pad", "width_tiles": 4, "multiplier": 2.0},
+    {"type": "flat", "width_tiles": 4},
+    {"type": "ice_floor", "width_tiles": 5},
+    {"type": "gap", "width_tiles": 3},
+    {"type": "crumbling_platform", "width_tiles": 2, "y_offset": 0, "crumble_delay_s": 0.4},
+    {"type": "crumbling_platform", "width_tiles": 2, "y_offset": 0, "crumble_delay_s": 0.4},
+    {"type": "gap", "width_tiles": 3},
+    {"type": "flat", "width_tiles": 3},
+    {"type": "bump", "width_tiles": 2, "height": 32},
+    {"type": "flat", "width_tiles": 2},
+    {"type": "boost_pad", "width_tiles": 3, "multiplier": 2.2},
+    {"type": "flat", "width_tiles": 4},
+    {"type": "spike_pit", "width_tiles": 3, "spikes": 3},
+    {"type": "flat", "width_tiles": 4},
+    {"type": "moving_platform", "width_tiles": 6, "length_tiles": 3, "axis": "x", "range_px": 200, "speed": 100, "y_offset": 0},
+    {"type": "falling_hazard", "width_tiles": 4, "hazard_height": 220},
+    {"type": "flat", "width_tiles": 4},
+    {"type": "patrol_platform", "length_tiles": 6, "patroller_speed": 80},
+    {"type": "boost_pad", "width_tiles": 4, "multiplier": 2.0},
+    {"type": "flat", "width_tiles": 4},
+    {"type": "goal"}
+  ]
+}

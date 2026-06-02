@@ -21,22 +21,28 @@ class BoostPad(Entity):
         position: tuple[float, float],
         width: int = 128,
         multiplier: float = 2.0,
+        direction: str = "right",
     ) -> None:
         super().__init__()
         self._world = world
         self.position = position
         self.width = width
         self.multiplier = multiplier
+        # Arrow direction the pad launches the player: +1 right, -1 left.
+        self.direction = -1.0 if str(direction).lower() == "left" else 1.0
 
         self.body = pymunk.Body(body_type=pymunk.Body.STATIC)
         self.body.position = position
         hw = width / 2
         hh = config.BOOST_PAD_THICKNESS / 2
-        shape = pymunk.Poly(self.body, [(-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)])
+        # Extend the sensor upward (toward -y) so a ball gliding just over the
+        # pad still triggers it; the visible strip stays at the pad surface.
+        catch = config.BOOST_PAD_CATCH_HEIGHT
+        shape = pymunk.Poly(self.body, [(-hw, -hh - catch), (hw, -hh - catch), (hw, hh), (-hw, hh)])
         shape.sensor = True
         shape.collision_type = CT_BOOST_PAD
         self.bodies.append(self.body)
         self.shapes.append(shape)
 
     def draw(self, renderer, alpha: float) -> None:
-        renderer.draw_boost_pad(self.position, self.width)
+        renderer.draw_boost_pad(self.position, self.width, self.direction)

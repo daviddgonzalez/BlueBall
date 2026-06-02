@@ -13,6 +13,12 @@ from .flat import GROUND_Y
 
 @register_chunk("ability_pickup")
 class AbilityPickupChunk(Chunk):
+    # Excluded from the Infinite Run sampler: by the time the player reaches
+    # procedural Infinite Run, double jump is already unlocked, so spawning
+    # ability pickups there is redundant.
+    sampler_include: bool = False
+    difficulty: int = 1
+
     def __init__(
         self,
         width_tiles: int = 2,
@@ -24,19 +30,23 @@ class AbilityPickupChunk(Chunk):
         self.width_tiles = width_tiles
         self.height = height
 
-    def build(self, world, x_offset: float) -> float:
+    @classmethod
+    def random_params(cls, rng) -> dict:
+        return {"ability": rng.choice([a.value for a in Ability])}
+
+    def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
         w = self.width_tiles * TILE
         seg = pymunk.Segment(
             world.space.static_body,
-            (x_offset, GROUND_Y),
-            (x_offset + w, GROUND_Y),
+            (x_offset, base_y),
+            (x_offset + w, base_y),
             5,
         )
         seg.friction = 1.0
         world.space.add(seg)
         world.add_entity(AbilityPickup(
             world,
-            position=(x_offset + w / 2, GROUND_Y - self.height),
+            position=(x_offset + w / 2, base_y - self.height),
             ability=self.ability,
         ))
         return w

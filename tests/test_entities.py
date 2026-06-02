@@ -2,6 +2,7 @@ import pymunk
 import pytest
 
 from blueball import collision
+from blueball import config
 from blueball.abilities import Ability
 from blueball.entities.ability_pickup import AbilityPickup
 from blueball.entities.base import Entity
@@ -144,3 +145,566 @@ def test_boost_pad_stores_multiplier_and_width():
     pad = BoostPad(World(), position=(50, 50), width=192, multiplier=1.7)
     assert pad.multiplier == 1.7
     assert pad.width == 192
+
+
+def test_spike_default_orientation_is_up():
+    w = World()
+    s = Spike(w, position=(0, 0), width=32, height=24)
+    assert s.orientation == "up"
+    hw = 16.0
+    verts = set(s.shapes[0].get_vertices())
+    assert verts == {(-hw, 0), (hw, 0), (0, -24)}
+
+
+def test_spike_orientation_down_inverts_tip():
+    w = World()
+    s = Spike(w, position=(0, 0), width=32, height=24, orientation="down")
+    assert s.orientation == "down"
+    hw = 16.0
+    verts = set(s.shapes[0].get_vertices())
+    assert verts == {(-hw, 0), (hw, 0), (0, 24)}
+
+
+def test_spike_orientation_left_and_right():
+    w = World()
+    hw = 16.0
+    left = Spike(w, position=(0, 0), width=32, height=24, orientation="left")
+    assert left.orientation == "left"
+    assert set(left.shapes[0].get_vertices()) == {(0, -hw), (0, hw), (-24, 0)}
+
+    right = Spike(w, position=(0, 0), width=32, height=24, orientation="right")
+    assert right.orientation == "right"
+    assert set(right.shapes[0].get_vertices()) == {(0, -hw), (0, hw), (24, 0)}
+
+
+def test_spike_invalid_orientation_raises():
+    w = World()
+    with pytest.raises(ValueError, match="orientation"):
+        Spike(w, position=(0, 0), width=32, height=24, orientation="diagonal")
+
+
+def test_one_way_platform_entity_has_correct_collision_type():
+    from blueball.entities.one_way_platform import OneWayPlatform
+    from blueball import collision as col
+    w = World()
+    p = OneWayPlatform(w, position=(100, 500), width=128)
+    assert p.shape.collision_type == col.CT_ONE_WAY
+    assert p.shape.body.body_type == pymunk.Body.STATIC
+    assert p.shape.friction == 1.0
+
+
+def test_spring_entity_is_sensor_with_ct_spring():
+    from blueball.entities.spring import Spring
+    from blueball import collision as col
+    w = World()
+    s = Spring(w, position=(100, 600), width=64, impulse=400.0)
+    assert s.shape.sensor is True
+    assert s.shape.collision_type == col.CT_SPRING
+
+
+def test_checkpoint_is_sensor_with_correct_collision_type():
+    from blueball.entities.checkpoint import Checkpoint
+    from blueball import collision as col
+    w = World()
+    c = Checkpoint(w, position=(100, 200), id=1)
+    w.add_entity(c)
+    assert c.shapes[0].sensor is True
+    assert c.shapes[0].collision_type == col.CT_CHECKPOINT
+
+
+def test_checkpoint_stores_id_and_default_radius():
+    from blueball.entities.checkpoint import Checkpoint
+    w = World()
+    c = Checkpoint(w, position=(50, 50), id=3)
+    assert c.id == 3
+    assert c.radius == 18
+    assert c.activated is False
+
+
+def test_checkpoint_custom_radius():
+    from blueball.entities.checkpoint import Checkpoint
+    w = World()
+    c = Checkpoint(w, position=(50, 50), id=5, radius=32)
+    assert c.radius == 32
+
+
+# ---------------------------------------------------------------------------
+# CrumblingPlatform
+# ---------------------------------------------------------------------------
+
+def test_crumbling_platform_is_static_segment_with_friction():
+    from blueball.entities.crumbling_platform import CrumblingPlatform
+    w = World()
+    cp = CrumblingPlatform(w, position=(100, 300), width=128, crumble_delay_s=1.0)
+    w.add_entity(cp)
+    assert cp.shape.body.body_type == pymunk.Body.STATIC
+    assert cp.shape.friction == 1.0
+
+
+def test_crumbling_platform_not_removed_with_no_contact():
+    """Without any dynamic body nearby, the platform stays in space."""
+    from blueball.entities.crumbling_platform import CrumblingPlatform
+    w = World()
+    cp = CrumblingPlatform(w, position=(100, 300), width=128, crumble_delay_s=0.5)
+    w.add_entity(cp)
+    # Step for well over the crumble delay — still no contact, so it stays
+    for _ in range(120):
+        w.step(1 / 60)
+    assert cp._removed is False
+    assert cp.shape in w.space.shapes
+
+
+def test_crumbling_platform_removes_after_contact_and_delay():
+    """A dynamic body overlapping the segment starts the timer; after
+    crumble_delay_s the shape is removed from space."""
+    from blueball.entities.crumbling_platform import CrumblingPlatform
+    w = World()
+    # Platform at y=300, centred at x=100, width=128
+    cp = CrumblingPlatform(w, position=(100, 300), width=128, crumble_delay_s=0.25)
+    w.add_entity(cp)
+
+    # Add a dynamic body whose AABB overlaps the platform segment
+    body = pymunk.Body(1, pymunk.moment_for_circle(1, 0, 16))
+    body.position = (100, 300)  # directly on top of segment
+    circle = pymunk.Circle(body, 16)
+    w.space.add(body, circle)
+
+    # Step long enough to exhaust the crumble delay
+    total = 0.0
+    while total < 1.0:
+        w.step(1 / 60)
+        total += 1 / 60
+
+    assert cp._removed is True
+    assert cp.shape not in w.space.shapes
+
+
+def test_crumbling_platform_contacted_flag_set_on_first_overlap():
+    from blueball.entities.crumbling_platform import CrumblingPlatform
+    w = World()
+    cp = CrumblingPlatform(w, position=(100, 300), width=128, crumble_delay_s=5.0)
+    w.add_entity(cp)
+
+    assert cp._contacted is False
+
+    body = pymunk.Body(1, pymunk.moment_for_circle(1, 0, 16))
+    body.position = (100, 300)
+    circle = pymunk.Circle(body, 16)
+    w.space.add(body, circle)
+
+    w.step(1 / 60)  # one step is enough to detect overlap
+    assert cp._contacted is True
+
+
+def test_crumbling_platform_update_is_noop_after_removal():
+    """After removal, update() must not raise and _removed stays True."""
+    from blueball.entities.crumbling_platform import CrumblingPlatform
+    w = World()
+    cp = CrumblingPlatform(w, position=(100, 300), width=128, crumble_delay_s=0.0)
+    w.add_entity(cp)
+
+    body = pymunk.Body(1, pymunk.moment_for_circle(1, 0, 16))
+    body.position = (100, 300)
+    circle = pymunk.Circle(body, 16)
+    w.space.add(body, circle)
+
+    # Force a removal by running enough steps
+    for _ in range(10):
+        w.step(1 / 60)
+
+    assert cp._removed is True
+    # Extra updates should be no-ops — no exception
+    cp.update(1 / 60)
+    cp.update(1 / 60)
+
+
+def test_moving_platform_oscillates_along_x():
+    from blueball.entities.moving_platform import MovingPlatform
+    w = World()
+    mp = MovingPlatform(w, position=(500, 500), length=64, axis="x", range_px=200, speed=120)
+    w.add_entity(mp)
+    spawn_x = mp.body.position.x
+    for _ in range(200):
+        w.step(1 / 60)
+    # After several seconds we expect to have moved and bounded
+    assert abs(mp.body.position.x - spawn_x) <= 100 + 1  # within range bound
+    assert mp.body.position.x != spawn_x  # actually moved
+
+
+def test_moving_platform_invalid_axis_raises():
+    from blueball.entities.moving_platform import MovingPlatform
+    w = World()
+    with pytest.raises(ValueError):
+        MovingPlatform(w, position=(0, 0), length=64, axis="z", range_px=100, speed=80)
+
+
+def test_moving_platform_oscillates_along_y():
+    from blueball.entities.moving_platform import MovingPlatform
+    w = World()
+    mp = MovingPlatform(w, position=(500, 500), length=64, axis="y", range_px=200, speed=120)
+    w.add_entity(mp)
+    spawn_y = mp.body.position.y
+    for _ in range(200):
+        w.step(1 / 60)
+    assert abs(mp.body.position.y - spawn_y) <= 100 + 1  # within range bound
+    assert mp.body.position.y != spawn_y  # actually moved
+
+
+# ---------------------------------------------------------------------------
+# PushableBox
+# ---------------------------------------------------------------------------
+
+def test_pushable_box_is_dynamic_with_ct_pushable():
+    from blueball.entities.pushable_box import PushableBox
+    from blueball import collision as col
+    w = World()
+    b = PushableBox(w, position=(100, 580), size=32, mass=0.5)
+    assert b.body.body_type == pymunk.Body.DYNAMIC
+    assert b.shape.collision_type == col.CT_PUSHABLE
+    assert b.body.mass == 0.5
+
+
+def test_player_pushes_box():
+    from blueball.entities.pushable_box import PushableBox
+    from blueball.entities.player import Player
+    from blueball.agent import Action, Agent
+    from blueball.collision import register
+
+    class Press(Agent):
+        def act(self, obs):
+            return Action.RIGHT
+
+    w = World()
+    register(w.space, world_ref=w)
+    # Ground floor under both
+    floor = pymunk.Segment(w.space.static_body, (-2000, 600), (2000, 600), 5)
+    floor.friction = 1.0
+    w.space.add(floor)
+    b = PushableBox(w, position=(200, 580), size=32, mass=0.5)
+    w.add_entity(b)
+    p = Player(agent=Press(), spawn_xy=(140, 580))
+    w.add_entity(p)
+    start_x = b.body.position.x
+    for _ in range(120):
+        w.step(1 / 60)
+    assert b.body.position.x > start_x + 5
+
+
+# ---------------------------------------------------------------------------
+# Key
+# ---------------------------------------------------------------------------
+
+def test_key_is_sensor_with_correct_collision_type():
+    from blueball.entities.key import Key
+    from blueball import collision as col
+    w = World()
+    k = Key(w, position=(100, 200), key_id=0)
+    w.add_entity(k)
+    assert k.shapes[0].sensor is True
+    assert k.shapes[0].collision_type == col.CT_KEY
+
+
+def test_key_stores_key_id_and_default_radius():
+    from blueball.entities.key import Key
+    w = World()
+    k = Key(w, position=(50, 50), key_id=2)
+    assert k.key_id == 2
+    assert k.radius == 18
+    assert k._collected is False
+
+
+def test_key_custom_radius():
+    from blueball.entities.key import Key
+    w = World()
+    k = Key(w, position=(50, 50), key_id=1, radius=32)
+    assert k.radius == 32
+
+
+def test_key_update_removes_shape_when_collected():
+    from blueball.entities.key import Key
+    w = World()
+    k = Key(w, position=(50, 50), key_id=0)
+    w.add_entity(k)
+    # Shape is in space initially
+    assert k.shapes[0] in w.space.shapes
+    k._collected = True
+    k.update(1 / 60)
+    assert k.shapes[0] not in w.space.shapes
+
+
+def test_key_update_noop_when_not_collected():
+    from blueball.entities.key import Key
+    w = World()
+    k = Key(w, position=(50, 50), key_id=0)
+    w.add_entity(k)
+    shape = k.shapes[0]
+    k.update(1 / 60)
+    assert shape in w.space.shapes
+
+
+# ---------------------------------------------------------------------------
+# Door
+# ---------------------------------------------------------------------------
+
+def test_door_is_static_segment_with_ct_door():
+    from blueball.entities.door import Door
+    from blueball import collision as col
+    w = World()
+    d = Door(w, position=(100, 500), height=128, key_id=0)
+    w.add_entity(d)
+    assert d.shapes[0].body.body_type == pymunk.Body.STATIC
+    assert d.shapes[0].collision_type == col.CT_DOOR
+
+
+def test_door_has_friction_one():
+    from blueball.entities.door import Door
+    w = World()
+    d = Door(w, position=(100, 500), height=128, key_id=1)
+    assert d.shapes[0].friction == 1.0
+
+
+def test_door_stores_key_id_and_default_flags():
+    from blueball.entities.door import Door
+    w = World()
+    d = Door(w, position=(50, 50), height=64, key_id=3)
+    assert d.key_id == 3
+    assert d.is_open is False
+    assert d._opening is False
+
+
+def test_door_update_removes_shape_when_opening():
+    from blueball.entities.door import Door
+    w = World()
+    d = Door(w, position=(100, 500), height=64, key_id=0)
+    w.add_entity(d)
+    assert d.shapes[0] in w.space.shapes
+    d._opening = True
+    d.update(1 / 60)
+    assert d.is_open is True
+    assert d.shapes[0] not in w.space.shapes
+
+
+def test_door_update_noop_when_not_opening():
+    from blueball.entities.door import Door
+    w = World()
+    d = Door(w, position=(100, 500), height=64, key_id=0)
+    w.add_entity(d)
+    shape = d.shapes[0]
+    d.update(1 / 60)
+    assert d.is_open is False
+    assert shape in w.space.shapes
+
+
+# ---------------------------------------------------------------------------
+# SwingingHazard
+# ---------------------------------------------------------------------------
+
+def test_swinging_hazard_constructs_anchor_and_bob():
+    from blueball.entities.swinging_hazard import SwingingHazard
+    from blueball import collision as col
+    w = World()
+    sh = SwingingHazard(
+        world=w,
+        anchor_pos=(200, 300),
+        rope_length=80,
+        bob_mass=2.0,
+        bob_radius=14,
+        initial_angle_deg=0.0,
+    )
+    assert sh.anchor_body.body_type == pymunk.Body.STATIC
+    assert sh.bob_body.body_type == pymunk.Body.DYNAMIC
+    assert sh.bob_body.mass == 2.0
+    assert sh.bob_shape.collision_type == col.CT_SWINGING
+    assert sh.bob_shape.friction == 0.5
+
+
+def test_swinging_hazard_bob_spawns_at_correct_offset():
+    """Bob position = anchor + (rope*sin(angle), rope*cos(angle)) in y-down coords."""
+    import math
+    from blueball.entities.swinging_hazard import SwingingHazard
+    w = World()
+    angle_deg = 30.0
+    rope = 100.0
+    anchor = (200, 300)
+    sh = SwingingHazard(
+        world=w,
+        anchor_pos=anchor,
+        rope_length=rope,
+        bob_mass=1.0,
+        bob_radius=14,
+        initial_angle_deg=angle_deg,
+    )
+    expected_x = anchor[0] + rope * math.sin(math.radians(angle_deg))
+    expected_y = anchor[1] + rope * math.cos(math.radians(angle_deg))
+    assert abs(sh.bob_body.position.x - expected_x) < 0.5
+    assert abs(sh.bob_body.position.y - expected_y) < 0.5
+
+
+def test_swinging_hazard_pin_joint_in_space():
+    """PinJoint must be added to the physics space via world.add_entity."""
+    from blueball.entities.swinging_hazard import SwingingHazard
+    w = World()
+    sh = SwingingHazard(
+        world=w,
+        anchor_pos=(300, 200),
+        rope_length=60,
+        bob_mass=1.5,
+        bob_radius=14,
+        initial_angle_deg=0.0,
+    )
+    w.add_entity(sh)
+    constraints = list(w.space.constraints)
+    assert len(constraints) == 1
+
+
+def test_swinging_hazard_moment_is_correct():
+    """moment = moment_for_circle(mass, 0, radius)."""
+    from blueball.entities.swinging_hazard import SwingingHazard
+    w = World()
+    mass = 2.0
+    radius = 14
+    sh = SwingingHazard(
+        world=w,
+        anchor_pos=(100, 100),
+        rope_length=50,
+        bob_mass=mass,
+        bob_radius=radius,
+        initial_angle_deg=0.0,
+    )
+    expected_moment = pymunk.moment_for_circle(mass, 0, radius)
+    assert abs(sh.bob_body.moment - expected_moment) < 1e-6
+
+
+# ---------------------------------------------------------------------------
+# Charger
+# ---------------------------------------------------------------------------
+
+def test_charger_patrols_when_player_absent():
+    from blueball.entities.charger import Charger
+    w = World()
+    c = Charger(w, position=(300, 588), left_bound=200, right_bound=400, facing="right", sight_range=200, sight_arc_deg=60, charge_speed=180, patrol_speed=40)
+    w.add_entity(c)
+    start_x = c.body.position.x
+    for _ in range(60):
+        w.step(1 / 60)
+    assert c.body.position.x != start_x
+    assert c.state == "patrol"
+
+
+def test_charger_switches_to_charge_when_player_in_cone():
+    from blueball.entities.charger import Charger
+    from blueball.entities.player import Player
+    from blueball.agent import Action, Agent
+
+    class Idle(Agent):
+        def act(self, obs):
+            return Action.IDLE
+
+    w = World()
+    c = Charger(w, position=(300, 588), left_bound=200, right_bound=600, facing="right", sight_range=300, sight_arc_deg=90, charge_speed=180, patrol_speed=40)
+    w.add_entity(c)
+    p = Player(agent=Idle(), spawn_xy=(400, 588))  # in the cone, to the right
+    w.add_entity(p)
+    for _ in range(10):
+        w.step(1 / 60)
+    assert c.state == "charge"
+
+
+def test_charger_charges_all_the_way_to_player_past_patrol_bound():
+    """A charging charger must reach the player even when the player stands
+    beyond the patrol bound (e.g. near the platform edge). The patrol bounds
+    must not cap an active charge."""
+    from blueball.entities.charger import Charger
+    from blueball.entities.player import Player
+    from blueball.agent import Action, Agent
+
+    class Idle(Agent):
+        def act(self, obs):
+            return Action.IDLE
+
+    w = World()
+    # Player sits to the right, just past the charger's right patrol bound
+    # (right_bound=350, player at 400), but well within sight_range and in the
+    # cone. No collision handler registered: we measure the raw charge reach,
+    # so the kinematic charger pushes the dynamic player on contact instead of
+    # killing it.
+    c = Charger(w, position=(300, 588), left_bound=200, right_bound=350,
+                facing="right", sight_range=300, sight_arc_deg=90,
+                charge_speed=180, patrol_speed=40)
+    w.add_entity(c)
+    p = Player(agent=Idle(), spawn_xy=(400, 588))
+    p.body.velocity = (0, 0)
+    w.add_entity(p)
+
+    closest_gap = float("inf")
+    for _ in range(120):
+        w.step(1 / 60)
+        closest_gap = min(closest_gap, abs(p.body.position.x - c.body.position.x))
+
+    # contact distance = charger radius (12) + ball radius. The charge must
+    # close to contact. Before the fix the patrol bound reversed the charge at
+    # x=350, leaving the gap stuck at ~50px (player at 400) — stopping short.
+    contact = 12 + config.BALL_RADIUS
+    assert closest_gap <= contact + 8, (
+        f"charger stopped short of player; closest gap was {closest_gap} "
+        f"(contact distance is {contact})"
+    )
+
+
+def test_charger_draw_does_not_render_after_death():
+    """After die(), draw() must return immediately without calling the renderer."""
+    from blueball.entities.charger import Charger
+
+    w = World()
+    c = Charger(w, position=(300, 588), left_bound=200, right_bound=400, facing="right")
+    w.add_entity(c)
+    c.die()
+
+    calls = []
+
+    class _SpyRenderer:
+        def draw_charger(self, *args, **kwargs):
+            calls.append(args)
+
+    c.draw(_SpyRenderer(), alpha=0.5)
+    assert calls == [], "draw_charger must not be called when Charger is dead"
+
+
+def test_swinging_hazard_exposes_position_equal_to_anchor():
+    """SwingingHazard.position must equal anchor_pos so _nearest_entity_delta
+    can read it without AttributeError."""
+    from blueball.entities.swinging_hazard import SwingingHazard
+
+    w = World()
+    anchor = (350, 250)
+    sh = SwingingHazard(
+        world=w,
+        anchor_pos=anchor,
+        rope_length=100,
+        bob_mass=2.0,
+        bob_radius=14,
+        initial_angle_deg=0.0,
+    )
+    assert hasattr(sh, "position"), "SwingingHazard must expose a .position attribute"
+    assert sh.position[0] == anchor[0]
+    assert sh.position[1] == anchor[1]
+
+
+def test_swinging_hazard_in_world_does_not_crash_player_observe():
+    """Loading a level with a SwingingHazard and running one physics tick must
+    not raise AttributeError in Player._observe / _nearest_entity_delta."""
+    import os
+    import importlib
+    from pathlib import Path
+    import pygame
+    import blueball
+    from blueball.scenes.play import PlayScene
+
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    pygame.display.init()
+    screen = pygame.display.set_mode((800, 600))
+    level_path = Path(blueball.__file__).parent / "levels" / "vertical_climb.json"
+    scene = PlayScene(screen, level_path=level_path)
+    # Must not raise AttributeError
+    scene.update(1 / 60)
+    pygame.display.quit()

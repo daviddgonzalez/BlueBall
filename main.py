@@ -1,10 +1,9 @@
 import sys
-from pathlib import Path
 
 import pygame
 
 from blueball import config
-from blueball.scenes.play import PlayScene
+from blueball.scenes.menu import MenuScene
 
 
 def main() -> int:
@@ -13,8 +12,7 @@ def main() -> int:
     pygame.display.set_caption("Blue Ball")
     clock = pygame.time.Clock()
 
-    level_path = Path(__file__).parent / "src" / "blueball" / "levels" / "tutorial_hill.json"
-    scene = PlayScene(screen, level_path)
+    scene = MenuScene(screen)
 
     while scene is not None:
         events = pygame.event.get()
