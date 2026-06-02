@@ -424,6 +424,67 @@ def test_trainer_rejects_zero_pop_size():
         train(pop_size=0, generations=2, level_path=_level_path(), max_steps=100)
 
 
+# ----- Infinite Run headless eval -----
+
+def test_evaluate_infinite_runs_headless_and_is_finite():
+    """A genome can be evaluated on a streamed Infinite Run seed with no level
+    file and no pygame — the headless training path."""
+    from blueball import config
+    from blueball.ai.trainer import evaluate_infinite
+    from blueball.ai.genome import random_genome
+    g = random_genome(np.random.default_rng(0))
+    idx, fit = evaluate_infinite((0, g, 1234, config.DEFAULT_SEED, 200))
+    assert idx == 0
+    assert np.isfinite(fit)
+
+
+def test_evaluate_infinite_is_deterministic_for_same_seeds():
+    """Same (sampler_seed, world_seed) → identical fitness: the reference-run
+    contract the GA relies on."""
+    from blueball.ai.trainer import evaluate_infinite
+    from blueball.ai.genome import random_genome
+    g = random_genome(np.random.default_rng(3))
+    _, f1 = evaluate_infinite((0, g, 99, 1, 250))
+    _, f2 = evaluate_infinite((0, g, 99, 1, 250))
+    assert f1 == f2
+
+
+def test_evaluate_infinite_different_seeds_build_different_terrain():
+    """Different sampler seeds should generally produce different fitness for
+    the same genome (terrain actually varies with the seed)."""
+    from blueball.ai.trainer import evaluate_infinite
+    from blueball.ai.genome import random_genome
+    g = random_genome(np.random.default_rng(5))
+    fits = {evaluate_infinite((0, g, s, 1, 300))[1] for s in (1, 2, 3, 4, 5)}
+    assert len(fits) > 1
+
+
+def test_train_on_infinite_seed_runs():
+    from blueball.ai.trainer import train
+    from blueball.ai.ftnn import GENOME_SIZE
+    result = train(
+        pop_size=6, generations=3, infinite_seed=7,
+        max_steps=250, ga_seed=0, world_seed=1,
+    )
+    assert len(result.history) == 3
+    assert result.best_genome.shape == (GENOME_SIZE,)
+    for entry in result.history:
+        assert np.isfinite(entry["best"])
+
+
+def test_train_rejects_both_level_and_infinite():
+    from blueball.ai.trainer import train
+    with pytest.raises(ValueError, match="exactly one"):
+        train(pop_size=4, generations=2, level_path=_level_path(),
+              infinite_seed=7, max_steps=100)
+
+
+def test_train_rejects_neither_level_nor_infinite():
+    from blueball.ai.trainer import train
+    with pytest.raises(ValueError, match="exactly one"):
+        train(pop_size=4, generations=2, max_steps=100)
+
+
 # ----- Task 8: TrainScene -----
 
 @pytest.fixture
