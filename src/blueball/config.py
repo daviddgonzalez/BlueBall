@@ -111,3 +111,12 @@ GA_MUTATION_RATE    = 0.1
 GA_MUTATION_SIGMA   = 0.1
 GA_TOURNAMENT_K     = 4
 GA_ELITISM          = 1
+
+# Reference seeds for reproducible training runs. Pinning these makes a run
+# fully deterministic: GA_SEED fixes evolution (population init, mutation,
+# crossover, tournament); INFINITE_RUN_SEED fixes the Infinite Run chunk
+# layout (the sampler_seed); world_seed (DEFAULT_SEED) fixes physics. Same
+# triple -> byte-identical best genome. Change these to train on a different
+# reference course.
+GA_SEED             = 0
+INFINITE_RUN_SEED   = 1234

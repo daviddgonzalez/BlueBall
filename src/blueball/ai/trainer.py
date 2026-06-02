@@ -143,6 +143,7 @@ def train(
     max_steps: int = config.MAX_STEPS,
     map_fn: Callable[[Callable, Iterable], Iterable] = map,
     on_generation: Callable[[int, np.ndarray, list[np.ndarray]], None] | None = None,
+    save_dir: Path | str | None = None,
 ) -> TrainingResult:
     """Run a GA training loop. Returns a TrainingResult.
 
@@ -156,6 +157,10 @@ def train(
     tournament). `world_seed` controls physics. For Infinite Run, `infinite_seed`
     fixes the chunk layout. Two runs with the same seeds produce byte-identical
     `best_genome`.
+
+    If `save_dir` is given, the running best genome is snapshotted there after
+    every generation (best_gen<NNN>.npy) and the final best + a run.json
+    metadata sidecar are written at the end. See `ai/persistence.py`.
     """
     if pop_size < 1:
         raise ValueError(f"train requires pop_size >= 1, got {pop_size}")
@@ -174,6 +179,11 @@ def train(
         eval_fn = evaluate_infinite
         def make_args(i):
             return (i, population[i], int(infinite_seed), world_seed, max_steps)
+
+    writer = None
+    if save_dir is not None:
+        from .persistence import TrainingRunWriter
+        writer = TrainingRunWriter(save_dir)
 
     ga_rng = np.random.default_rng(ga_seed)
     population: list[np.ndarray] = [random_genome(ga_rng) for _ in range(pop_size)]
@@ -201,6 +211,9 @@ def train(
             "min": float(fitnesses.min()),
         })
 
+        if writer is not None:
+            writer.save_generation(gen, best_genome)
+
         if on_generation is not None:
             on_generation(gen, best_genome, population)
 
@@ -211,6 +224,20 @@ def train(
             mutation_rate=config.GA_MUTATION_RATE,
             mutation_sigma=config.GA_MUTATION_SIGMA,
         )
+
+    if writer is not None:
+        writer.finalize(best_genome, {
+            "ga_seed": ga_seed,
+            "world_seed": world_seed,
+            "infinite_seed": infinite_seed,
+            "level_path": str(level_path) if level_path is not None else None,
+            "pop_size": pop_size,
+            "generations": generations,
+            "max_steps": max_steps,
+            "genome_size": int(GENOME_SIZE),
+            "best_fitness": float(best_fitness),
+            "history": history,
+        })
 
     return TrainingResult(
         history=history,
