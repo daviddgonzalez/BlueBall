@@ -24,7 +24,7 @@ class BoxSpringTrampoline(Chunk):
         self,
         width_tiles: int = 6,
         impulse: float = 720.0,
-        box_size: int = 36,
+        box_size: int = 58,
         box_mass: float = 0.5,
         exit_height: int = 220,   # exit ledge px above base_y (playtest-tuned)
         exit_tiles: int = 2,

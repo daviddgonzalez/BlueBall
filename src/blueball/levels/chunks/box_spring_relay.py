@@ -1,10 +1,10 @@
 """box_spring_relay chunk — push a box onto a ground spring; it arcs onto a
-second spring on a raised platform, which relaunches it higher, to reach an
-exit above the second spring. Guide walls constrain the box's arc.
+second spring on a raised platform, which relaunches it onto a wide landing
+platform fixed to the right wall. The box rests there as a step to climb out
+over the raised guide walls.
 
 The horizontal arc depends on the box's launch velocity; exact geometry is
-tuned by playtest (see plan Task 6). If it proves unsolvable after tuning,
-fall back to a trampoline variant.
+playtest-tuned.
 """
 
 from __future__ import annotations
@@ -30,11 +30,11 @@ class BoxSpringRelay(Chunk):
         platform_height: int = 200,   # spring-2 platform px above base_y
         relay_dx_tiles: int = 4,      # horizontal offset of spring 2
         platform_tiles: int = 2,
-        box_size: int = 36,
+        box_size: int = 58,
         box_mass: float = 0.5,
-        exit_height: int = 360,       # exit ledge px above base_y (tuned)
-        exit_tiles: int = 2,
-        wall_height: int = 240,       # guide-wall height (tuned)
+        landing_height: int = 300,    # wide box-landing platform px above base_y
+        landing_tiles: int = 6,       # width of that platform (it's "wide")
+        wall_height: int = 360,       # guide-wall height (raised to box the area in)
     ) -> None:
         self.width_tiles = width_tiles
         self.impulse1 = impulse1
@@ -44,8 +44,8 @@ class BoxSpringRelay(Chunk):
         self.platform_tiles = platform_tiles
         self.box_size = box_size
         self.box_mass = box_mass
-        self.exit_height = exit_height
-        self.exit_tiles = exit_tiles
+        self.landing_height = landing_height
+        self.landing_tiles = landing_tiles
         self.wall_height = wall_height
 
     def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
@@ -60,7 +60,7 @@ class BoxSpringRelay(Chunk):
         seg((x_offset, base_y), (x_offset + w, base_y))
 
         # Spring 1 near the left, on the ground.
-        s1_cx = x_offset + 2.5 * TILE
+        s1_cx = x_offset + 3.5 * TILE
         world.add_entity(Spring(
             world, position=(s1_cx, base_y - 8), width=2 * TILE, impulse=self.impulse1
         ))
@@ -92,8 +92,9 @@ class BoxSpringRelay(Chunk):
             mass=self.box_mass,
         ))
 
-        # Exit ledge above spring 2.
-        ledge_y = base_y - self.exit_height
-        seg((s2_cx - self.exit_tiles * TILE / 2, ledge_y),
-            (s2_cx + self.exit_tiles * TILE / 2, ledge_y))
+        # Wide landing platform fixed to the right (second) wall: the box,
+        # relayed up off spring 2, comes to rest here as a step to climb out
+        # over the raised walls.
+        landing_y = base_y - self.landing_height
+        seg((x_offset + w - self.landing_tiles * TILE, landing_y), (x_offset + w, landing_y))
         return w

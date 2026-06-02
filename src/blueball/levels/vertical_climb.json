@@ -3,21 +3,21 @@
   "background": "#1a1a2e",
   "ground": "#3a3a52",
   "spawn": [80, 540],
-  "lava": {"start_y": 820, "rise_speed": 26, "width_overflow": 400},
+  "lava": {"start_y": 1210, "rise_speed": 26, "width_overflow": 400},
   "cannons": [
-    {"x": 0, "y_offset": 520, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 240, "pulse_period_s": 0.5, "max_travel": 800, "phase_s": 0.0},
-    {"x": 384, "y_offset": 980, "dir": "left", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 240, "pulse_period_s": 0.5, "max_travel": 800, "phase_s": 1.1},
-    {"x": 0, "y_offset": 1440, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 250, "pulse_period_s": 0.45, "max_travel": 800, "phase_s": 0.5},
-    {"x": 384, "y_offset": 1900, "dir": "left", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 250, "pulse_period_s": 0.45, "max_travel": 800, "phase_s": 1.4},
-    {"x": 0, "y_offset": 2360, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 260, "pulse_period_s": 0.45, "max_travel": 800, "phase_s": 0.9}
+    {"x": 1632, "y_offset": 520, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 240, "pulse_period_s": 0.5, "max_travel": 300, "phase_s": 0.0},
+    {"x": 1920, "y_offset": 980, "dir": "left", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 240, "pulse_period_s": 0.5, "max_travel": 300, "phase_s": 1.1},
+    {"x": 1632, "y_offset": 1440, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 250, "pulse_period_s": 0.45, "max_travel": 300, "phase_s": 0.5},
+    {"x": 1920, "y_offset": 1900, "dir": "left", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 250, "pulse_period_s": 0.45, "max_travel": 300, "phase_s": 1.4},
+    {"x": 1632, "y_offset": 2360, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 260, "pulse_period_s": 0.45, "max_travel": 300, "phase_s": 0.9}
   ],
   "chunks": [
     {"type": "flat", "width_tiles": 3},
-    {"type": "box_spring_trampoline", "width_tiles": 6, "impulse": 720, "exit_height": 220},
+    {"type": "box_spring_trampoline", "width_tiles": 12, "impulse": 720, "exit_height": 220},
     {"type": "flat", "width_tiles": 2},
-    {"type": "box_spring_relay", "width_tiles": 8, "platform_height": 200, "exit_height": 360},
-    {"type": "flat", "width_tiles": 2},
-    {"type": "vertical_column", "width_tiles": 6, "steps": 32, "step_height": 86, "bottom_offset": 64, "platform_tiles": 2, "pattern": [0, 4, [1, 4], 2, 4, [0, 3], 1, 4]},
+    {"type": "box_spring_relay", "width_tiles": 16, "platform_height": 200},
+    {"type": "flat", "width_tiles": 18},
+    {"type": "vertical_column", "width_tiles": 9, "steps": 32, "step_height": 86, "bottom_offset": 64, "platform_tiles": 2, "pattern": [0, 4, [1, 4], 2, 4, [0, 3], 1, 4]},
     {"type": "goal", "width_tiles": 2, "y_offset": 2730}
   ]
 }

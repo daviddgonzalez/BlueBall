@@ -18,7 +18,7 @@ from .base import Chunk, TILE, register_chunk
 from .flat import GROUND_Y
 
 _PIT_DEPTH = 72       # pit floor sits this far below the ledges (px)
-_BOX_SIZE = 40        # box edge length (px)
+_BOX_SIZE = 64        # box edge length (px) — large so it reads as a real plug/step
 _BOX_MASS = 0.6
 _LAVA_BELOW_BOX = 8   # lava surface sits this far below the resting box's top
 _PIT_FLOOR_FRICTION = 0.1  # low friction so a firm push carries the box to mid
@@ -31,7 +31,7 @@ class BoxLavaGap(Chunk):
 
     def __init__(
         self,
-        approach_tiles: int = 2,
+        approach_tiles: int = 3,  # wide enough to seat the large box on the near ledge
         pit_tiles: int = 6,
         exit_tiles: int = 2,
         depth: int = _PIT_DEPTH,
