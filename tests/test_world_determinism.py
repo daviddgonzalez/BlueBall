@@ -112,3 +112,18 @@ def test_sampler_level_world_determinism():
     data2 = {**data, "chunks": seq2}
     b = _run(data2, actions)
     assert a == b
+
+
+# Golden regression. The a==b tests above catch NEW non-determinism but would
+# NOT catch a refactor that shifts the simulation outcome *deterministically*
+# (e.g. the collision dispatcher resolving a different entity). This freezes the
+# exact end-state of a representative run through real entity-bearing chunks
+# (spikes, patrollers, etc. in speed_run.json) so any such drift fails loudly.
+# If a deliberate physics/level change moves this value, re-capture the literal.
+_SPEED_RUN_GOLDEN = (1510.696259153366, 477.88475786363176, 174.99458003187, 190.01083993626003)
+
+
+def test_speed_run_matches_frozen_golden():
+    actions = [Action.RIGHT] * 600
+    path = Path(__file__).parent.parent / "src" / "blueball" / "levels" / "speed_run.json"
+    assert _run(path, actions) == _SPEED_RUN_GOLDEN

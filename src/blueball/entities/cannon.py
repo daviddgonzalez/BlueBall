@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import random
 
+from .. import config
 from .base import Entity
 from .projectile import Projectile
 
@@ -20,16 +21,16 @@ class Cannon(Entity):
         interval_s: float = 2.0,
         interval_min_s: float | None = None,
         interval_max_s: float | None = None,
-        speed: float = 220.0,
-        pulse_period_s: float = 0.6,
+        speed: float = config.PROJECTILE_DEFAULT_SPEED,
+        pulse_period_s: float = config.PROJECTILE_DEFAULT_PULSE_PERIOD_S,
         max_travel: float = 500.0,
-        projectile_radius: int = 10,
+        projectile_radius: int = config.PROJECTILE_DEFAULT_RADIUS,
         phase_s: float = 0.0,
     ) -> None:
         super().__init__()
         if direction not in ("left", "right"):
             raise ValueError(f"direction must be 'left' or 'right'; got {direction!r}")
-        self._world_ref = world
+        self._world = world
         self.position = position
         self.direction = direction
         self._dir_sign = 1.0 if direction == "right" else -1.0
@@ -66,8 +67,8 @@ class Cannon(Entity):
             self._interval = self._next_interval()
 
     def _fire(self) -> None:
-        self._world_ref.add_entity(Projectile(
-            self._world_ref,
+        self._world.add_entity(Projectile(
+            self._world,
             position=self.position,
             direction=self._dir_sign,
             speed=self.speed,

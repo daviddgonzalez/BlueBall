@@ -40,12 +40,7 @@ class Door(Entity):
 
     def update(self, dt: float) -> None:
         if self._opening and not self.is_open:
-            for shape in self.shapes:
-                if shape in self._world.space.shapes:
-                    self._world.space.remove(shape)
-            for body in self.bodies:
-                if body in self._world.space.bodies:
-                    self._world.space.remove(body)
+            self._remove_from_space()
             self.is_open = True
 
     def draw(self, renderer, alpha: float) -> None:

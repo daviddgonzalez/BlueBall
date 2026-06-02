@@ -210,6 +210,10 @@ class PlayScene(Scene):
             for shape in info["shapes"]:
                 if shape in self.world.space.shapes:
                     self.world.space.remove(shape)
+                # Bare chunk segments were never indexed (pop is a no-op);
+                # entity-owned shapes (Lava, PushableBox, ...) must be purged
+                # here since the cull bypasses Entity._remove_from_space.
+                self.world._shape_to_entity.pop(shape, None)
             for constraint in info["constraints"]:
                 if constraint in self.world.space.constraints:
                     self.world.space.remove(constraint)
@@ -263,7 +267,6 @@ class PlayScene(Scene):
         if self.world.level_complete:
             for ability in self.player.abilities:
                 save.add_ability(ability.value)
-            print(f"Level complete! Collectibles: {self.player.collectibles_collected}")
             self._last_respawn_xy = None
             self._exit_to_menu = True
             return

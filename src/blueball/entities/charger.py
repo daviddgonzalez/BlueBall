@@ -9,15 +9,14 @@ import math
 import pymunk
 
 from .. import collision as _col
+from .. import config
 from .base import Entity
 
 
-def _find_player(world):
-    from .player import Player
-    for e in world.entities:
-        if isinstance(e, Player):
-            return e
-    return None
+# Match-everything filter for the line-of-sight query. ShapeFilter is an
+# immutable value, so a single shared instance is safe and avoids a per-tick
+# allocation on the hot charge path.
+_LOS_FILTER = pymunk.ShapeFilter()
 
 
 class Charger(Entity):
@@ -28,10 +27,10 @@ class Charger(Entity):
         left_bound: float,
         right_bound: float,
         facing: str = "right",
-        sight_range: float = 200.0,
-        sight_arc_deg: float = 60.0,
-        charge_speed: float = 180.0,
-        patrol_speed: float = 40.0,
+        sight_range: float = config.CHARGER_DEFAULT_SIGHT_RANGE,
+        sight_arc_deg: float = config.CHARGER_DEFAULT_SIGHT_ARC_DEG,
+        charge_speed: float = config.CHARGER_DEFAULT_CHARGE_SPEED,
+        patrol_speed: float = config.CHARGER_DEFAULT_PATROL_SPEED,
         radius: int = 12,
     ) -> None:
         super().__init__()
@@ -57,19 +56,16 @@ class Charger(Entity):
         self.shapes.append(self.shape)
 
         body.velocity = (patrol_speed if facing == "right" else -patrol_speed, 0)
-        self._world_ref = world
+        self._world = world
 
     def die(self) -> None:
         self.alive = False
-        if self.shape in self._world_ref.space.shapes:
-            self._world_ref.space.remove(self.shape)
-        if self.body in self._world_ref.space.bodies:
-            self._world_ref.space.remove(self.body)
+        self._remove_from_space()
 
     def update(self, dt: float) -> None:
         if not self.alive:
             return
-        player = _find_player(self._world_ref)
+        player = self._world.player
         if player is None:
             return self._patrol_tick()
         # FOV check
@@ -86,11 +82,11 @@ class Charger(Entity):
         # LOS: segment query from charger to player; if anything static is hit, LOS blocked
         los_clear = True
         if in_range and in_cone:
-            hit = self._world_ref.space.segment_query_first(
+            hit = self._world.space.segment_query_first(
                 (self.body.position.x, self.body.position.y),
                 (player.body.position.x, player.body.position.y),
                 0.5,
-                pymunk.ShapeFilter(),
+                _LOS_FILTER,
             )
             if hit is not None and hit.shape.body.body_type == pymunk.Body.STATIC:
                 los_clear = False

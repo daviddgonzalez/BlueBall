@@ -11,6 +11,7 @@ import math
 import pymunk
 
 from .. import collision as _col
+from .. import config
 from .base import Entity
 
 
@@ -20,13 +21,13 @@ class Projectile(Entity):
         world,
         position: tuple[float, float],
         direction: float,
-        speed: float = 220.0,
-        pulse_period_s: float = 0.6,
+        speed: float = config.PROJECTILE_DEFAULT_SPEED,
+        pulse_period_s: float = config.PROJECTILE_DEFAULT_PULSE_PERIOD_S,
         max_travel: float = 200.0,
-        radius: int = 10,
+        radius: int = config.PROJECTILE_DEFAULT_RADIUS,
     ) -> None:
         super().__init__()
-        self._world_ref = world
+        self._world = world
         # Sign of travel: +1 = right, -1 = left. sin^2 keeps |v| on one side.
         self.direction = 1.0 if direction >= 0 else -1.0
         self.speed = speed
@@ -57,10 +58,7 @@ class Projectile(Entity):
 
     def despawn(self) -> None:
         self.alive = False
-        if self.shape in self._world_ref.space.shapes:
-            self._world_ref.space.remove(self.shape)
-        if self.body in self._world_ref.space.bodies:
-            self._world_ref.space.remove(self.body)
+        self._remove_from_space()
 
     def draw(self, renderer, alpha: float) -> None:
         if not self.alive:

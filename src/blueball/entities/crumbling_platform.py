@@ -13,6 +13,9 @@ import pymunk
 
 from .base import Entity
 
+# Match-everything filter for the broadphase contact probe (see update()).
+_CRUMBLE_QUERY_FILTER = pymunk.ShapeFilter()
+
 
 class CrumblingPlatform(Entity):
     def __init__(
@@ -47,21 +50,23 @@ class CrumblingPlatform(Entity):
             return
 
         if not self._contacted:
-            # Probe for any dynamic-body shape whose AABB overlaps ours
-            my_bb = self.shape.bb
-            for shape in self._world.space.shapes:
+            # Probe (via pymunk's broadphase index) for any dynamic-body shape
+            # whose AABB overlaps ours. bb_query returns the same overlap set as
+            # scanning every shape and calling bb.intersects, but uses the C
+            # spatial index (fresh after space.step, which runs before this loop)
+            # — so the AABB-overlap trigger timing is unchanged.
+            for shape in self._world.space.bb_query(self.shape.bb, _CRUMBLE_QUERY_FILTER):
                 if shape is self.shape:
                     continue
                 if shape.body.body_type == pymunk.Body.DYNAMIC:
-                    if my_bb.intersects(shape.bb):
-                        self._contacted = True
-                        break
+                    self._contacted = True
+                    break
             return  # first contact tick: start timer next tick
 
         # Timer running
         self._contact_timer += dt
         if self._contact_timer >= self.crumble_delay_s:
-            self._world.space.remove(self.shape)
+            self._remove_from_space()
             self._removed = True
 
     def draw(self, renderer, alpha: float) -> None:

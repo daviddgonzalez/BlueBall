@@ -6,6 +6,7 @@ In-memory only: the handler never writes to the save file. Persisting checkpoint
 
 from __future__ import annotations
 
+import pygame
 import pymunk
 
 from ..collision import CT_CHECKPOINT
@@ -36,6 +37,5 @@ class Checkpoint(Entity):
         self.shapes.append(shape)
 
     def draw(self, renderer, alpha: float) -> None:
-        import pygame
         t = pygame.time.get_ticks() / 1000.0
         renderer.draw_checkpoint(self.position, self.radius, t, self.activated)

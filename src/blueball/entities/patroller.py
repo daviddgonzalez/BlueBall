@@ -50,12 +50,7 @@ class Patroller(Entity):
         if not self.alive:
             return
         self.alive = False
-        for shape in self.shapes:
-            if shape in self._world.space.shapes:
-                self._world.space.remove(shape)
-        for body in self.bodies:
-            if body in self._world.space.bodies:
-                self._world.space.remove(body)
+        self._remove_from_space()
 
     def draw(self, renderer, alpha: float) -> None:
         if self.alive:

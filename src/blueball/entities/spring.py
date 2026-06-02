@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pygame
 import pymunk
 
 from .. import collision as _col
@@ -38,6 +39,5 @@ class Spring(Entity):
         self.shapes.append(self.shape)
 
     def draw(self, renderer, alpha: float) -> None:
-        import pygame
         t = pygame.time.get_ticks() / 1000.0
         renderer.draw_spring(self.position, self.width, t)

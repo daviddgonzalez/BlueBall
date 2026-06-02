@@ -296,3 +296,41 @@ def test_play_scene_culls_box_lava_gap_entities(headless_pygame, tmp_save):
     assert my_lava.body not in scene.world.space.bodies
     assert my_box.body not in scene.world.space.bodies
     assert my_lava.shape not in scene.world.space.shapes
+
+
+def test_play_scene_draw_runs_headless(headless_pygame, tmp_save):
+    """The whole draw path (draw_static_segments + per-entity draw + HUD) has no
+    other test. Smoke-guard that it runs without raising, so the renderer
+    efficiency changes (static-body snapshot skip, viewport cull) can't crash."""
+    scene = PlayScene(headless_pygame, _level_path())
+    scene.update(frame_dt=1 / 60)  # populates interpolation snapshots
+    scene.draw()  # must not raise
+
+
+def test_play_scene_cull_purges_shape_index(headless_pygame, tmp_save):
+    """The streaming cull bypasses Entity._remove_from_space, so it must purge
+    the shape->entity index itself — otherwise every culled entity-shape leaks
+    for the life of an endless run."""
+    from blueball.entities.lava import Lava
+    from blueball.entities.pushable_box import PushableBox
+    from blueball.levels.chunks.box_lava_gap import BoxLavaGap
+
+    data = {
+        "name": "Infinite", "background": "#202028", "ground": "#666c70",
+        "spawn": [80, 540], "chunks": [],
+    }
+    scene = PlayScene(headless_pygame, level_data=data, sampler_seed=42)
+    scene._materialize_chunk(BoxLavaGap(pit_tiles=6))
+    rec = scene._built_chunks[-1]
+    my_lava = next(e for e in rec["entities"] if isinstance(e, Lava))
+    my_box = next(e for e in rec["entities"] if isinstance(e, PushableBox))
+    assert my_lava.shape in scene.world._shape_to_entity
+    assert my_box.shapes[0] in scene.world._shape_to_entity
+
+    far = rec["x_end"] + 5000
+    scene.player.body.position = (far, 540)
+    scene._maintain_streaming(far)
+
+    assert my_lava.shape not in scene.world._shape_to_entity
+    assert my_box.shapes[0] not in scene.world._shape_to_entity
+    assert scene.player.shape in scene.world._shape_to_entity  # live player kept

@@ -467,3 +467,143 @@ def test_charger_side_contact_kills_player():
         if p.dead:
             break
     assert p.dead
+
+
+# ---------------------------------------------------------------------------
+# Lethal-sensor handlers (lava, projectile) — blind spots before the dedup pass:
+# spike/swinging had end-to-end death tests but lava/projectile did not, so a
+# shared lethal factory could regress their kill or their sensor (False) return.
+# ---------------------------------------------------------------------------
+
+def test_player_dies_on_lava_contact():
+    w, p = _player_world()
+    lava_shape = pymunk.Poly(
+        w.space.static_body, [(80, 80), (120, 80), (120, 130), (80, 130)]
+    )
+    lava_shape.sensor = True
+    lava_shape.collision_type = collision.CT_LAVA
+    w.space.add(lava_shape)
+    for _ in range(10):
+        w.step(1 / 60)
+        if p.dead:
+            break
+    assert p.dead
+
+
+def test_player_dies_on_projectile_contact():
+    w, p = _player_world()
+    proj_shape = pymunk.Poly(
+        w.space.static_body, [(80, 80), (120, 80), (120, 130), (80, 130)]
+    )
+    proj_shape.sensor = True
+    proj_shape.collision_type = collision.CT_PROJECTILE
+    w.space.add(proj_shape)
+    for _ in range(10):
+        w.step(1 / 60)
+        if p.dead:
+            break
+    assert p.dead
+
+
+# ---------------------------------------------------------------------------
+# Patroller stomp/side — charger had both branches tested, patroller did not.
+# Pins both branches before merging on_patroller/on_charger into _on_stompable.
+# ---------------------------------------------------------------------------
+
+def test_patroller_top_stomp_kills_patroller():
+    from blueball.entities.patroller import Patroller
+    w = World()
+    collision.register(w.space, world_ref=w)
+    pat = Patroller(w, position=(100, 560), left_bound=50, right_bound=200, speed=40)
+    w.add_entity(pat)
+    p = Player(agent=_Idle(), spawn_xy=(100, 520))
+    w.add_entity(p)
+    # Drop straight down onto the patroller's flat top -> upward normal -> stomp.
+    p.body.velocity = (0, 200)
+    for _ in range(30):
+        w.step(1 / 60)
+        if not pat.alive:
+            break
+    assert not pat.alive
+    assert pat.shapes[0] not in w.space.shapes
+
+
+def test_patroller_side_contact_kills_player():
+    from blueball.entities.patroller import Patroller
+    w = World()
+    collision.register(w.space, world_ref=w)
+    pat = Patroller(w, position=(130, 100), left_bound=50, right_bound=200, speed=40)
+    w.add_entity(pat)
+    p = Player(agent=_Idle(), spawn_xy=(100, 100))
+    w.add_entity(p)
+    p.body.velocity = (300, 0)
+    for _ in range(20):
+        w.step(1 / 60)
+        if p.dead:
+            break
+    assert p.dead
+
+
+def test_player_collects_collectible_on_contact():
+    """The on_collectible dispatch path (not just Collectible.collect()) marks
+    the collectible dead and increments the player's counter."""
+    from blueball.entities.collectible import Collectible
+    w, p = _player_world()
+    c = Collectible(w, position=(100, 100))
+    w.add_entity(c)
+    for _ in range(5):
+        w.step(1 / 60)
+        if not c.alive:
+            break
+    assert not c.alive
+    assert p.collectibles_collected == 1
+
+
+# ---------------------------------------------------------------------------
+# Shape->entity index (world._shape_to_entity / world.player). The index is
+# leak-only on regression (no crash, no wrong behavior — just unbounded growth
+# over an endless run), so it needs direct assertions; nothing else catches it.
+# ---------------------------------------------------------------------------
+
+def test_add_entity_indexes_shapes_and_caches_player():
+    w = World()
+    assert w.player is None  # no player before one is added
+    p = Player(agent=_Idle(), spawn_xy=(100, 100))
+    w.add_entity(p)
+    assert w.player is p
+    assert w._shape_to_entity[p.shape] is p
+
+
+def test_index_purged_when_key_removed():
+    from blueball.entities.key import Key
+    w, p = _player_world()
+    k = Key(w, position=(100, 100), key_id=1, radius=20)
+    w.add_entity(k)
+    shape = k.shapes[0]
+    assert shape in w._shape_to_entity  # indexed on add
+    for _ in range(10):
+        w.step(1 / 60)
+        if shape not in w.space.shapes:
+            break
+    assert shape not in w._shape_to_entity  # purged on removal
+    assert p.shape in w._shape_to_entity    # live player stays indexed
+
+
+def test_index_purged_when_charger_dies():
+    from blueball.entities.charger import Charger
+    w = World()
+    collision.register(w.space, world_ref=w)
+    c = Charger(w, position=(100, 560), left_bound=50, right_bound=200,
+                facing="right", sight_range=10, sight_arc_deg=10,
+                charge_speed=180, patrol_speed=40)
+    w.add_entity(c)
+    p = Player(agent=_Idle(), spawn_xy=(100, 520))
+    w.add_entity(p)
+    assert c.shape in w._shape_to_entity
+    p.body.velocity = (0, 200)
+    for _ in range(30):
+        w.step(1 / 60)
+        if not c.alive:
+            break
+    assert not c.alive
+    assert c.shape not in w._shape_to_entity

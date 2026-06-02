@@ -32,21 +32,19 @@ CT_PROJECTILE = 17
 _TOP_NORMAL_COS = math.cos(math.radians(config.GROUNDED_NORMAL_TOLERANCE_DEG))
 
 
-def _find_player_entity(arbiter, world):
-    """Return the Player instance involved in an arbiter, or None."""
+def _player_and_others(arbiter, world):
+    """Yield ``(player, shape, entity)`` for each non-player entity shape in the
+    arbiter. ``player`` is ``world.player`` (every handler that uses this is
+    registered with CT_PLAYER on one side, so the player is in the arbiter).
+    Shapes with no owning entity, and the player's own shape, are skipped —
+    reproducing the old ``_find_entity_for_shape`` scan's None/player filter.
+    """
+    player = world.player
     for shape in arbiter.shapes:
-        for entity in world.entities:
-            if shape in getattr(entity, "shapes", ()):
-                if type(entity).__name__ == "Player":
-                    return entity
-    return None
-
-
-def _find_entity_for_shape(shape, world):
-    for entity in world.entities:
-        if shape in getattr(entity, "shapes", ()):
-            return entity
-    return None
+        entity = world._shape_to_entity.get(shape)
+        if entity is None or entity is player:
+            continue
+        yield player, shape, entity
 
 
 def register(space: pymunk.Space, world_ref) -> None:
@@ -54,18 +52,24 @@ def register(space: pymunk.Space, world_ref) -> None:
     so handlers can mutate world-level state (level_complete, etc.).
     """
 
-    def on_spike(arbiter, space_, data):
-        player = _find_player_entity(arbiter, world_ref)
-        if player is not None:
-            player.die()
-        return True
+    def _lethal(solid: bool):
+        """Build a 'kill the player on contact' handler. `solid` is the begin
+        return value: True for solid hazards (spike, swinging), False for
+        sensors (lava, projectile) which produce no physical response."""
+        def handler(arbiter, space_, data):
+            player = world_ref.player
+            if player is not None:
+                player.die()
+            return solid
+        return handler
+
+    on_spike = _lethal(solid=True)
+    on_swinging = _lethal(solid=True)
+    on_lava = _lethal(solid=False)
+    on_projectile = _lethal(solid=False)
 
     def on_collectible(arbiter, space_, data):
-        player = _find_player_entity(arbiter, world_ref)
-        for shape in arbiter.shapes:
-            entity = _find_entity_for_shape(shape, world_ref)
-            if entity is None or entity is player:
-                continue
+        for player, shape, entity in _player_and_others(arbiter, world_ref):
             collect = getattr(entity, "collect", None)
             if collect is not None:
                 collect()
@@ -78,11 +82,7 @@ def register(space: pymunk.Space, world_ref) -> None:
         return False  # sensor
 
     def on_ability_pickup(arbiter, space_, data):
-        player = _find_player_entity(arbiter, world_ref)
-        for shape in arbiter.shapes:
-            entity = _find_entity_for_shape(shape, world_ref)
-            if entity is None or entity is player:
-                continue
+        for player, shape, entity in _player_and_others(arbiter, world_ref):
             if not hasattr(entity, "ability"):
                 continue
             if player is not None:
@@ -91,11 +91,7 @@ def register(space: pymunk.Space, world_ref) -> None:
         return False  # sensor — no physical response
 
     def on_boost_pad(arbiter, space_, data):
-        player = _find_player_entity(arbiter, world_ref)
-        for shape in arbiter.shapes:
-            entity = _find_entity_for_shape(shape, world_ref)
-            if entity is None or entity is player:
-                continue
+        for player, shape, entity in _player_and_others(arbiter, world_ref):
             if not hasattr(entity, "multiplier"):
                 continue
             if player is not None:
@@ -104,35 +100,37 @@ def register(space: pymunk.Space, world_ref) -> None:
                 )
         return False  # sensor — no physical response
 
-    def on_patroller(arbiter, space_, data):
-        player = _find_player_entity(arbiter, world_ref)
+    def _on_stompable(arbiter):
+        """Shared patroller/charger handler: stomp from the top kills the enemy
+        and refreshes the air jump; any other contact kills the player. Both
+        shape orderings are handled so the normal-sign test stays correct
+        regardless of which side the enemy is registered as."""
+        player = world_ref.player
         if player is None:
             return True
         n = arbiter.contact_point_set.normal
         for shape in arbiter.shapes:
-            entity = _find_entity_for_shape(shape, world_ref)
+            entity = world_ref._shape_to_entity.get(shape)
             if entity is None or entity is player:
                 continue
-            # Normal points from shape_a into shape_b. If `shape` (the patroller)
-            # is shape_a, then n already points from patroller toward the player;
-            # the player landed on top iff n points up (negative y in y-down).
+            # Normal points from shape_a into shape_b. If the enemy is shape_a,
+            # n points enemy->player and a top stomp means n points up (negative
+            # y in y-down); if the enemy is shape_b, the sign is mirrored.
             if arbiter.shapes[0] is shape:
-                if -n.y >= _TOP_NORMAL_COS:
-                    if hasattr(entity, "die"):
-                        entity.die()
-                    player.refresh_air_jumps()  # stomping is a landing
-                    return True
+                stomped = -n.y >= _TOP_NORMAL_COS
             else:
-                # `shape` is shape_b; n points from player into patroller.
-                # Player on top iff that direction is down (positive y).
-                if n.y >= _TOP_NORMAL_COS:
-                    if hasattr(entity, "die"):
-                        entity.die()
-                    player.refresh_air_jumps()  # stomping is a landing
-                    return True
+                stomped = n.y >= _TOP_NORMAL_COS
+            if stomped:
+                if hasattr(entity, "die"):
+                    entity.die()
+                player.refresh_air_jumps()  # stomping is a landing
+                return True
             player.die()
             return True
         return True
+
+    def on_patroller(arbiter, space_, data):
+        return _on_stompable(arbiter)
 
     def on_one_way_presolve(arbiter, space_, data):
         # Identify the dynamic body (player or pushable box).  In pymunk y-down,
@@ -149,13 +147,21 @@ def register(space: pymunk.Space, world_ref) -> None:
         spring_entity = None
         for shape in arbiter.shapes:
             if shape.collision_type == CT_SPRING:
-                entity = _find_entity_for_shape(shape, world_ref)
+                entity = world_ref._shape_to_entity.get(shape)
                 if entity is not None and hasattr(entity, "impulse"):
                     spring_entity = entity
                     break
         if spring_entity is None:
             return False
-        player = _find_player_entity(arbiter, world_ref)
+        # on_spring is ALSO registered for (PUSHABLE, SPRING), an arbiter with no
+        # player — so resolve the player from THIS arbiter's shapes, not the
+        # cached world.player (which would wrongly route the box down the player
+        # path). Player present only when a CT_PLAYER shape is in the arbiter.
+        player = next(
+            (world_ref._shape_to_entity.get(s) for s in arbiter.shapes
+             if getattr(s, "collision_type", None) == CT_PLAYER),
+            None,
+        )
         if player is not None:
             player.receive_spring(spring_entity.impulse)
         else:
@@ -185,11 +191,7 @@ def register(space: pymunk.Space, world_ref) -> None:
     )
     def on_checkpoint(arbiter, space_, data):
         from .levels.chunks.flat import GROUND_Y
-        player = _find_player_entity(arbiter, world_ref)
-        for shape in arbiter.shapes:
-            entity = _find_entity_for_shape(shape, world_ref)
-            if entity is None or entity is player:
-                continue
+        for player, shape, entity in _player_and_others(arbiter, world_ref):
             if not hasattr(entity, "activated"):
                 continue
             if player is not None:
@@ -209,11 +211,7 @@ def register(space: pymunk.Space, world_ref) -> None:
     )
 
     def on_key(arbiter, space_, data):
-        player = _find_player_entity(arbiter, world_ref)
-        for shape in arbiter.shapes:
-            entity = _find_entity_for_shape(shape, world_ref)
-            if entity is None or entity is player:
-                continue
+        for player, shape, entity in _player_and_others(arbiter, world_ref):
             if not hasattr(entity, "key_id"):
                 continue
             if entity._collected:
@@ -230,11 +228,7 @@ def register(space: pymunk.Space, world_ref) -> None:
     def on_door(arbiter, space_, data):
         # If the door is already open (shape removed), contact won't reach here;
         # but guard anyway.
-        player = _find_player_entity(arbiter, world_ref)
-        for shape in arbiter.shapes:
-            entity = _find_entity_for_shape(shape, world_ref)
-            if entity is None or entity is player:
-                continue
+        for player, shape, entity in _player_and_others(arbiter, world_ref):
             if not hasattr(entity, "key_id"):
                 continue
             if entity.is_open:
@@ -255,60 +249,15 @@ def register(space: pymunk.Space, world_ref) -> None:
         collision_type_a=CT_PLAYER, collision_type_b=CT_DOOR, begin=on_door,
     )
 
-    def on_swinging(arbiter, space_, data):
-        player = _find_player_entity(arbiter, world_ref)
-        if player is not None:
-            player.die()
-        return True
-
     space.on_collision(
         collision_type_a=CT_PLAYER, collision_type_b=CT_SWINGING, begin=on_swinging,
     )
 
     def on_charger(arbiter, space_, data):
-        player = _find_player_entity(arbiter, world_ref)
-        if player is None:
-            return True
-        n = arbiter.contact_point_set.normal
-        for shape in arbiter.shapes:
-            entity = _find_entity_for_shape(shape, world_ref)
-            if entity is None or entity is player:
-                continue
-            if shape.collision_type != CT_CHARGER:
-                continue
-            # Normal points from shape_a into shape_b. If the charger is shape_a,
-            # n points from charger toward player; player stomped from top iff n
-            # points upward (negative y in pymunk y-down).
-            if arbiter.shapes[0] is shape:
-                if -n.y >= _TOP_NORMAL_COS:
-                    entity.die()
-                    player.refresh_air_jumps()  # stomping is a landing
-                    return True
-            else:
-                # Charger is shape_b; n points from player into charger.
-                # Player on top iff direction is downward (positive y).
-                if n.y >= _TOP_NORMAL_COS:
-                    entity.die()
-                    player.refresh_air_jumps()  # stomping is a landing
-                    return True
-            player.die()
-            return True
-        return True
+        return _on_stompable(arbiter)
 
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_CHARGER, begin=on_charger)
 
-    def on_lava(arbiter, space_, data):
-        player = _find_player_entity(arbiter, world_ref)
-        if player is not None:
-            player.die()
-        return False  # sensor
-
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_LAVA, begin=on_lava)
-
-    def on_projectile(arbiter, space_, data):
-        player = _find_player_entity(arbiter, world_ref)
-        if player is not None:
-            player.die()
-        return False  # sensor
 
     space.on_collision(collision_type_a=CT_PLAYER, collision_type_b=CT_PROJECTILE, begin=on_projectile)

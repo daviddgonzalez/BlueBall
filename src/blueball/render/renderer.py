@@ -39,8 +39,17 @@ class Renderer:
         self._hud_font = None  # lazily created (needs pygame.font init)
 
     def begin_frame(self, world) -> None:
-        """Snapshot previous positions for next frame's interpolation."""
+        """Snapshot previous positions for next frame's interpolation.
+
+        Only moving (non-STATIC) bodies are snapshotted: static bodies never
+        move, so _interp_body_pos's fallback (return current position when the id
+        is absent) yields the identical result, and skipping them avoids
+        re-snapshotting the shared static_body every frame plus unbounded growth
+        of the snapshot dicts as streamed-in static geometry churns.
+        """
         for body in world.space.bodies:
+            if body.body_type == pymunk.Body.STATIC:
+                continue
             self._prev_pos[id(body)] = (body.position.x, body.position.y)
             self._prev_angle[id(body)] = body.angle
 
@@ -57,6 +66,29 @@ class Renderer:
     def _interp_body_angle(self, body: pymunk.Body, alpha: float) -> float:
         prev = self._prev_angle.get(id(body), body.angle)
         return _lerp(prev, body.angle, alpha)
+
+    def _fill_rect(self, cx, cy, hw, hh, fill, edge=None, edge_w=2) -> None:
+        """Fill a world-space rect centered at (cx, cy) with half-extents (hw, hh),
+        optionally stroking an outline in `edge`."""
+        pts = [
+            self._w2s((cx - hw, cy - hh)),
+            self._w2s((cx + hw, cy - hh)),
+            self._w2s((cx + hw, cy + hh)),
+            self._w2s((cx - hw, cy + hh)),
+        ]
+        pygame.draw.polygon(self.screen, fill, pts)
+        if edge is not None:
+            pygame.draw.polygon(self.screen, edge, pts, edge_w)
+
+    def _pulse(self, magnitude: float = 0.15) -> float:
+        """Time-based scale factor oscillating around 1.0 for idle-pulse visuals."""
+        t = pygame.time.get_ticks() / 1000.0
+        return 1.0 + magnitude * math.sin(t * 2 * math.pi * config.COLLECTIBLE_PULSE_HZ)
+
+    @staticmethod
+    def _diamond_points(sx, sy, r):
+        """Screen-space diamond (4 points) centered at (sx, sy) with radius r."""
+        return [(sx, sy - r), (sx + r, sy), (sx, sy + r), (sx - r, sy)]
 
     def draw_ball(self, body: pymunk.Body, alpha: float) -> None:
         wx, wy = self._interp_body_pos(body, alpha)
@@ -87,33 +119,22 @@ class Renderer:
     def draw_collectible(self, pos):
         x, y = pos
         sx, sy = self._w2s((x, y))
-        pulse = 1.0 + 0.15 * math.sin(
-            pygame.time.get_ticks() / 1000.0 * 2 * math.pi * config.COLLECTIBLE_PULSE_HZ
-        )
-        r = int(config.COLLECTIBLE_RADIUS * pulse)
+        r = int(config.COLLECTIBLE_RADIUS * self._pulse())
         pygame.draw.circle(self.screen, _COLLECTIBLE_COLOR, (int(sx), int(sy)), r)
 
     def draw_ability_pickup(self, pos, radius, ability: str) -> None:
         x, y = pos
         sx, sy = self._w2s((x, y))
-        pulse = 1.0 + 0.15 * math.sin(
-            pygame.time.get_ticks() / 1000.0 * 2 * math.pi * config.COLLECTIBLE_PULSE_HZ
-        )
-        r = int(radius * pulse)
+        r = int(radius * self._pulse())
         color = _ABILITY_PICKUP_COLORS.get(ability, _ABILITY_PICKUP_DEFAULT)
-        points = [(sx, sy - r), (sx + r, sy), (sx, sy + r), (sx - r, sy)]
-        pygame.draw.polygon(self.screen, color, points)
+        pygame.draw.polygon(self.screen, color, self._diamond_points(sx, sy, r))
 
     def draw_boost_pad(self, pos, width, direction: float = 1.0) -> None:
         # Flat cyan strip with a chevron pointing along the pad's launch arrow.
         x, y = pos
         hw = width / 2
         pad_h = config.BOOST_PAD_THICKNESS / 2
-        p1 = self._w2s((x - hw, y - pad_h))
-        p2 = self._w2s((x + hw, y - pad_h))
-        p3 = self._w2s((x + hw, y + pad_h))
-        p4 = self._w2s((x - hw, y + pad_h))
-        pygame.draw.polygon(self.screen, _BOOST_PAD_COLOR, [p1, p2, p3, p4])
+        self._fill_rect(x, y, hw, pad_h, _BOOST_PAD_COLOR)
         cx, cy = self._w2s((x, y))
         s = -1 if direction < 0 else 1
         pygame.draw.polygon(
@@ -125,11 +146,7 @@ class Renderer:
     def draw_goal(self, pos, width, height):
         x, y = pos
         hw, hh = width / 2, height / 2
-        p1 = self._w2s((x - hw, y - hh))
-        p2 = self._w2s((x + hw, y - hh))
-        p3 = self._w2s((x + hw, y + hh))
-        p4 = self._w2s((x - hw, y + hh))
-        pygame.draw.polygon(self.screen, _GOAL_COLOR, [p1, p2, p3, p4])
+        self._fill_rect(x, y, hw, hh, _GOAL_COLOR)
         # Flag bunting
         fp1 = self._w2s((x - hw, y - hh))
         fp2 = self._w2s((x - hw + 30, y - hh + 10))
@@ -139,11 +156,7 @@ class Renderer:
     def draw_patroller(self, body, size, alpha):
         wx, wy = self._interp_body_pos(body, alpha)
         hw, hh = size[0] / 2, size[1] / 2
-        p1 = self._w2s((wx - hw, wy - hh))
-        p2 = self._w2s((wx + hw, wy - hh))
-        p3 = self._w2s((wx + hw, wy + hh))
-        p4 = self._w2s((wx - hw, wy + hh))
-        pygame.draw.polygon(self.screen, _PATROLLER_COLOR, [p1, p2, p3, p4])
+        self._fill_rect(wx, wy, hw, hh, _PATROLLER_COLOR)
 
     def draw_falling_hazard(self, body, radius, alpha):
         wx, wy = self._interp_body_pos(body, alpha)
@@ -152,10 +165,18 @@ class Renderer:
 
     def draw_static_segments(self, space: pymunk.Space, color=_GROUND_COLOR) -> None:
         """Draw every static pymunk.Segment as a thick line plus a darker top edge."""
+        sw, sh = self.screen.get_size()
         for shape in space.shapes:
             if isinstance(shape, pymunk.Segment) and shape.body is space.static_body:
                 a = self._w2s((shape.a.x, shape.a.y))
                 b = self._w2s((shape.b.x, shape.b.y))
+                # Skip segments whose screen-space bounding box is entirely off
+                # the viewport — they contribute no on-screen pixels. Uses min/max
+                # of both endpoints so a long segment crossing the screen with
+                # both endpoints off-screen is still drawn.
+                if (max(a[0], b[0]) < 0 or min(a[0], b[0]) > sw
+                        or max(a[1], b[1]) < 0 or min(a[1], b[1]) > sh):
+                    continue
                 pygame.draw.line(self.screen, color, a, b, 6)
                 pygame.draw.line(self.screen, _GROUND_EDGE, a, b, 2)
 
@@ -168,12 +189,7 @@ class Renderer:
         wx, wy = self._interp_body_pos(body, alpha)
         hw = length / 2
         thickness = 10
-        p1 = self._w2s((wx - hw, wy - thickness / 2))
-        p2 = self._w2s((wx + hw, wy - thickness / 2))
-        p3 = self._w2s((wx + hw, wy + thickness / 2))
-        p4 = self._w2s((wx - hw, wy + thickness / 2))
-        pygame.draw.polygon(self.screen, (120, 200, 120), [p1, p2, p3, p4])
-        pygame.draw.polygon(self.screen, (60, 140, 60), [p1, p2, p3, p4], 2)
+        self._fill_rect(wx, wy, hw, thickness / 2, (120, 200, 120), edge=(60, 140, 60))
 
     def draw_spring(self, pos, width: float, t: float) -> None:
         """Flat rect spring pad, color (170, 170, 220)."""
@@ -182,20 +198,14 @@ class Renderer:
         half_thick = 8
         # Slight squish animation when recently triggered (use t for gentle pulse)
         pulse_h = half_thick * (1.0 + 0.15 * abs(math.sin(t * 6)))
-        p1 = self._w2s((x - hw, y - pulse_h))
-        p2 = self._w2s((x + hw, y - pulse_h))
-        p3 = self._w2s((x + hw, y + pulse_h))
-        p4 = self._w2s((x - hw, y + pulse_h))
-        pygame.draw.polygon(self.screen, (170, 170, 220), [p1, p2, p3, p4])
-        pygame.draw.polygon(self.screen, (100, 100, 180), [p1, p2, p3, p4], 2)
+        self._fill_rect(x, y, hw, pulse_h, (170, 170, 220), edge=(100, 100, 180))
 
     def draw_checkpoint(self, pos, radius: int, t: float, active: bool) -> None:
         """Diamond shape; bright (255,220,80) if active else (90,220,140)."""
         x, y = pos
         sx, sy = self._w2s((x, y))
         color = (255, 220, 80) if active else (90, 220, 140)
-        r = radius
-        points = [(sx, sy - r), (sx + r, sy), (sx, sy + r), (sx - r, sy)]
+        points = self._diamond_points(sx, sy, radius)
         pygame.draw.polygon(self.screen, color, points)
         pygame.draw.polygon(self.screen, (255, 255, 255), points, 2)
 
@@ -209,12 +219,7 @@ class Renderer:
         g = int(140 * (1.0 - progress))
         b = int(100 * (1.0 - progress))
         color = (max(0, r), max(0, g), max(0, b))
-        p1 = self._w2s((x - hw, y - thickness / 2))
-        p2 = self._w2s((x + hw, y - thickness / 2))
-        p3 = self._w2s((x + hw, y + thickness / 2))
-        p4 = self._w2s((x - hw, y + thickness / 2))
-        pygame.draw.polygon(self.screen, color, [p1, p2, p3, p4])
-        pygame.draw.polygon(self.screen, (60, 40, 20), [p1, p2, p3, p4], 2)
+        self._fill_rect(x, y, hw, thickness / 2, color, edge=(60, 40, 20))
 
     def draw_key(self, pos, radius: int, key_id: int) -> None:
         """Small yellow circle with a keyhole notch."""
@@ -236,23 +241,14 @@ class Renderer:
             pygame.draw.line(self.screen, (180, 140, 80), a, b, 2)
         else:
             thick = 8
-            p1 = self._w2s((x - thick / 2, y))
-            p2 = self._w2s((x + thick / 2, y))
-            p3 = self._w2s((x + thick / 2, y - height))
-            p4 = self._w2s((x - thick / 2, y - height))
-            pygame.draw.polygon(self.screen, (160, 100, 40), [p1, p2, p3, p4])
-            pygame.draw.polygon(self.screen, (220, 160, 80), [p1, p2, p3, p4], 2)
+            self._fill_rect(x, y - height / 2, thick / 2, height / 2,
+                            (160, 100, 40), edge=(220, 160, 80))
 
     def draw_pushable_box(self, body: pymunk.Body, alpha: float, size: float) -> None:
         """Interpolated square box."""
         wx, wy = self._interp_body_pos(body, alpha)
         hs = size / 2
-        p1 = self._w2s((wx - hs, wy - hs))
-        p2 = self._w2s((wx + hs, wy - hs))
-        p3 = self._w2s((wx + hs, wy + hs))
-        p4 = self._w2s((wx - hs, wy + hs))
-        pygame.draw.polygon(self.screen, (160, 120, 80), [p1, p2, p3, p4])
-        pygame.draw.polygon(self.screen, (100, 70, 30), [p1, p2, p3, p4], 2)
+        self._fill_rect(wx, wy, hs, hs, (160, 120, 80), edge=(100, 70, 30))
 
     def draw_swinging_hazard(
         self,
