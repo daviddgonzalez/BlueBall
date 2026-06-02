@@ -764,3 +764,41 @@ def test_box_spring_relay_box_does_not_self_launch_at_spawn():
     # A spring launch would drive vy to roughly -impulse (<= -700). Resting on
     # the ground keeps vy near zero. Assert it was NOT launched upward.
     assert box.body.velocity.y > -100
+
+
+# ---------------------------------------------------------------------------
+# goal_vault chunk
+# ---------------------------------------------------------------------------
+
+def test_goal_vault_registry_and_flags():
+    from blueball.levels.chunks.goal_vault import GoalVault
+    assert "goal_vault" in CHUNK_REGISTRY
+    assert GoalVault.sampler_include is False
+
+
+def test_goal_vault_builds_box_two_doors_and_goal():
+    from blueball.entities.goal import Goal
+    from blueball.entities.door import Door
+    w = World()
+    width = CHUNK_REGISTRY["goal_vault"](
+        width_tiles=8, y_offset=520, key_id_outer=0, key_id_inner=1
+    ).build(w, x_offset=0.0)
+    assert width == 8 * TILE
+    segs = [s for s in w.space.shapes
+            if isinstance(s, pymunk.Segment) and s.body is w.space.static_body]
+    assert len(segs) == 5  # floor, ceiling, right wall, 2 wall-above-door
+    doors = [e for e in w.entities if isinstance(e, Door)]
+    goals = [e for e in w.entities if isinstance(e, Goal)]
+    assert len(doors) == 2 and len(goals) == 1
+    assert {d.key_id for d in doors} == {0, 1}
+
+
+def test_goal_vault_elevated_to_y_offset():
+    from blueball.entities.door import Door
+    from blueball.levels.chunks.flat import GROUND_Y
+    w = World()
+    CHUNK_REGISTRY["goal_vault"](y_offset=520).build(w, x_offset=0.0)
+    floor_y = GROUND_Y - 520
+    doors = [e for e in w.entities if isinstance(e, Door)]
+    for d in doors:
+        assert abs(d.position[1] - floor_y) < 1e-6

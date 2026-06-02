@@ -29,4 +29,5 @@ from . import (  # noqa: F401
     box_lava_gap,
     box_spring_trampoline,
     box_spring_relay,
+    goal_vault,
 )
