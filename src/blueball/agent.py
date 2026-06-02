@@ -106,8 +106,8 @@ class HumanAgent(Agent):
 
 class FTNNAgent(Agent):
     """An Agent driven by a fixed-topology neural network (FTNN). Reads the
-    observation, packs it into the 14-float input vector, runs it through
-    the network, and returns the argmax Action.
+    observation, packs it into the input vector (see ai/observation.py
+    INPUT_SIZE), runs it through the network, and returns the argmax Action.
 
     Imports of the `ai` package are lazy so that importing `agent` (which
     PlayScene and tests do) doesn't pull in the AI scaffolding transitively.

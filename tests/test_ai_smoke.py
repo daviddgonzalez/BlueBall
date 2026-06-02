@@ -15,11 +15,12 @@ import pytest
 
 def test_ftnn_topology_constants():
     from blueball.ai.ftnn import FTNN_INPUTS, FTNN_HIDDEN, FTNN_OUTPUTS, GENOME_SIZE
-    assert FTNN_INPUTS == 14
+    from blueball.ai.observation import INPUT_SIZE
+    assert FTNN_INPUTS == INPUT_SIZE == 35
     assert FTNN_HIDDEN == 12
     assert FTNN_OUTPUTS == 6
-    # 14*12 + 12 + 12*6 + 6 = 258
-    assert GENOME_SIZE == 258
+    # 35*12 + 12 + 12*6 + 6 = 510
+    assert GENOME_SIZE == 510
 
 
 def test_ftnn_forward_pass_shape_and_dtype():
@@ -40,7 +41,7 @@ def test_ftnn_zero_genome_zero_input_yields_zero_output():
 
 def test_ftnn_rejects_wrong_genome_shape():
     from blueball.ai.ftnn import FTNN
-    with pytest.raises(ValueError, match="258"):
+    with pytest.raises(ValueError, match="510"):
         FTNN(np.zeros(100, dtype=np.float32))
 
 
@@ -160,54 +161,133 @@ def test_tournament_select_favors_higher_fitness_under_sampling():
 def _make_obs(
     *,
     rays=None,
+    ray_hit_types=None,
     vel=(0.0, 0.0),
     ang_vel=0.0,
     grounded=False,
-    nearest_collectible=None,
+    nearest_pickup=None,
+    nearest_hazard=None,
+    abilities=0,
+    keys_held=0,
 ):
     from blueball.agent import Observation
     if rays is None:
-        rays = np.zeros(8, dtype=np.float32)
+        rays = np.ones(8, dtype=np.float32)
+    if ray_hit_types is None:
+        ray_hit_types = np.zeros(8, dtype=np.int8)
     return Observation(
         rays=rays,
+        ray_hit_types=np.asarray(ray_hit_types, dtype=np.int8),
         vel=np.asarray(vel, dtype=np.float32),
         ang_vel=float(ang_vel),
         grounded=bool(grounded),
-        nearest_collectible=nearest_collectible,
+        nearest_pickup=nearest_pickup,
+        nearest_hazard=nearest_hazard,
+        abilities=int(abilities),
+        keys_held=int(keys_held),
     )
 
 
 def test_observation_to_inputs_shape_and_dtype():
-    from blueball.ai.observation import observation_to_inputs
+    from blueball.ai.observation import observation_to_inputs, INPUT_SIZE
     x = observation_to_inputs(_make_obs())
-    assert x.shape == (14,)
+    assert x.shape == (INPUT_SIZE,)
     assert x.dtype == np.float32
 
 
-def test_observation_to_inputs_layout_matches_spec():
+def test_observation_to_inputs_input_size_matches_ftnn():
+    """The adapter's output width is the single source of truth for the net's
+    input layer — they must never drift."""
+    from blueball.ai.observation import INPUT_SIZE
+    from blueball.ai.ftnn import FTNN_INPUTS
+    assert FTNN_INPUTS == INPUT_SIZE
+
+
+def test_observation_to_inputs_rays_and_scalars():
     from blueball.ai.observation import observation_to_inputs
+    from blueball import config
     rays = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], dtype=np.float32)
     obs = _make_obs(
         rays=rays,
-        vel=(11.0, -22.0),
-        ang_vel=3.5,
+        vel=(config.MAX_LINEAR_SPEED, -config.MAX_LINEAR_SPEED / 2),
+        ang_vel=config.MAX_ANGULAR_VEL,
         grounded=True,
-        nearest_collectible=(50.0, -25.0),
     )
     x = observation_to_inputs(obs)
     np.testing.assert_allclose(x[0:8], rays)
-    assert x[8] == 11.0 and x[9] == -22.0
-    assert x[10] == 3.5
-    assert x[11] == 1.0
-    assert x[12] == 50.0 and x[13] == -25.0
+    # vel normalized by MAX_LINEAR_SPEED and clamped to [-1, 1]
+    assert x[16] == 1.0
+    assert abs(x[17] - (-0.5)) < 1e-6
+    # ang_vel normalized by MAX_ANGULAR_VEL
+    assert abs(x[18] - 1.0) < 1e-6
+    assert x[19] == 1.0  # grounded
 
 
-def test_observation_to_inputs_handles_none_collectible():
+def test_observation_to_inputs_vel_is_clamped():
     from blueball.ai.observation import observation_to_inputs
-    obs = _make_obs(nearest_collectible=None, grounded=False)
+    from blueball import config
+    obs = _make_obs(vel=(10 * config.MAX_LINEAR_SPEED, -10 * config.MAX_LINEAR_SPEED))
     x = observation_to_inputs(obs)
-    assert x[11] == 0.0          # grounded=False → 0.0
-    assert x[12] == 0.0 and x[13] == 0.0
+    assert x[16] == 1.0
+    assert x[17] == -1.0
+
+
+def test_observation_to_inputs_ray_semantic_channels():
+    """Per-ray semantic channel: +1 for reward (PICKUP/GOAL), -1 for danger
+    (HAZARD/ENEMY), 0 for everything else."""
+    from blueball.ai.observation import observation_to_inputs
+    from blueball.agent import HitType
+    hits = np.array([
+        HitType.PICKUP, HitType.GOAL,       # +1, +1
+        HitType.HAZARD, HitType.ENEMY,      # -1, -1
+        HitType.GROUND, HitType.BLOCK,      # 0, 0
+        HitType.DOOR, HitType.MISS,         # 0, 0
+    ], dtype=np.int8)
+    x = observation_to_inputs(_make_obs(ray_hit_types=hits))
+    np.testing.assert_allclose(
+        x[8:16], [1.0, 1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0]
+    )
+
+
+def test_observation_to_inputs_nearest_pickup_and_hazard():
+    from blueball.ai.observation import observation_to_inputs, NEAREST_DELTA_NORM
+    obs = _make_obs(
+        nearest_pickup=(NEAREST_DELTA_NORM / 2, -NEAREST_DELTA_NORM / 4),
+        nearest_hazard=(10 * NEAREST_DELTA_NORM, 0.0),  # far → clamps to +1
+    )
+    x = observation_to_inputs(obs)
+    # pickup: dx, dy normalized + present flag
+    assert abs(x[20] - 0.5) < 1e-6
+    assert abs(x[21] - (-0.25)) < 1e-6
+    assert x[22] == 1.0
+    # hazard: clamped dx, dy, present
+    assert x[23] == 1.0
+    assert x[24] == 0.0
+    assert x[25] == 1.0
+
+
+def test_observation_to_inputs_none_pickup_and_hazard():
+    from blueball.ai.observation import observation_to_inputs
+    obs = _make_obs(nearest_pickup=None, nearest_hazard=None, grounded=False)
+    x = observation_to_inputs(obs)
+    assert x[19] == 0.0  # grounded False
+    assert x[20] == 0.0 and x[21] == 0.0 and x[22] == 0.0  # pickup absent
+    assert x[23] == 0.0 and x[24] == 0.0 and x[25] == 0.0  # hazard absent
+
+
+def test_observation_to_inputs_abilities_and_keys_bitfields():
+    from blueball.ai.observation import (
+        observation_to_inputs, _ABILITIES_OFFSET, N_ABILITIES, _KEYS_OFFSET, KEY_BITS,
+    )
+    # bit 0 of abilities set; keys 0 and 3 held
+    obs = _make_obs(abilities=0b1, keys_held=(1 << 0) | (1 << 3))
+    x = observation_to_inputs(obs)
+    assert x[_ABILITIES_OFFSET] == 1.0
+    keys = x[_KEYS_OFFSET:_KEYS_OFFSET + KEY_BITS]
+    assert keys[0] == 1.0
+    assert keys[3] == 1.0
+    assert keys[1] == 0.0
+    assert keys.sum() == 2.0
 
 
 def test_observation_to_inputs_rejects_wrong_ray_count():
