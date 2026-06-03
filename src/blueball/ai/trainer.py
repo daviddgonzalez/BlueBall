@@ -15,15 +15,14 @@ terrain a human sees for that seed.
 `infinite_seed` for Infinite Run. `map_fn` defaults to `map` (serial,
 in-process). Real training callers pass `multiprocessing.Pool(...).imap`.
 
-DETERMINISM CAVEAT: `evaluate` calls `world.step(config.PHYS_DT)` once per
-iteration. PHYS_DT = 1/120 is not exactly representable in IEEE 754, so the
-world's accumulator drifts by a tiny epsilon each step. Over thousands of
-iterations the drift could cross PHYS_DT and fire an extra substep,
-breaking exact determinism across float environments (different numpy/
-python builds, x86 vs ARM). The smoke test passes consistently today, but
-if `test_trainer_is_deterministic_under_same_seed` ever flakes on CI, this
-is the place to look — a follow-up should switch the accumulator to an
-integer substep counter or pre-quantize PHYS_DT.
+DETERMINISM: `evaluate` and `evaluate_infinite` call `world.substep()` once
+per iteration — the drift-free path that runs exactly one PHYS_DT substep
+with no accumulator residual. PHYS_DT = 1/120 is not exactly representable
+in IEEE 754; using the real-time accumulator path (`world.step(PHYS_DT)`)
+would let a tiny epsilon accumulate and occasionally fire a phantom extra
+substep over thousands of iterations, breaking cross-machine determinism.
+`substep()` bypasses the accumulator entirely so N calls == exactly N
+substeps regardless of host float environment.
 """
 
 from __future__ import annotations
@@ -75,10 +74,9 @@ def evaluate(args: tuple) -> tuple[int, float]:
 
     steps = 0
     while steps < max_steps:
-        # Use World.step so the headless path stays in lockstep with the
-        # live game. Passing exactly PHYS_DT means the accumulator runs
-        # exactly one substep per call.
-        world.step(config.PHYS_DT)
+        # Use substep() — exactly one PHYS_DT step with no accumulator
+        # residual, so long headless runs are bit-identical across machines.
+        world.substep()
         steps += 1
         if player.dead or player.reached_goal:
             break
@@ -117,7 +115,7 @@ def evaluate_infinite(args: tuple) -> tuple[int, float]:
         # Extend/cull terrain ahead of the ball, then advance one substep.
         # Mirrors PlayScene.update's order (maintain then step).
         terrain.maintain(player.body.position.x)
-        world.step(config.PHYS_DT)
+        world.substep()
         steps += 1
         if player.dead:
             break

@@ -485,6 +485,17 @@ def test_train_rejects_neither_level_nor_infinite():
         train(pop_size=4, generations=2, max_steps=100)
 
 
+def test_evaluate_infinite_deterministic_over_long_run():
+    """Bit-identical fitness at a large max_steps, where accumulator float
+    drift would previously have surfaced."""
+    from blueball.ai.trainer import evaluate_infinite
+    from blueball.ai.genome import random_genome
+    g = random_genome(np.random.default_rng(11))
+    _, f1 = evaluate_infinite((0, g, 1234, 1, 2000))
+    _, f2 = evaluate_infinite((0, g, 1234, 1, 2000))
+    assert f1 == f2
+
+
 # ----- Task 8: TrainScene -----
 
 @pytest.fixture

@@ -100,6 +100,50 @@ def test_speed_run_world_determinism():
     assert a == b
 
 
+def test_substep_runs_exactly_one_fixed_substep():
+    """substep() advances one PHYS_DT substep with no accumulator change."""
+    import pymunk
+    from blueball import config
+    from blueball.world import World
+
+    w = World()
+    body = pymunk.Body(mass=1.0, moment=10.0)
+    body.position = (0.0, 0.0)
+    shape = pymunk.Circle(body, 5.0)
+    w.space.add(body, shape)
+
+    accum_before = w._accumulator
+    w.substep()
+    # One substep of gravity: velocity gains gravity_y * PHYS_DT.
+    assert abs(body.velocity.y - config.GRAVITY[1] * config.PHYS_DT) < 1e-9
+    # The accumulator must be untouched (substep bypasses it).
+    assert w._accumulator == accum_before
+
+
+def test_substep_calls_entity_update_once():
+    """Each substep runs exactly one entity update pass."""
+    from blueball.world import World
+
+    class Counter:
+        bodies = ()
+        shapes = ()
+        constraints = ()
+        def __init__(self):
+            self.n = 0
+        def update(self, dt):
+            self.n += 1
+            self.last_dt = dt
+
+    w = World()
+    c = Counter()
+    w.add_entity(c)
+    w.substep()
+    w.substep()
+    assert c.n == 2
+    from blueball import config
+    assert c.last_dt == config.PHYS_DT
+
+
 def test_sampler_level_world_determinism():
     actions = [Action.RIGHT] * 600
     seq1 = list(ChunkSampler(seed=12345, target_chunks=80))

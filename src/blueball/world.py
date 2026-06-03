@@ -39,6 +39,22 @@ class World:
     def complete_level(self) -> None:
         self.level_complete = True
 
+    def _run_one_substep(self) -> None:
+        """Advance physics + entities by exactly one PHYS_DT substep."""
+        self.space.step(config.PHYS_DT)
+        for entity in self.entities:
+            update = getattr(entity, "update", None)
+            if update is not None:
+                update(config.PHYS_DT)
+
+    def substep(self) -> None:
+        """Advance by exactly one fixed PHYS_DT substep, bypassing the
+        real-time accumulator. Deterministic across hosts — N calls == N
+        substeps with no float residual. Used by the headless trainer; the
+        live game uses step(frame_dt) for real-time pacing.
+        """
+        self._run_one_substep()
+
     def step(self, frame_dt: float) -> int:
         """Advance the simulation by `frame_dt` real seconds.
 
@@ -49,11 +65,7 @@ class World:
         self._accumulator += frame_dt
         substeps = 0
         while self._accumulator >= config.PHYS_DT and substeps < config.MAX_ACCUMULATED_STEPS:
-            self.space.step(config.PHYS_DT)
-            for entity in self.entities:
-                update = getattr(entity, "update", None)
-                if update is not None:
-                    update(config.PHYS_DT)
+            self._run_one_substep()
             self._accumulator -= config.PHYS_DT
             substeps += 1
 
