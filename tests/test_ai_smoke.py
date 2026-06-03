@@ -554,3 +554,50 @@ def test_train_scene_advances_generation_after_max_steps(headless_pygame):
             break
     assert scene.current_gen >= 1
     assert scene.world is not initial_world
+
+
+# ----- Task 2 (WS2): Multiprocessing.Pool integration -----
+
+def _make_pool(n):
+    """Create a Pool, or skip the test if the platform can't start workers."""
+    import multiprocessing
+    try:
+        return multiprocessing.Pool(n)
+    except (OSError, ValueError) as e:  # pragma: no cover - platform guard
+        pytest.skip(f"multiprocessing unavailable: {e}")
+
+
+def test_pool_eval_matches_serial_determinism():
+    """train() under Pool.imap produces the same best genome as serial map."""
+    from blueball.ai.trainer import train
+    serial = train(pop_size=6, generations=2, infinite_seed=7,
+                   max_steps=200, ga_seed=0, world_seed=1)
+    pool = _make_pool(2)
+    try:
+        parallel = train(pop_size=6, generations=2, infinite_seed=7,
+                         max_steps=200, ga_seed=0, world_seed=1,
+                         map_fn=pool.imap)
+    finally:
+        pool.close()
+        pool.join()
+    assert np.array_equal(serial.best_genome, parallel.best_genome)
+
+
+def test_pool_evaluate_infinite_reorders_results():
+    """evaluate_infinite is picklable; Pool results, once sorted by idx,
+    match the serial mapping element-for-element."""
+    from blueball.ai.trainer import evaluate_infinite
+    from blueball.ai.genome import random_genome
+    rng = np.random.default_rng(0)
+    args = [(i, random_genome(rng), 1234, 1, 150) for i in range(5)]
+    serial = sorted(map(evaluate_infinite, args), key=lambda r: r[0])
+    pool = _make_pool(2)
+    try:
+        parallel = sorted(pool.imap(evaluate_infinite, args), key=lambda r: r[0])
+    finally:
+        pool.close()
+        pool.join()
+    assert [r[0] for r in parallel] == [0, 1, 2, 3, 4]
+    for s, p in zip(serial, parallel):
+        assert s[0] == p[0]
+        assert s[1] == p[1]
