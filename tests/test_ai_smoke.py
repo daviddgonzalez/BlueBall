@@ -589,6 +589,48 @@ def test_train_scene_rejects_neither_or_both_sources(headless_pygame):
                    infinite_seed=1, pool=_SyncPool())
 
 
+class _DelayedResult:
+    """A result that reports not-ready on the first poll, ready afterward."""
+    def __init__(self, values):
+        self._values = values
+        self._polls = 0
+    def ready(self):
+        self._polls += 1
+        return self._polls > 1
+    def get(self, timeout=None):
+        return self._values
+
+
+class _DelayedPool:
+    def map_async(self, fn, iterable):
+        return _DelayedResult([fn(x) for x in iterable])
+    def close(self):
+        pass
+    def terminate(self):
+        pass
+    def join(self):
+        pass
+
+
+def test_train_scene_waits_for_eval_before_advancing(headless_pygame):
+    """Generation must not advance while the async eval reports not-ready."""
+    from blueball.scenes.train import TrainScene
+    scene = TrainScene(
+        headless_pygame,
+        infinite_seed=1234,
+        pop_size=5,
+        n_visible=2,
+        generations=3,
+        max_steps=40,
+        pool=_DelayedPool(),
+    )
+    start_gen = scene.current_gen
+    scene.update(1 / 60)          # first poll: not ready
+    assert scene.current_gen == start_gen
+    scene.update(1 / 60)          # second poll: ready -> advances
+    assert scene.current_gen == start_gen + 1
+
+
 # ----- Task 2 (WS2): Multiprocessing.Pool integration -----
 
 def _make_pool(n):

@@ -132,6 +132,7 @@ class TrainScene(Scene):
         self._eval_result = self._pool.map_async(
             self._eval_fn, [self._make_args(i) for i in range(self.pop_size)]
         )
+        self._eval_ready = False
 
     def _leading_visible_x(self) -> float:
         return max((p.body.position.x for p in self._players), default=self._spawn_xy[0])
@@ -163,6 +164,15 @@ class TrainScene(Scene):
         except Exception:
             pass
 
+    def __del__(self) -> None:
+        # Last-resort guard: if the scene is dropped without an ESC/QUIT event
+        # (e.g. the host stops calling update()), still tear down the Pool
+        # workers rather than leaking them until interpreter exit.
+        try:
+            self._pool.terminate()
+        except Exception:
+            pass
+
     # ---- Scene API ----
 
     def handle_events(self, events):
@@ -188,9 +198,13 @@ class TrainScene(Scene):
         # the display World in real time.
         if self._terrain is not None:
             self._terrain.maintain(self._leading_visible_x())
+        # The cosmetic display has no max_steps ceiling — it just animates
+        # until the async truth-eval flips the generation. max_steps bounds
+        # only the headless eval (via _make_args), not this view.
         self.world.step(frame_dt)
         # Generation flips when the authoritative async eval is ready.
-        if self._eval_result.ready():
+        self._eval_ready = self._eval_result.ready()
+        if self._eval_ready:
             self._complete_generation()
 
     def draw(self) -> None:
@@ -206,7 +220,7 @@ class TrainScene(Scene):
         if self._done:
             label = f"DONE  best {self.best_fitness:.1f}  mean {self.best_mean:.1f}"
         else:
-            evaluating = "" if self._eval_result.ready() else "  evaluating..."
+            evaluating = "" if self._eval_ready else "  evaluating..."
             label = (
                 f"gen {self.current_gen + 1}/{self.generations}  "
                 f"pop {self.pop_size} (showing {self.n_visible})  "
