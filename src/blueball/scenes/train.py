@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 import pygame
 
-from .. import collision, config
+from .. import config
 from ..agent import FTNNAgent
 from ..ai.ga import breed
 from ..ai.genome import random_genome
@@ -50,6 +50,7 @@ class TrainScene(Scene):
         ga_seed: int = config.GA_SEED,
         world_seed: int = config.DEFAULT_SEED,
         max_steps: int = config.MAX_STEPS,
+        save_dir: Path | str | None = None,
         pool=None,
     ) -> None:
         if (level_path is None) == (infinite_seed is None):
@@ -87,6 +88,13 @@ class TrainScene(Scene):
         self.best_mean = 0.0
         self._last_fitnesses: np.ndarray | None = None
         self._done = False
+
+        self.best_genome = self.population[0].copy()
+        self._history: list[dict] = []
+        self._writer = None
+        if save_dir is not None:
+            from ..ai.persistence import TrainingRunWriter
+            self._writer = TrainingRunWriter(save_dir)
 
         self._start_generation()
 
@@ -141,8 +149,21 @@ class TrainScene(Scene):
         results = sorted(self._eval_result.get(), key=lambda r: r[0])
         fits = np.array([r[1] for r in results], dtype=np.float64)
         self._last_fitnesses = fits
-        self.best_fitness = max(self.best_fitness, float(fits.max()))
+        gen_best_idx = int(np.argmax(fits))
+        if float(fits[gen_best_idx]) > self.best_fitness:
+            self.best_fitness = float(fits[gen_best_idx])
+            # The genome that scored fits[i] is population[i] (this gen's pop,
+            # before breeding replaces it).
+            self.best_genome = self.population[gen_best_idx].copy()
         self.best_mean = float(fits.mean())
+        self._history.append({
+            "gen": self.current_gen,
+            "best": float(fits.max()),
+            "mean": self.best_mean,
+            "min": float(fits.min()),
+        })
+        if self._writer is not None:
+            self._writer.save_generation(self.current_gen, self.best_genome)
         self.current_gen += 1
         if self.current_gen < self.generations:
             self.population = breed(
@@ -155,6 +176,19 @@ class TrainScene(Scene):
             self._start_generation()
         else:
             self._done = True
+            if self._writer is not None:
+                self._writer.finalize(self.best_genome, {
+                    "ga_seed": self.ga_seed,
+                    "world_seed": self.world_seed,
+                    "infinite_seed": self.infinite_seed,
+                    "level_path": str(self.level_path) if self.level_path is not None else None,
+                    "pop_size": self.pop_size,
+                    "generations": self.generations,
+                    "max_steps": self.max_steps,
+                    "genome_size": int(self.best_genome.shape[0]),
+                    "best_fitness": self.best_fitness,
+                    "history": self._history,
+                })
             self._close_pool()
 
     def _close_pool(self) -> None:

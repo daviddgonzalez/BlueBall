@@ -631,6 +631,56 @@ def test_train_scene_waits_for_eval_before_advancing(headless_pygame):
     assert scene.current_gen == start_gen + 1
 
 
+def test_train_scene_static_level_display(headless_pygame):
+    """The static-level display branch (load_level + no terrain) builds and
+    steps without crashing."""
+    from blueball.scenes.train import TrainScene
+    scene = TrainScene(
+        headless_pygame,
+        level_path=_level_path(),
+        pop_size=4,
+        n_visible=2,
+        generations=2,
+        max_steps=40,
+        pool=_SyncPool(),
+    )
+    assert scene._terrain is None
+    assert len(scene._players) == 2
+    for _ in range(5):
+        scene.update(1 / 60)
+
+
+def test_train_scene_persists_genomes(headless_pygame, tmp_path):
+    """With save_dir set, TrainScene writes per-gen best + final_best + run.json."""
+    import json
+    import numpy as np
+    from blueball.scenes.train import TrainScene
+    run_dir = tmp_path / "vizrun"
+    scene = TrainScene(
+        headless_pygame,
+        infinite_seed=1234,
+        pop_size=4,
+        n_visible=2,
+        generations=2,
+        max_steps=40,
+        pool=_SyncPool(),
+        save_dir=run_dir,
+    )
+    # _SyncPool is ready immediately, so each update() completes a generation.
+    for _ in range(5):
+        scene.update(1 / 60)
+        if scene._done:
+            break
+    assert scene._done
+    snaps = sorted(p.name for p in run_dir.glob("best_gen*.npy"))
+    assert snaps == ["best_gen000.npy", "best_gen001.npy"]
+    final = np.load(run_dir / "final_best.npy")
+    assert np.array_equal(final, scene.best_genome)
+    meta = json.loads((run_dir / "run.json").read_text())
+    assert meta["infinite_seed"] == 1234
+    assert len(meta["history"]) == 2
+
+
 # ----- Task 2 (WS2): Multiprocessing.Pool integration -----
 
 def _make_pool(n):
