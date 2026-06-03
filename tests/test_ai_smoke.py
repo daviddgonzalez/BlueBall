@@ -510,50 +510,83 @@ def headless_pygame():
     pygame.display.quit()
 
 
-def test_train_scene_constructs_and_steps(headless_pygame):
-    """TrainScene builds without raising, owns N FTNNAgent-driven Players,
-    and a single update() tick does not crash."""
+class _SyncResult:
+    """A map_async result that has already computed eagerly."""
+    def __init__(self, values):
+        self._values = values
+    def ready(self):
+        return True
+    def get(self, timeout=None):
+        return self._values
+
+
+class _SyncPool:
+    """Synchronous stand-in for multiprocessing.Pool — runs map_async eagerly
+    so TrainScene tests are deterministic and process-free."""
+    def __init__(self):
+        self.calls = 0
+    def map_async(self, fn, iterable):
+        self.calls += 1
+        return _SyncResult([fn(x) for x in iterable])
+    def close(self):
+        pass
+    def terminate(self):
+        pass
+    def join(self):
+        pass
+
+
+def test_train_scene_constructs_and_steps_infinite(headless_pygame):
+    """TrainScene builds on an Infinite Run seed, owns n_visible FTNN players
+    on a streamed terrain, and update() ticks do not crash."""
     from blueball.scenes.train import TrainScene
     from blueball.agent import FTNNAgent
     from blueball import collision
     scene = TrainScene(
         headless_pygame,
-        _level_path(),
-        pop_size=4,
+        infinite_seed=1234,
+        pop_size=6,
         n_visible=4,
         generations=2,
         max_steps=60,
+        pool=_SyncPool(),
     )
     assert len(scene._players) == 4
     for p in scene._players:
         assert isinstance(p.agent, FTNNAgent)
         assert p.shape.filter.group == collision.PLAYER_GROUP
-    # Multiple ticks should not raise. Don't rely on hitting a gen boundary
-    # here because frame_dt at 1/60 only advances 2 physics substeps per call.
     for _ in range(10):
         scene.update(1 / 60)
 
 
-def test_train_scene_advances_generation_after_max_steps(headless_pygame):
-    """After max_steps elapsed gen ticks, scene rebuilds the world for gen 1."""
+def test_train_scene_evaluates_full_population(headless_pygame):
+    """The async truth-eval scores all pop_size genomes, not just n_visible,
+    and a generation advances when the result is ready."""
     from blueball.scenes.train import TrainScene
+    pool = _SyncPool()
     scene = TrainScene(
         headless_pygame,
-        _level_path(),
-        pop_size=4,
-        n_visible=4,
+        infinite_seed=1234,
+        pop_size=8,
+        n_visible=3,
         generations=3,
-        max_steps=20,    # short enough to roll a generation in a handful of frames
+        max_steps=40,
+        pool=pool,
     )
-    initial_world = scene.world
-    # Each scene.update at 1/60s advances PHYS_HZ/60 = 2 physics ticks. So
-    # max_steps=20 advances in ~10 scene-updates. We give it a margin.
-    for _ in range(40):
-        scene.update(1 / 60)
-        if scene.current_gen >= 1:
-            break
-    assert scene.current_gen >= 1
-    assert scene.world is not initial_world
+    start_gen = scene.current_gen
+    scene.update(1 / 60)
+    assert scene.current_gen == start_gen + 1
+    assert scene._last_fitnesses is not None
+    assert len(scene._last_fitnesses) == 8
+
+
+def test_train_scene_rejects_neither_or_both_sources(headless_pygame):
+    from blueball.scenes.train import TrainScene
+    with pytest.raises(ValueError):
+        TrainScene(headless_pygame, pool=_SyncPool())
+    with pytest.raises(ValueError):
+        TrainScene(headless_pygame, level_path=_level_path(),
+                   infinite_seed=1, pool=_SyncPool())
 
 
 # ----- Task 2 (WS2): Multiprocessing.Pool integration -----

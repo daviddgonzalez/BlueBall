@@ -5,7 +5,6 @@ Run with:  python train_main.py
 """
 
 import sys
-from pathlib import Path
 
 import pygame
 
@@ -19,8 +18,7 @@ def main() -> int:
     screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
     clock = pygame.time.Clock()
 
-    level_path = Path(__file__).parent / "src" / "blueball" / "levels" / "tutorial_hill.json"
-    scene = TrainScene(screen, level_path)
+    scene = TrainScene(screen, infinite_seed=config.INFINITE_RUN_SEED)
 
     while scene is not None:
         events = pygame.event.get()

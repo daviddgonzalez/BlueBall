@@ -46,9 +46,10 @@ from .ga import breed
 from .genome import random_genome
 
 # Spawn for streamed Infinite Run evaluation. Matches PlayScene's default
-# Infinite Run spawn so the headless trainer drops the ball where a human
-# would start. The guaranteed Flat at x=0 gives it ground to land on.
-_INFINITE_SPAWN = (80.0, 540.0)
+# Infinite Run spawn so the headless trainer and the visual TrainScene drop
+# the ball where a human would start. The guaranteed Flat at x=0 gives it
+# ground to land on.
+INFINITE_SPAWN = (80.0, 540.0)
 
 
 @dataclass(frozen=True)
@@ -106,7 +107,7 @@ def evaluate_infinite(args: tuple) -> tuple[int, float]:
     register_collisions(world.space, world_ref=world)
     terrain = TerrainStream(world, int(sampler_seed))
 
-    spawn_x, spawn_y = _INFINITE_SPAWN
+    spawn_x, spawn_y = INFINITE_SPAWN
     player = Player(agent=FTNNAgent(genome), spawn_xy=(spawn_x, spawn_y))
     world.add_entity(player)
 
