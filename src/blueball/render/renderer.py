@@ -53,6 +53,19 @@ class Renderer:
             self._prev_pos[id(body)] = (body.position.x, body.position.y)
             self._prev_angle[id(body)] = body.angle
 
+    def reset_interpolation(self) -> None:
+        """Clear cached per-body previous positions/angles.
+
+        Call whenever the renderer's target World is swapped (e.g. TrainScene's
+        generation rollover). Without the reset, these dicts accumulate stale
+        entries keyed by ``id(body)`` of bodies that are now garbage-collected;
+        CPython can reuse those ids for freshly allocated bodies and
+        ``_interp_body_pos`` would then read a dead body's last position for an
+        unrelated new body — a one-frame teleport.
+        """
+        self._prev_pos.clear()
+        self._prev_angle.clear()
+
     def draw_background(self, color: tuple[int, int, int]) -> None:
         self.screen.fill(color)
 

@@ -10,11 +10,10 @@ import pymunk
 from .. import config
 from ..abilities import Ability
 from ..agent import Action, Agent, HitType, Observation, _CT_TO_HITTYPE
+from ..collision import PLAYER_GROUP
 from ..input_feel import JumpController
 from .base import Entity
 
-
-_PLAYER_RAY_GROUP = 1
 
 # 8 ray directions, 45° apart, starting due-right (east) and going counter-
 # clockwise.  Pre-computed once at import time.
@@ -65,8 +64,12 @@ class Player(Entity):
         self.body = pymunk.Body(mass=config.BALL_MASS, moment=moment)
         self.body.position = spawn_xy
         self.shape = pymunk.Circle(self.body, config.BALL_RADIUS)
-        self.shape.filter = pymunk.ShapeFilter(group=_PLAYER_RAY_GROUP)
-        self._ray_filter = pymunk.ShapeFilter(group=_PLAYER_RAY_GROUP)
+        # All players share PLAYER_GROUP so they never collide with each other
+        # (TrainScene runs a whole population in one World). Putting the ray
+        # filter in the same group makes a player's raycasts skip every player
+        # shape — its own in single-player, and all ghosts during training.
+        self.shape.filter = pymunk.ShapeFilter(group=PLAYER_GROUP)
+        self._ray_filter = pymunk.ShapeFilter(group=PLAYER_GROUP)
         self.shape.friction = config.BALL_FRICTION
         self.shape.elasticity = config.BALL_ELASTICITY
         # collision_type=1 matches CT_PLAYER in collision.py (added in Task 8)
@@ -79,6 +82,7 @@ class Player(Entity):
         self.abilities: set[Ability] = abilities if abilities is not None else set()
         self.jump_ctrl = JumpController(abilities=self.abilities)
         self.dead = False
+        self.reached_goal = False
         self.collectibles_collected = 0
         self._boost_multiplier: float = 1.0
         self._aerial_since_pickup: bool = False

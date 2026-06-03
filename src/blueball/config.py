@@ -105,3 +105,21 @@ PROJECTILE_DEFAULT_RADIUS = 10
 # Observation
 MAX_RAY_LEN = 300.0
 NUM_RAYS = 8
+
+# AI / GA training
+TRAIN_POP_SIZE      = 80      # spec default for real training
+TRAIN_GENERATIONS   = 200     # spec default for real training
+MAX_STEPS           = 3000    # per-evaluation timeout (~25s at PHYS_HZ=120)
+GA_MUTATION_RATE    = 0.1
+GA_MUTATION_SIGMA   = 0.1
+GA_TOURNAMENT_K     = 4
+GA_ELITISM          = 1
+
+# Reference seeds for reproducible training runs. Pinning these makes a run
+# fully deterministic: GA_SEED fixes evolution (population init, mutation,
+# crossover, tournament); INFINITE_RUN_SEED fixes the Infinite Run chunk
+# layout (the sampler_seed); world_seed (DEFAULT_SEED) fixes physics. Same
+# triple -> byte-identical best genome. Change these to train on a different
+# reference course.
+GA_SEED             = 0
+INFINITE_RUN_SEED   = 1234

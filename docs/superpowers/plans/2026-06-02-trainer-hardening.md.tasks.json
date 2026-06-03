@@ -1,0 +1,26 @@
+{
+  "planPath": "docs/superpowers/plans/2026-06-02-trainer-hardening.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 1: Drift-free fixed substep (WS1)",
+      "status": "pending",
+      "description": "**Goal:** Add World.substep() that advances exactly one PHYS_DT substep with no accumulator, and point the headless evaluators at it so long runs are bit-identical across machines.\n\n**Files:**\n- Modify: src/blueball/world.py (step method region)\n- Modify: src/blueball/ai/trainer.py (evaluate + evaluate_infinite loops)\n- Test: tests/test_world_determinism.py, tests/test_ai_smoke.py\n\n**Acceptance Criteria:**\n- World.substep() runs exactly one substep, no accumulator change\n- step() and substep() share one per-substep path (_run_one_substep)\n- evaluate/evaluate_infinite use world.substep()\n- evaluate_infinite bit-identical at max_steps=2000\n- full suite green\n\n**Verify:** SDL_VIDEODRIVER=dummy /home/ddgg0/projects/BlueBall/.venv/bin/python -m pytest tests/test_world_determinism.py tests/test_ai_smoke.py -q\n\n```json:metadata\n{\"files\": [\"src/blueball/world.py\", \"src/blueball/ai/trainer.py\", \"tests/test_world_determinism.py\", \"tests/test_ai_smoke.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy /home/ddgg0/projects/BlueBall/.venv/bin/python -m pytest tests/test_world_determinism.py tests/test_ai_smoke.py -q\", \"acceptanceCriteria\": [\"World.substep() runs exactly one substep, no accumulator change\", \"step() and substep() share one per-substep path\", \"evaluate/evaluate_infinite use world.substep()\", \"evaluate_infinite bit-identical at max_steps=2000\", \"full suite green\"]}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 2: Multiprocessing.Pool integration test (WS2)",
+      "status": "pending",
+      "blockedBy": [0],
+      "description": "**Goal:** Pin that the parallel evaluation path matches serial and survives pickling/reordering, so long Pool.imap runs are trustworthy.\n\n**Files:**\n- Test: tests/test_ai_smoke.py\n\n**Acceptance Criteria:**\n- train(infinite_seed, map_fn=Pool(2).imap) == serial best_genome (array_equal)\n- Pool results reorder correctly per idx\n- Pool closed + skip if workers unavailable\n- full suite green\n\n**Verify:** SDL_VIDEODRIVER=dummy /home/ddgg0/projects/BlueBall/.venv/bin/python -m pytest tests/test_ai_smoke.py -k pool -q\n\n```json:metadata\n{\"files\": [\"tests/test_ai_smoke.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy /home/ddgg0/projects/BlueBall/.venv/bin/python -m pytest tests/test_ai_smoke.py -k pool -q\", \"acceptanceCriteria\": [\"train under Pool.imap == serial best_genome\", \"Pool results reorder correctly per idx\", \"Pool closed + skip if workers unavailable\", \"full suite green\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 3: TrainScene Infinite Run parity + async viz-only eval (WS3)",
+      "status": "pending",
+      "blockedBy": [0],
+      "description": "**Goal:** Rewrite TrainScene so the visual trainer streams the real Infinite Run course for display while an async Pool.map_async evaluates the full population for authoritative fitness — removing the -inf invisible-agent dilution and matching the headless trainer.\n\n**Files:**\n- Modify: src/blueball/ai/trainer.py (rename _INFINITE_SPAWN -> public INFINITE_SPAWN)\n- Rewrite: src/blueball/scenes/train.py\n- Modify: train_main.py\n- Test: tests/test_ai_smoke.py (rewrite train_scene tests + _SyncPool stubs)\n\n**Acceptance Criteria:**\n- TrainScene accepts exactly one of level_path/infinite_seed else ValueError\n- infinite display streams via TerrainStream, n_visible live\n- full pop evaluated via injectable pool map_async, gen advances on ready\n- sync pool stub test confirms pop_size genomes evaluated\n- train_main uses INFINITE_RUN_SEED\n- full suite green\n\n**Verify:** SDL_VIDEODRIVER=dummy /home/ddgg0/projects/BlueBall/.venv/bin/python -m pytest tests/test_ai_smoke.py -k train_scene -q\n\n```json:metadata\n{\"files\": [\"src/blueball/scenes/train.py\", \"src/blueball/ai/trainer.py\", \"train_main.py\", \"tests/test_ai_smoke.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy /home/ddgg0/projects/BlueBall/.venv/bin/python -m pytest tests/test_ai_smoke.py -k train_scene -q\", \"acceptanceCriteria\": [\"exactly one of level_path/infinite_seed else ValueError\", \"infinite display streams via TerrainStream, n_visible live\", \"full pop evaluated via injectable pool map_async, gen advances on ready\", \"sync pool stub test confirms pop_size genomes evaluated\", \"train_main uses INFINITE_RUN_SEED\", \"full suite green\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-06-02"
+}
