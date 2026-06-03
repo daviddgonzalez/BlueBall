@@ -11,18 +11,20 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class FitnessInputs:
-    progress_x: float    # player.body.position.x - spawn_x
+    progress_x: float    # furthest x reached - spawn_x
     collectibles: int    # player.collectibles_collected
     reached_goal: bool   # player.reached_goal
     died: bool           # player.dead
-    steps_taken: int     # the loop counter from evaluate()
+    steps_taken: int     # the loop counter from the evaluator
+    keys_collected: int  # popcount of player.keys_held
 
 
 def fitness(inputs: FitnessInputs) -> float:
     return (
         inputs.progress_x
-        + 50.0  * inputs.collectibles
+        + 100.0 * inputs.keys_collected
+        +  50.0 * inputs.collectibles
         + 200.0 * (1.0 if inputs.reached_goal else 0.0)
         -   0.01 * inputs.steps_taken
-        - 100.0 * (1.0 if inputs.died else 0.0)
+        - 200.0 * (1.0 if inputs.died else 0.0)
     )

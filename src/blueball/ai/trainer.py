@@ -59,6 +59,20 @@ class TrainingResult:
     final_population: list[np.ndarray]        # for follow-up runs / TrainScene re-entry
 
 
+def _episode_fitness(player, spawn_x: float, max_x: float, steps: int, reached_goal: bool) -> float:
+    """Build the per-episode fitness from an evaluated player. Shared by both
+    evaluators. `max_x` is the furthest x the player reached (>= spawn_x), so
+    progress is robust to knockback / falling back before death."""
+    return fitness(FitnessInputs(
+        progress_x=float(max_x - spawn_x),
+        collectibles=int(player.collectibles_collected),
+        reached_goal=bool(reached_goal),
+        died=bool(player.dead),
+        steps_taken=steps,
+        keys_collected=bin(player.keys_held).count("1"),
+    ))
+
+
 def evaluate(args: tuple) -> tuple[int, float]:
     """One genome -> one fitness. Picklable input/output so it works under
     multiprocessing.Pool. Args is (idx, genome, world_seed, level_path, max_steps).
@@ -73,22 +87,20 @@ def evaluate(args: tuple) -> tuple[int, float]:
     player = Player(agent=FTNNAgent(genome), spawn_xy=(spawn_x, spawn_y))
     world.add_entity(player)
 
+    max_x = spawn_x
     steps = 0
     while steps < max_steps:
         # Use substep() — exactly one PHYS_DT step with no accumulator
         # residual, so long headless runs are bit-identical across machines.
         world.substep()
         steps += 1
+        if player.body.position.x > max_x:
+            max_x = player.body.position.x
         if player.dead or player.reached_goal:
             break
 
-    f = fitness(FitnessInputs(
-        progress_x=float(player.body.position.x - spawn_x),
-        collectibles=int(player.collectibles_collected),
-        reached_goal=bool(player.reached_goal),
-        died=bool(player.dead),
-        steps_taken=steps,
-    ))
+    f = _episode_fitness(player, spawn_x, max_x, steps,
+                         reached_goal=bool(player.reached_goal))
     return idx, float(f)
 
 
@@ -111,6 +123,7 @@ def evaluate_infinite(args: tuple) -> tuple[int, float]:
     player = Player(agent=FTNNAgent(genome), spawn_xy=(spawn_x, spawn_y))
     world.add_entity(player)
 
+    max_x = spawn_x
     steps = 0
     while steps < max_steps:
         # Extend/cull terrain ahead of the ball, then advance one substep.
@@ -118,16 +131,12 @@ def evaluate_infinite(args: tuple) -> tuple[int, float]:
         terrain.maintain(player.body.position.x)
         world.substep()
         steps += 1
+        if player.body.position.x > max_x:
+            max_x = player.body.position.x
         if player.dead:
             break
 
-    f = fitness(FitnessInputs(
-        progress_x=float(player.body.position.x - spawn_x),
-        collectibles=int(player.collectibles_collected),
-        reached_goal=False,  # Infinite Run has no goal
-        died=bool(player.dead),
-        steps_taken=steps,
-    ))
+    f = _episode_fitness(player, spawn_x, max_x, steps, reached_goal=False)
     return idx, float(f)
 
 

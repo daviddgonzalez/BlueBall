@@ -304,7 +304,7 @@ def test_fitness_all_zero_returns_zero():
     from blueball.ai.fitness import fitness, FitnessInputs
     f = fitness(FitnessInputs(
         progress_x=0.0, collectibles=0, reached_goal=False,
-        died=False, steps_taken=0,
+        died=False, steps_taken=0, keys_collected=0,
     ))
     assert f == 0.0
 
@@ -312,13 +312,10 @@ def test_fitness_all_zero_returns_zero():
 def test_fitness_shape_matches_spec_formula():
     from blueball.ai.fitness import fitness, FitnessInputs
     f = fitness(FitnessInputs(
-        progress_x=500.0,
-        collectibles=3,
-        reached_goal=True,
-        died=False,
-        steps_taken=1000,
+        progress_x=500.0, collectibles=3, reached_goal=True,
+        died=False, steps_taken=1000, keys_collected=0,
     ))
-    # 500 + 50*3 + 200 - 0.01*1000 - 0  = 500 + 150 + 200 - 10 = 840
+    # 500 + 50*3 + 200 - 0.01*1000 - 0 + 100*0 = 840
     assert f == pytest.approx(840.0)
 
 
@@ -326,10 +323,21 @@ def test_fitness_penalizes_death_and_charges_step_cost():
     from blueball.ai.fitness import fitness, FitnessInputs
     f = fitness(FitnessInputs(
         progress_x=10.0, collectibles=0, reached_goal=False,
-        died=True, steps_taken=500,
+        died=True, steps_taken=500, keys_collected=0,
     ))
-    # 10 + 0 + 0 - 5 - 100 = -95
-    assert f == pytest.approx(-95.0)
+    # 10 + 0 + 0 - 5 - 200 + 0 = -195
+    assert f == pytest.approx(-195.0)
+
+
+def test_fitness_rewards_keys():
+    """Each key collected adds exactly 100."""
+    from blueball.ai.fitness import fitness, FitnessInputs
+    base = dict(progress_x=0.0, collectibles=0, reached_goal=False,
+                died=False, steps_taken=0)
+    f0 = fitness(FitnessInputs(keys_collected=0, **base))
+    f2 = fitness(FitnessInputs(keys_collected=2, **base))
+    assert f0 == 0.0
+    assert f2 == pytest.approx(200.0)
 
 
 # ----- Task 5: FTNNAgent -----
@@ -376,6 +384,23 @@ def test_evaluate_runs_one_genome_to_completion():
     idx, fit = evaluate((0, g, config.DEFAULT_SEED, _level_path(), 200))
     assert idx == 0
     assert np.isfinite(fit)
+
+
+def test_episode_fitness_uses_furthest_x_and_counts_keys():
+    """_episode_fitness scores progress on the furthest x reached (not final)
+    and credits each held key (popcount of the bitfield)."""
+    from blueball.ai.trainer import _episode_fitness
+
+    class _StubPlayer:
+        def __init__(self, keys_held, dead=False, collectibles=0):
+            self.keys_held = keys_held
+            self.dead = dead
+            self.collectibles_collected = collectibles
+
+    player = _StubPlayer(keys_held=(1 << 0) | (1 << 2))  # 2 keys
+    f = _episode_fitness(player, spawn_x=80.0, max_x=300.0, steps=0, reached_goal=False)
+    # progress 300-80=220 + 100*2 = 420
+    assert f == pytest.approx(420.0)
 
 
 def test_trainer_smoke_5gens_no_crash():
@@ -451,10 +476,14 @@ def test_evaluate_infinite_is_deterministic_for_same_seeds():
 
 def test_evaluate_infinite_different_seeds_build_different_terrain():
     """Different sampler seeds should generally produce different fitness for
-    the same genome (terrain actually varies with the seed)."""
+    the same genome (terrain actually varies with the seed).
+
+    The genome must move enough to encounter terrain — seed 2 reliably does so
+    across all 5 terrain seeds at max_steps=300.
+    """
     from blueball.ai.trainer import evaluate_infinite
     from blueball.ai.genome import random_genome
-    g = random_genome(np.random.default_rng(5))
+    g = random_genome(np.random.default_rng(2))
     fits = {evaluate_infinite((0, g, s, 1, 300))[1] for s in (1, 2, 3, 4, 5)}
     assert len(fits) > 1
 
