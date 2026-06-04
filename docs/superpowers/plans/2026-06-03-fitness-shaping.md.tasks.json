@@ -4,7 +4,7 @@
     {
       "id": 0,
       "subject": "Task 1: Reshape fitness — furthest-x, keys, modest death",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Update fitness() to add a keys term and a -200 death penalty, and route both evaluators through a shared _episode_fitness() helper that uses furthest-x as progress and counts keys.\n\n**Files:**\n- Modify: src/blueball/ai/fitness.py\n- Modify: src/blueball/ai/trainer.py (evaluate + evaluate_infinite)\n- Test: tests/test_ai_smoke.py\n\n**Acceptance Criteria:**\n- FitnessInputs has keys_collected field (required, last)\n- fitness() adds 100*keys_collected and uses -200*died (was -100)\n- _episode_fitness(player, spawn_x, max_x, steps, reached_goal) builds inputs with progress_x=max_x-spawn_x and keys_collected=bin(player.keys_held).count('1')\n- evaluate and evaluate_infinite track furthest x and call _episode_fitness\n- fitness tests updated (840/-195/200/420), full suite green\n\n**Verify:** SDL_VIDEODRIVER=dummy /home/ddgg0/projects/BlueBall/.venv/bin/python -m pytest tests/ -q\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/fitness.py\", \"src/blueball/ai/trainer.py\", \"tests/test_ai_smoke.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy /home/ddgg0/projects/BlueBall/.venv/bin/python -m pytest tests/ -q\", \"acceptanceCriteria\": [\"FitnessInputs has keys_collected field\", \"fitness() adds 100*keys and uses -200*died\", \"_episode_fitness builds inputs with furthest-x progress + key popcount\", \"both evaluators track furthest-x and call _episode_fitness\", \"fitness tests updated (840/-195/200/420), full suite green\"]}\n```"
     }
   ],
