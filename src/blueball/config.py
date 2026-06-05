@@ -115,6 +115,10 @@ GA_MUTATION_SIGMA   = 0.1
 GA_TOURNAMENT_K     = 4
 GA_ELITISM          = 1
 GA_FITNESS_STD_PENALTY = 1.0  # lambda: per-episode std penalty (mean - lam*std)
+# Goal-completion bonus, in units of the level's full width: reaching the goal
+# adds GOAL_MULT * level_width to fitness, so completion dominates a no-goal
+# traversal (which maxes near level_width) and auto-scales with level length.
+GOAL_MULT              = 2.0
 
 # Reference seeds for reproducible training runs. Pinning these makes a run
 # fully deterministic: GA_SEED fixes evolution (population init, mutation,

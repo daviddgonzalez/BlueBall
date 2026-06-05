@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .. import config
+
 
 @dataclass(frozen=True)
 class FitnessInputs:
@@ -17,6 +19,7 @@ class FitnessInputs:
     died: bool           # player.dead
     steps_taken: int     # the loop counter from the evaluator
     keys_collected: int  # popcount of player.keys_held
+    level_width: float   # level total width; 0.0 for goalless (infinite) modes
 
 
 def fitness(inputs: FitnessInputs) -> float:
@@ -24,7 +27,7 @@ def fitness(inputs: FitnessInputs) -> float:
         inputs.progress_x
         + 100.0 * inputs.keys_collected
         +  50.0 * inputs.collectibles
-        + 200.0 * (1.0 if inputs.reached_goal else 0.0)
+        + config.GOAL_MULT * inputs.level_width * (1.0 if inputs.reached_goal else 0.0)
         -   0.01 * inputs.steps_taken
         - 200.0 * (1.0 if inputs.died else 0.0)
     )

@@ -304,7 +304,7 @@ def test_fitness_all_zero_returns_zero():
     from blueball.ai.fitness import fitness, FitnessInputs
     f = fitness(FitnessInputs(
         progress_x=0.0, collectibles=0, reached_goal=False,
-        died=False, steps_taken=0, keys_collected=0,
+        died=False, steps_taken=0, keys_collected=0, level_width=0.0,
     ))
     assert f == 0.0
 
@@ -313,19 +313,19 @@ def test_fitness_shape_matches_spec_formula():
     from blueball.ai.fitness import fitness, FitnessInputs
     f = fitness(FitnessInputs(
         progress_x=500.0, collectibles=3, reached_goal=True,
-        died=False, steps_taken=1000, keys_collected=0,
+        died=False, steps_taken=1000, keys_collected=0, level_width=500.0,
     ))
-    # 500 + 50*3 + 200 - 0.01*1000 - 0 + 100*0 = 840
-    assert f == pytest.approx(840.0)
+    # 500 + 50*3 + GOAL_MULT(2.0)*500*1 - 0.01*1000 - 0 + 100*0 = 1640
+    assert f == pytest.approx(1640.0)
 
 
 def test_fitness_penalizes_death_and_charges_step_cost():
     from blueball.ai.fitness import fitness, FitnessInputs
     f = fitness(FitnessInputs(
         progress_x=10.0, collectibles=0, reached_goal=False,
-        died=True, steps_taken=500, keys_collected=0,
+        died=True, steps_taken=500, keys_collected=0, level_width=0.0,
     ))
-    # 10 + 0 + 0 - 5 - 200 + 0 = -195
+    # 10 + 0 + 0 - 5 - 200 + 0 = -195  (no goal -> width term is 0)
     assert f == pytest.approx(-195.0)
 
 
@@ -333,11 +333,35 @@ def test_fitness_rewards_keys():
     """Each key collected adds exactly 100."""
     from blueball.ai.fitness import fitness, FitnessInputs
     base = dict(progress_x=0.0, collectibles=0, reached_goal=False,
-                died=False, steps_taken=0)
+                died=False, steps_taken=0, level_width=0.0)
     f0 = fitness(FitnessInputs(keys_collected=0, **base))
     f2 = fitness(FitnessInputs(keys_collected=2, **base))
     assert f0 == 0.0
     assert f2 == pytest.approx(200.0)
+
+
+def test_fitness_completion_dominates_traversal():
+    """Reaching the goal beats an identical no-goal run by exactly
+    GOAL_MULT * level_width, on every level, with no magic constant."""
+    from blueball import config
+    from blueball.ai.fitness import fitness, FitnessInputs
+    W = 2000.0
+    base = dict(progress_x=W, collectibles=0, died=False, steps_taken=0,
+                keys_collected=0, level_width=W)
+    finished = fitness(FitnessInputs(reached_goal=True, **base))
+    unfinished = fitness(FitnessInputs(reached_goal=False, **base))
+    assert finished - unfinished == pytest.approx(config.GOAL_MULT * W)
+
+
+def test_fitness_no_goal_is_independent_of_width():
+    """Infinite-Run invariant: with reached_goal=False the width term is 0, so
+    fitness does not depend on level_width."""
+    from blueball.ai.fitness import fitness, FitnessInputs
+    base = dict(progress_x=300.0, collectibles=1, reached_goal=False,
+                died=False, steps_taken=10, keys_collected=1)
+    a = fitness(FitnessInputs(level_width=0.0, **base))
+    b = fitness(FitnessInputs(level_width=9999.0, **base))
+    assert a == b
 
 
 # ----- Task 5: FTNNAgent -----
@@ -398,7 +422,8 @@ def test_episode_fitness_uses_furthest_x_and_counts_keys():
             self.collectibles_collected = collectibles
 
     player = _StubPlayer(keys_held=(1 << 0) | (1 << 2))  # 2 keys
-    f = _episode_fitness(player, spawn_x=80.0, max_x=300.0, steps=0, reached_goal=False)
+    f = _episode_fitness(player, spawn_x=80.0, max_x=300.0, steps=0,
+                         reached_goal=False, level_width=0.0)
     # progress 300-80=220 + 100*2 = 420
     assert f == pytest.approx(420.0)
 

@@ -60,10 +60,14 @@ class TrainingResult:
     final_population: list[np.ndarray]        # for follow-up runs / TrainScene re-entry
 
 
-def _episode_fitness(player, spawn_x: float, max_x: float, steps: int, reached_goal: bool) -> float:
+def _episode_fitness(player, spawn_x: float, max_x: float, steps: int,
+                     reached_goal: bool, level_width: float) -> float:
     """Build the per-episode fitness from an evaluated player. Shared by both
     evaluators. `max_x` is the furthest x the player reached (>= spawn_x), so
-    progress is robust to knockback / falling back before death."""
+    progress is robust to knockback / falling back before death. `level_width`
+    is the level's total width and scales the goal-completion bonus; it is 0.0
+    for goalless Infinite Run, where `reached_goal` is always False so the term
+    vanishes regardless."""
     return fitness(FitnessInputs(
         progress_x=float(max_x - spawn_x),
         collectibles=int(player.collectibles_collected),
@@ -71,6 +75,7 @@ def _episode_fitness(player, spawn_x: float, max_x: float, steps: int, reached_g
         died=bool(player.dead),
         steps_taken=steps,
         keys_collected=bin(player.keys_held).count("1"),
+        level_width=float(level_width),
     ))
 
 
@@ -101,7 +106,8 @@ def evaluate(args: tuple) -> tuple[int, float]:
             break
 
     f = _episode_fitness(player, spawn_x, max_x, steps,
-                         reached_goal=bool(player.reached_goal))
+                         reached_goal=bool(player.reached_goal),
+                         level_width=float(meta.total_width))
     return idx, float(f)
 
 
@@ -137,7 +143,8 @@ def evaluate_infinite(args: tuple) -> tuple[int, float]:
         if player.dead:
             break
 
-    f = _episode_fitness(player, spawn_x, max_x, steps, reached_goal=False)
+    f = _episode_fitness(player, spawn_x, max_x, steps, reached_goal=False,
+                         level_width=0.0)
     return idx, float(f)
 
 
