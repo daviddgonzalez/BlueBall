@@ -160,7 +160,7 @@ def test_evaluate_episodes_single_equals_raw_evaluate_infinite():
     _, raw = evaluate_infinite((0, g, 1234, 1, 120))
     ep = EpisodeSpec(kind="infinite", seed=1234, level_path=None,
                      world_seed=1, max_steps=120)
-    _, agg = evaluate_episodes((0, g, (ep,), 1.0))
+    _, agg = evaluate_episodes((0, g, (ep,), 1.0, "mean_std"))
     assert agg == pytest.approx(raw)
 
 
@@ -168,7 +168,32 @@ def test_evaluate_episodes_empty_raises():
     from blueball.ai.trainer import evaluate_episodes
     g = np.zeros(5, dtype=np.float32)
     with pytest.raises(ValueError):
-        evaluate_episodes((0, g, (), 1.0))
+        evaluate_episodes((0, g, (), 1.0, "mean_std"))
+
+
+def test_evaluate_episodes_min_mode_returns_min_of_episodes():
+    from blueball.ai.episodes import infinite_episodes
+    from blueball.ai.genome import random_genome
+    from blueball.ai.trainer import evaluate_episodes, evaluate_infinite
+    g = random_genome(np.random.default_rng(0))
+    eps = infinite_episodes([1234, 777], world_seed=1, max_steps=120)
+    # infinite episodes have norm=1.0, so normalized score == raw fitness
+    _, r0 = evaluate_infinite((0, g, 1234, 1, 120))
+    _, r1 = evaluate_infinite((0, g, 777, 1, 120))
+    _, agg = evaluate_episodes((0, g, tuple(eps), 1.0, "min"))
+    assert agg == pytest.approx(min(r0, r1))
+
+
+def test_train_aggregate_min_is_deterministic_and_finite():
+    from blueball.ai.episodes import infinite_episodes
+    from blueball.ai.trainer import train
+    eps = infinite_episodes([1234, 777], world_seed=1, max_steps=80)
+    a = train(pop_size=6, generations=3, episodes=eps, ga_seed=0, aggregate="min")
+    b = train(pop_size=6, generations=3, episodes=eps, ga_seed=0, aggregate="min")
+    assert np.array_equal(a.best_genome, b.best_genome)
+    assert len(a.history) == 3
+    for h in a.history:
+        assert np.isfinite(h["best"]) and np.isfinite(h["min"])
 
 
 def test_train_multi_episode_is_deterministic():
@@ -225,6 +250,7 @@ def test_train_infinite_cli_writes_run(tmp_path):
     meta = json.loads((runs[0] / "run.json").read_text())
     assert len(meta["episodes"]) == 2
     assert meta["lam"] == 1.0
+    assert meta["aggregate"] == "mean_std"
 
 
 def test_train_levels_cli_writes_run(tmp_path):
@@ -249,6 +275,7 @@ def test_train_levels_cli_writes_run(tmp_path):
     assert len(meta["episodes"]) == 1
     assert meta["episodes"][0]["kind"] == "static"
     assert meta["episodes"][0]["norm"] > 1.0
+    assert meta["aggregate"] == "min"
 
 
 def test_train_levels_cli_unknown_level_errors(tmp_path):

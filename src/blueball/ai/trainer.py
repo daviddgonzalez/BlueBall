@@ -149,12 +149,11 @@ def evaluate_infinite(args: tuple) -> tuple[int, float]:
 
 
 def evaluate_episodes(args: tuple) -> tuple[int, float]:
-    """Score one genome across a list of EpisodeSpecs and aggregate as
-    mean - lam*std. Picklable in/out for multiprocessing.Pool. Args is
-    (idx, genome, episodes, lam). Reuses evaluate / evaluate_infinite per
-    episode; with norm=1.0 a single episode aggregates to its own raw fitness
-    exactly."""
-    idx, genome, episodes, lam = args
+    """Score one genome across a list of EpisodeSpecs and aggregate. Picklable
+    in/out for multiprocessing.Pool. Args is (idx, genome, episodes, lam, mode).
+    Reuses evaluate / evaluate_infinite per episode; with norm=1.0 a single
+    episode aggregates to its own raw fitness exactly under either mode."""
+    idx, genome, episodes, lam, mode = args
     if not episodes:
         raise ValueError("evaluate_episodes requires at least one episode")
     scores = []
@@ -166,7 +165,7 @@ def evaluate_episodes(args: tuple) -> tuple[int, float]:
             _, raw = evaluate(
                 (idx, genome, ep.world_seed, ep.level_path, ep.max_steps))
         scores.append(raw / ep.norm)
-    return idx, aggregate_fitness(scores, lam)
+    return idx, aggregate_fitness(scores, lam, mode)
 
 
 def train(
@@ -177,6 +176,7 @@ def train(
     infinite_seed: int | None = None,
     episodes: Sequence[EpisodeSpec] | None = None,
     lam: float = config.GA_FITNESS_STD_PENALTY,
+    aggregate: str = "mean_std",
     ga_seed: int = 0,
     world_seed: int = config.DEFAULT_SEED,
     max_steps: int = config.MAX_STEPS,
@@ -196,6 +196,12 @@ def train(
     `lam` is the variance penalty in the per-genome score: each genome is graded
     as mean - lam*std across its episodes (std is 0 for a single episode, so it
     has no effect there). Defaults to `config.GA_FITNESS_STD_PENALTY`.
+
+    `aggregate` selects how per-episode scores combine: "mean_std" (default,
+    mean - lam*std) or "min" (worst-episode score; lam ignored). The levels
+    trainer passes "min" to relentlessly target the weakest level. A single
+    episode returns its own score under either mode, so single-episode runs are
+    unaffected.
 
     `map_fn` is the parallelism strategy: defaults to the builtin `map`
     (serial). For real training runs pass `multiprocessing.Pool(N).imap`.
@@ -248,7 +254,7 @@ def train(
     # Defined after `population` so the late-binding closure reads a name that
     # already exists; called only inside the loop below.
     def make_args(i):
-        return (i, population[i], episodes, lam)
+        return (i, population[i], episodes, lam, aggregate)
 
     for gen in range(generations):
         args_iter = [make_args(i) for i in range(pop_size)]
@@ -292,6 +298,7 @@ def train(
             "level_path": str(level_path) if level_path is not None else None,
             "episodes": [asdict(ep) for ep in episodes],
             "lam": lam,
+            "aggregate": aggregate,
             "pop_size": pop_size,
             "generations": generations,
             "max_steps": max_steps,

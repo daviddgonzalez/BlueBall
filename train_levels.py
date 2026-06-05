@@ -67,6 +67,7 @@ def main() -> int:
             pop_size=args.pop,
             generations=args.gens,
             episodes=episodes,
+            aggregate="min",
             ga_seed=args.ga_seed,
             world_seed=args.world_seed,
             max_steps=args.max_steps,
