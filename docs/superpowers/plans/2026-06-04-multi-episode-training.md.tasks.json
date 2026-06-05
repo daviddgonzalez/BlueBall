@@ -4,50 +4,50 @@
     {
       "id": 0,
       "subject": "Task 0: EpisodeSpec, aggregate_fitness, config lambda",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Create the pure core — episode descriptor, mean-lambda*std aggregator, configurable lambda default — with no World dependency.\n\n**Files:**\n- Create: `src/blueball/ai/episodes.py`\n- Modify: `src/blueball/config.py` (append after GA_ELITISM, line 116)\n- Create: `tests/test_ai_multiepisode.py`\n\n**Acceptance Criteria:**\n- [ ] EpisodeSpec frozen+picklable: kind, seed, level_path, world_seed, max_steps, norm=1.0.\n- [ ] aggregate_fitness([x], lam) returns x exactly.\n- [ ] aggregate_fitness([10.0,20.0],0.5)==12.5.\n- [ ] aggregate_fitness([], lam) raises ValueError.\n- [ ] config.GA_FITNESS_STD_PENALTY==1.0.\n\n**Verify:** `pytest -q tests/test_ai_multiepisode.py -v` -> 6 tests pass\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/episodes.py\", \"src/blueball/config.py\", \"tests/test_ai_multiepisode.py\"], \"verifyCommand\": \"pytest -q tests/test_ai_multiepisode.py -v\", \"acceptanceCriteria\": [\"EpisodeSpec frozen+picklable\", \"aggregate single score returns it exactly\", \"aggregate([10,20],0.5)==12.5\", \"empty scores raises ValueError\", \"config.GA_FITNESS_STD_PENALTY==1.0\"]}\n```"
     },
     {
       "id": 1,
       "subject": "Task 1: compute_level_par per-level normalizer",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [0],
       "description": "**Goal:** Add the per-level fully-solved reference score that normalizes static levels so a big level doesn't dominate selection.\n\n**Files:**\n- Modify: `src/blueball/ai/episodes.py` (add World/loader/collision imports + compute_level_par)\n- Modify: `tests/test_ai_multiepisode.py` (append 3 tests)\n\n**Acceptance Criteria:**\n- [ ] compute_level_par(tutorial_hill) == total_width + 200.\n- [ ] flat-only in-memory level -> par == total_width.\n- [ ] empty-chunks level (par 0) -> returns 1.0.\n- [ ] Accepts str path, Path, or dict.\n\n**Verify:** `pytest -q tests/test_ai_multiepisode.py -v` -> 9 tests pass\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/episodes.py\", \"tests/test_ai_multiepisode.py\"], \"verifyCommand\": \"pytest -q tests/test_ai_multiepisode.py -v\", \"acceptanceCriteria\": [\"par(tutorial_hill)==width+200\", \"flat-only par==width\", \"empty level returns 1.0\", \"accepts path/Path/dict\"]}\n```"
     },
     {
       "id": 2,
       "subject": "Task 2: Episode-list constructors",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [0, 1],
       "description": "**Goal:** Add the testable builders the CLIs use: deterministic multi-seed generation, infinite/static EpisodeSpec lists, and level-name -> path resolution.\n\n**Files:**\n- Modify: `src/blueball/ai/episodes.py` (append constructors)\n- Modify: `tests/test_ai_multiepisode.py` (append 5 tests)\n\n**Acceptance Criteria:**\n- [ ] generate_seeds(1234,1)==[1234].\n- [ ] generate_seeds(1234,4) deterministic, base first, 4 distinct.\n- [ ] infinite_episodes([1,2],...) -> 2 infinite specs, norm 1.0, level_path None.\n- [ ] resolve_level_paths([\"does_not_exist\"]) raises ValueError mentioning Available.\n- [ ] static_episodes([tutorial_hill_path],...) -> static spec norm==compute_level_par(path).\n\n**Verify:** `pytest -q tests/test_ai_multiepisode.py -v` -> 14 tests pass\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/episodes.py\", \"tests/test_ai_multiepisode.py\"], \"verifyCommand\": \"pytest -q tests/test_ai_multiepisode.py -v\", \"acceptanceCriteria\": [\"generate_seeds(1234,1)==[1234]\", \"generate_seeds deterministic base-first distinct\", \"infinite_episodes norm 1.0 level_path None\", \"resolve_level_paths unknown raises with Available\", \"static_episodes norm==compute_level_par\"]}\n```"
     },
     {
       "id": 3,
       "subject": "Task 3: evaluate_episodes + multi-episode train() + run.json",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [0],
       "description": "**Goal:** Wire the core into the trainer: picklable evaluate_episodes worker, backward-compatible episodes=/lam= on train(), and episodes/lam in run.json.\n\n**Files:**\n- Modify: `src/blueball/ai/trainer.py` (imports asdict+Sequence; import EpisodeSpec+aggregate_fitness; add evaluate_episodes; restructure train() eval setup; extend finalize meta)\n- Modify: `tests/test_ai_multiepisode.py` (append 5 tests)\n\n**Acceptance Criteria:**\n- [ ] evaluate_episodes single infinite spec == raw evaluate_infinite fitness.\n- [ ] empty episode tuple raises ValueError.\n- [ ] train(episodes=[...],ga_seed=0) twice -> byte-identical best_genome.\n- [ ] multi-episode smoke: history len 3, finite stats, best_genome (510,) float32.\n- [ ] Pool.imap matches serial map best_genome.\n- [ ] Existing test_ai_smoke.py and test_genome_persistence.py stay green.\n\n**Verify:** `pytest -q tests/test_ai_multiepisode.py tests/test_ai_smoke.py tests/test_genome_persistence.py -v` -> all pass\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/trainer.py\", \"tests/test_ai_multiepisode.py\"], \"verifyCommand\": \"pytest -q tests/test_ai_multiepisode.py tests/test_ai_smoke.py tests/test_genome_persistence.py -v\", \"acceptanceCriteria\": [\"evaluate_episodes single==raw evaluate_infinite\", \"empty episodes raises ValueError\", \"train(episodes) deterministic byte-identical\", \"multi-episode smoke history3 finite best(510,)float32\", \"Pool matches serial\", \"existing AI+persistence tests green\"]}\n```"
     },
     {
       "id": 4,
       "subject": "Task 4: run_dir_name multi-seed/multi-level variants",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Extend run-folder naming for multi-seed infinite (inf1234x3) and multi-level (lvls5) runs, keeping single-seed/single-level names unchanged.\n\n**Files:**\n- Modify: `src/blueball/ai/persistence.py` (run_dir_name)\n- Modify: `tests/test_genome_persistence.py` (append 3 tests)\n\n**Acceptance Criteria:**\n- [ ] run_dir_name(infinite_seed=1234,world_seed=1,timestamp=\"T\") -> inf1234_w1_T (unchanged).\n- [ ] num_seeds=3 -> inf1234x3_w1_T.\n- [ ] num_levels=5 -> lvls5_w1_T.\n- [ ] Existing run_dir_name tests stay green.\n\n**Verify:** `pytest -q tests/test_genome_persistence.py -v` -> all pass\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/persistence.py\", \"tests/test_genome_persistence.py\"], \"verifyCommand\": \"pytest -q tests/test_genome_persistence.py -v\", \"acceptanceCriteria\": [\"single-seed name unchanged\", \"num_seeds=3 -> inf1234x3_w1_T\", \"num_levels=5 -> lvls5_w1_T\", \"existing tests green\"]}\n```"
     },
     {
       "id": 5,
       "subject": "Task 5: train_infinite.py multi-seed CLI",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [2, 3, 4],
       "description": "**Goal:** Extend the headless infinite trainer with opt-in multi-seed (--seeds / --num-seeds), routing through multi-episode train(). Single-seed default unchanged aside from additive run.json fields.\n\n**Files:**\n- Modify: `train_infinite.py`\n- Modify: `tests/test_ai_multiepisode.py` (append 1 subprocess test)\n\n**Acceptance Criteria:**\n- [ ] --seeds 1,2,3 overrides --num-seeds; neither -> single base --infinite-seed.\n- [ ] --num-seeds 2 writes one genomes/inf<seed>x2_w<ws>_<ts>/ with final_best.npy and run.json with 2 episodes, lam==1.0.\n- [ ] Exit code 0 on success.\n\n**Verify:** `pytest -q tests/test_ai_multiepisode.py -k train_infinite_cli -v` -> passes\n\n```json:metadata\n{\"files\": [\"train_infinite.py\", \"tests/test_ai_multiepisode.py\"], \"verifyCommand\": \"pytest -q tests/test_ai_multiepisode.py -k train_infinite_cli -v\", \"acceptanceCriteria\": [\"--seeds overrides --num-seeds; default single base seed\", \"--num-seeds 2 writes inf<seed>x2 folder + run.json 2 episodes lam 1.0\", \"exit code 0\"]}\n```"
     },
     {
       "id": 6,
       "subject": "Task 6: train_levels.py static-level CLI",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [2, 3, 4],
       "description": "**Goal:** New headless trainer that trains one generalist across a set of static levels (default all), per-level-normalized, persisting into a lvls<N>_... run folder.\n\n**Files:**\n- Create: `train_levels.py`\n- Modify: `tests/test_ai_multiepisode.py` (append 2 subprocess tests)\n\n**Acceptance Criteria:**\n- [ ] --levels tutorial_hill single level; default (no flag) trains all discoverable levels.\n- [ ] Success writes one genomes/lvls<N>_w<ws>_<ts>/ with final_best.npy and run.json whose episodes are kind==static with norm>1.0.\n- [ ] Unknown --levels name exits non-zero with message containing Available.\n\n**Verify:** `pytest -q tests/test_ai_multiepisode.py -k train_levels_cli -v` -> passes; then `pytest -q` full suite green\n\n```json:metadata\n{\"files\": [\"train_levels.py\", \"tests/test_ai_multiepisode.py\"], \"verifyCommand\": \"pytest -q tests/test_ai_multiepisode.py -k train_levels_cli -v && pytest -q\", \"acceptanceCriteria\": [\"--levels single + default all\", \"writes lvls<N> folder + run.json static episodes norm>1.0\", \"unknown level exits non-zero with Available\", \"full suite green\"]}\n```"
     }
   ],
-  "lastUpdated": "2026-06-05T01:49:05Z"
+  "lastUpdated": "2026-06-05T04:15:14Z"
 }
