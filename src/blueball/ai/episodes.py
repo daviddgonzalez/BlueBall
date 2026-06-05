@@ -3,8 +3,9 @@ normalization, and episode-list constructors.
 
 A genome is scored across a *list* of EpisodeSpecs; each per-episode raw
 fitness is divided by that episode's `norm` and the results are aggregated as
-mean - lam*std. A single episode aggregates to itself (population std 0), so
-single-episode training reproduces the pre-multi-episode behavior exactly.
+mean - lam*std (or min, depending on mode). A single episode aggregates to
+itself (population std 0), so single-episode training reproduces the
+pre-multi-episode behavior exactly.
 """
 
 from __future__ import annotations
@@ -33,16 +34,25 @@ class EpisodeSpec:
     norm: float = 1.0         # divisor applied to this episode's raw fitness
 
 
-def aggregate_fitness(scores: Sequence[float], lam: float) -> float:
-    """Combine per-episode fitnesses into one selection score: mean - lam*std.
+def aggregate_fitness(scores: Sequence[float], lam: float, mode: str = "mean_std") -> float:
+    """Combine per-episode fitnesses into one selection score.
 
-    Uses population std (ddof=0), so a single score returns itself exactly.
-    Empty input is a programming error.
+    mode="mean_std": mean - lam*std (population std, ddof=0) — the default.
+    mode="min":      min(scores) — the worst-case objective; lam is ignored.
+                     Forces selection to raise the weakest episode's score.
+
+    For a single score both modes return that score exactly (population std is
+    0), which keeps single-episode training numerically identical. Empty input
+    is a programming error.
     """
     arr = np.asarray(scores, dtype=np.float64)
     if arr.size == 0:
         raise ValueError("aggregate_fitness requires at least one score")
-    return float(arr.mean() - lam * arr.std())
+    if mode == "min":
+        return float(arr.min())
+    if mode == "mean_std":
+        return float(arr.mean() - lam * arr.std())
+    raise ValueError(f"unknown aggregate mode {mode!r}")
 
 
 _GOAL_NAME = "Goal"

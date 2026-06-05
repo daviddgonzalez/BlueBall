@@ -30,6 +30,23 @@ def test_aggregate_empty_raises():
         aggregate_fitness([], lam=1.0)
 
 
+def test_aggregate_min_mode_returns_minimum():
+    from blueball.ai.episodes import aggregate_fitness
+    # lam is ignored in min mode; the worst level is the floor.
+    assert aggregate_fitness([0.2, 1.0, 0.5], lam=1.0, mode="min") == 0.2
+
+
+def test_aggregate_min_single_score_is_identity():
+    from blueball.ai.episodes import aggregate_fitness
+    assert aggregate_fitness([0.7], lam=1.0, mode="min") == 0.7
+
+
+def test_aggregate_min_empty_raises():
+    from blueball.ai.episodes import aggregate_fitness
+    with pytest.raises(ValueError):
+        aggregate_fitness([], lam=1.0, mode="min")
+
+
 def test_episodespec_is_frozen():
     from blueball.ai.episodes import EpisodeSpec
     ep = EpisodeSpec(kind="infinite", seed=1234, level_path=None,
