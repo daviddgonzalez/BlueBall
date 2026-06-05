@@ -64,11 +64,14 @@ def _load_meta(level):
 
 
 def test_level_par_tutorial_hill_is_width_plus_goal():
+    from blueball import config
     from blueball.ai.episodes import compute_level_par
     path = _levels_dir() / "tutorial_hill.json"
-    # tutorial_hill has a goal, no keys, no collectibles -> par = width + 200
+    # tutorial_hill has a goal, no keys, no collectibles ->
+    # par = width * (1 + GOAL_MULT)
     meta = _load_meta(path)
-    assert compute_level_par(path) == pytest.approx(meta.total_width + 200.0)
+    expected = meta.total_width * (1.0 + config.GOAL_MULT)
+    assert compute_level_par(path) == pytest.approx(expected)
 
 
 def test_level_par_flat_only_has_no_bonus():

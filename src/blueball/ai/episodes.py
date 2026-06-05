@@ -18,6 +18,7 @@ import numpy as np
 from ..collision import register as register_collisions
 from ..levels.loader import load_level
 from ..world import World
+from .. import config
 
 
 @dataclass(frozen=True)
@@ -54,7 +55,11 @@ def compute_level_par(level: Union[str, Path, dict]) -> float:
     so big levels don't dominate multi-level selection. Built once per level
     (never inside the eval loop). Same weights as ai/fitness.py:
 
-        par = total_width + 200*has_goal + 100*keys + 50*collectibles
+        par = total_width * (1 + GOAL_MULT*has_goal) + 100*keys + 50*collectibles
+
+    The goal term is GOAL_MULT*total_width (matching the width-scaled goal bonus
+    in ai/fitness.py), so a solved agent's raw fitness ~= par -> norm ~= 1.0 and
+    a full-traversal-but-no-goal run lands at ~= 1/(1+GOAL_MULT).
 
     Counts entities by class name (Goal/Key/Collectible), the way the
     observation layer classifies them. Guards par > 0 so callers never divide
@@ -66,7 +71,7 @@ def compute_level_par(level: Union[str, Path, dict]) -> float:
     names = [type(e).__name__ for e in world.entities]
     par = (
         float(meta.total_width)
-        + 200.0 * (1.0 if _GOAL_NAME in names else 0.0)
+        + config.GOAL_MULT * float(meta.total_width) * (1.0 if _GOAL_NAME in names else 0.0)
         + 100.0 * names.count(_KEY_NAME)
         + 50.0 * names.count(_COLLECTIBLE_NAME)
     )
