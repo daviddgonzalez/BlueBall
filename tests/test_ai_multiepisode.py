@@ -205,3 +205,44 @@ def test_train_infinite_cli_writes_run(tmp_path):
     meta = json.loads((runs[0] / "run.json").read_text())
     assert len(meta["episodes"]) == 2
     assert meta["lam"] == 1.0
+
+
+def test_train_levels_cli_writes_run(tmp_path):
+    import json
+    import os
+    import subprocess
+    import sys
+    repo_root = Path(blueball.__file__).resolve().parents[2]
+    script = repo_root / "train_levels.py"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(repo_root / "src")
+    r = subprocess.run(
+        [sys.executable, str(script), "--levels", "tutorial_hill",
+         "--pop", "4", "--gens", "2", "--max-steps", "120", "--workers", "1"],
+        cwd=tmp_path, capture_output=True, text=True, timeout=300, env=env,
+    )
+    assert r.returncode == 0, r.stderr
+    runs = list((tmp_path / "genomes").glob("lvls1_w1_*"))
+    assert len(runs) == 1
+    assert (runs[0] / "final_best.npy").exists()
+    meta = json.loads((runs[0] / "run.json").read_text())
+    assert len(meta["episodes"]) == 1
+    assert meta["episodes"][0]["kind"] == "static"
+    assert meta["episodes"][0]["norm"] > 1.0
+
+
+def test_train_levels_cli_unknown_level_errors(tmp_path):
+    import os
+    import subprocess
+    import sys
+    repo_root = Path(blueball.__file__).resolve().parents[2]
+    script = repo_root / "train_levels.py"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(repo_root / "src")
+    r = subprocess.run(
+        [sys.executable, str(script), "--levels", "nope",
+         "--pop", "2", "--gens", "1"],
+        cwd=tmp_path, capture_output=True, text=True, timeout=60, env=env,
+    )
+    assert r.returncode != 0
+    assert "Available" in (r.stderr + r.stdout)
