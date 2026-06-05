@@ -27,9 +27,9 @@ substeps regardless of host float environment.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Sequence
 
 import numpy as np
 
@@ -40,6 +40,7 @@ from ..entities.player import Player
 from ..levels.loader import load_level
 from ..levels.streaming import TerrainStream
 from ..world import World
+from .episodes import EpisodeSpec, aggregate_fitness
 from .fitness import FitnessInputs, fitness
 from .ftnn import GENOME_SIZE
 from .ga import breed
@@ -140,12 +141,35 @@ def evaluate_infinite(args: tuple) -> tuple[int, float]:
     return idx, float(f)
 
 
+def evaluate_episodes(args: tuple) -> tuple[int, float]:
+    """Score one genome across a list of EpisodeSpecs and aggregate as
+    mean - lam*std. Picklable in/out for multiprocessing.Pool. Args is
+    (idx, genome, episodes, lam). Reuses evaluate / evaluate_infinite per
+    episode; with norm=1.0 a single episode aggregates to its own raw fitness
+    exactly."""
+    idx, genome, episodes, lam = args
+    if not episodes:
+        raise ValueError("evaluate_episodes requires at least one episode")
+    scores = []
+    for ep in episodes:
+        if ep.kind == "infinite":
+            _, raw = evaluate_infinite(
+                (idx, genome, ep.seed, ep.world_seed, ep.max_steps))
+        else:
+            _, raw = evaluate(
+                (idx, genome, ep.world_seed, ep.level_path, ep.max_steps))
+        scores.append(raw / ep.norm)
+    return idx, aggregate_fitness(scores, lam)
+
+
 def train(
     *,
     pop_size: int,
     generations: int,
     level_path: Path | None = None,
     infinite_seed: int | None = None,
+    episodes: Sequence[EpisodeSpec] | None = None,
+    lam: float = config.GA_FITNESS_STD_PENALTY,
     ga_seed: int = 0,
     world_seed: int = config.DEFAULT_SEED,
     max_steps: int = config.MAX_STEPS,
@@ -155,8 +179,16 @@ def train(
 ) -> TrainingResult:
     """Run a GA training loop. Returns a TrainingResult.
 
-    Provide exactly one of `level_path` (train on a static level) or
-    `infinite_seed` (train on a streamed Infinite Run with that sampler seed).
+    Specify what to evaluate genomes on in exactly one of three ways:
+    `episodes` (an explicit list of EpisodeSpecs — the multi-episode path),
+    `level_path` (a single static level), or `infinite_seed` (a single streamed
+    Infinite Run). The two single-target args are sugar for a one-element
+    `episodes` list, so a single-episode run is numerically identical to the
+    multi-episode path with one episode.
+
+    `lam` is the variance penalty in the per-genome score: each genome is graded
+    as mean - lam*std across its episodes (std is 0 for a single episode, so it
+    has no effect there). Defaults to `config.GA_FITNESS_STD_PENALTY`.
 
     `map_fn` is the parallelism strategy: defaults to the builtin `map`
     (serial). For real training runs pass `multiprocessing.Pool(N).imap`.
@@ -174,19 +206,26 @@ def train(
         raise ValueError(f"train requires pop_size >= 1, got {pop_size}")
     if generations < 1:
         raise ValueError(f"train requires generations >= 1, got {generations}")
-    if (level_path is None) == (infinite_seed is None):
-        raise ValueError(
-            "train requires exactly one of level_path or infinite_seed"
-        )
 
-    if infinite_seed is None:
-        eval_fn = evaluate
-        def make_args(i):
-            return (i, population[i], world_seed, level_path, max_steps)
+    if episodes is None:
+        if (level_path is None) == (infinite_seed is None):
+            raise ValueError(
+                "train requires exactly one of level_path, infinite_seed, or episodes"
+            )
+        if infinite_seed is not None:
+            episodes = [EpisodeSpec(kind="infinite", seed=int(infinite_seed),
+                                    level_path=None, world_seed=world_seed,
+                                    max_steps=max_steps)]
+        else:
+            episodes = [EpisodeSpec(kind="static", seed=0,
+                                    level_path=str(level_path),
+                                    world_seed=world_seed, max_steps=max_steps)]
     else:
-        eval_fn = evaluate_infinite
-        def make_args(i):
-            return (i, population[i], int(infinite_seed), world_seed, max_steps)
+        episodes = list(episodes)
+        if not episodes:
+            raise ValueError("train requires a non-empty episodes list")
+
+    episodes = tuple(episodes)
 
     writer = None
     if save_dir is not None:
@@ -199,9 +238,14 @@ def train(
     best_genome = population[0].copy()
     best_fitness = -np.inf
 
+    # Defined after `population` so the late-binding closure reads a name that
+    # already exists; called only inside the loop below.
+    def make_args(i):
+        return (i, population[i], episodes, lam)
+
     for gen in range(generations):
         args_iter = [make_args(i) for i in range(pop_size)]
-        results = list(map_fn(eval_fn, args_iter))
+        results = list(map_fn(evaluate_episodes, args_iter))
         # Restore order: results may arrive out-of-order from a Pool.
         results.sort(key=lambda r: r[0])
         fitnesses = np.array([r[1] for r in results], dtype=np.float64)
@@ -239,6 +283,8 @@ def train(
             "world_seed": world_seed,
             "infinite_seed": infinite_seed,
             "level_path": str(level_path) if level_path is not None else None,
+            "episodes": [asdict(ep) for ep in episodes],
+            "lam": lam,
             "pop_size": pop_size,
             "generations": generations,
             "max_steps": max_steps,

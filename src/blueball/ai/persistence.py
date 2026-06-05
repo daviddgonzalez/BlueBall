@@ -30,9 +30,22 @@ def run_dir_name(
     timestamp: str,
     infinite_seed: int | None = None,
     level_name: str | None = None,
+    num_seeds: int = 1,
+    num_levels: int | None = None,
 ) -> str:
-    """Build the per-run folder name from the seeds + a timestamp string."""
-    key = f"inf{infinite_seed}" if infinite_seed is not None else (level_name or "level")
+    """Build the per-run folder name from seeds/levels + a timestamp string.
+
+    inf1234_w1_<ts>      single-seed infinite (unchanged)
+    inf1234x3_w1_<ts>    multi-seed infinite (base seed x N)
+    lvls5_w1_<ts>        multi-level static run (level count)
+    tutorial_hill_w7_T   single static level by name
+    """
+    if num_levels is not None:
+        key = f"lvls{num_levels}"
+    elif infinite_seed is not None:
+        key = f"inf{infinite_seed}" if num_seeds <= 1 else f"inf{infinite_seed}x{num_seeds}"
+    else:
+        key = level_name or "level"
     return f"{key}_w{world_seed}_{timestamp}"
 
 

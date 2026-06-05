@@ -70,3 +70,20 @@ def test_train_without_save_dir_writes_nothing(tmp_path):
     from blueball.ai.trainer import train
     train(pop_size=4, generations=2, infinite_seed=7, max_steps=80, save_dir=None)
     assert list(tmp_path.iterdir()) == []
+
+
+def test_run_dir_name_multi_seed_infinite():
+    from blueball.ai.persistence import run_dir_name
+    name = run_dir_name(infinite_seed=1234, world_seed=1, timestamp="T", num_seeds=3)
+    assert name == "inf1234x3_w1_T"
+
+
+def test_run_dir_name_multi_level():
+    from blueball.ai.persistence import run_dir_name
+    name = run_dir_name(world_seed=1, timestamp="T", num_levels=5)
+    assert name == "lvls5_w1_T"
+
+
+def test_run_dir_name_single_seed_unchanged():
+    from blueball.ai.persistence import run_dir_name
+    assert run_dir_name(infinite_seed=1234, world_seed=1, timestamp="T") == "inf1234_w1_T"
