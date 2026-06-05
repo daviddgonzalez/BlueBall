@@ -71,3 +71,59 @@ def compute_level_par(level: Union[str, Path, dict]) -> float:
         + 50.0 * names.count(_COLLECTIBLE_NAME)
     )
     return par if par > 0.0 else 1.0
+
+
+LEVELS_DIR = Path(__file__).resolve().parent.parent / "levels"
+
+
+def generate_seeds(base: int, n: int) -> list[int]:
+    """N distinct sampler seeds derived deterministically from `base`. The base
+    seed is always first, so a multi-seed run still includes the reference
+    course. Used by the infinite trainer's --num-seeds."""
+    if n <= 1:
+        return [int(base)]
+    rng = np.random.default_rng(int(base))
+    seeds = [int(base)]
+    while len(seeds) < n:
+        s = int(rng.integers(0, 2**31))
+        if s not in seeds:
+            seeds.append(s)
+    return seeds
+
+
+def infinite_episodes(seeds: Sequence[int], world_seed: int, max_steps: int) -> list[EpisodeSpec]:
+    """One infinite-run EpisodeSpec per sampler seed (norm=1.0: all infinite
+    seeds share the same distance-dominated scale)."""
+    return [
+        EpisodeSpec(kind="infinite", seed=int(s), level_path=None,
+                    world_seed=int(world_seed), max_steps=int(max_steps))
+        for s in seeds
+    ]
+
+
+def available_levels() -> list[str]:
+    """Sorted level names discoverable under the levels package directory."""
+    return sorted(p.stem for p in LEVELS_DIR.glob("*.json"))
+
+
+def resolve_level_paths(names: Sequence[str]) -> list[str]:
+    """Map level names to JSON path strings, erroring on an unknown name."""
+    available = available_levels()
+    paths = []
+    for name in names:
+        if name not in available:
+            raise ValueError(
+                f"Unknown level {name!r}. Available: {', '.join(available)}"
+            )
+        paths.append(str(LEVELS_DIR / f"{name}.json"))
+    return paths
+
+
+def static_episodes(level_paths: Sequence[str], world_seed: int, max_steps: int) -> list[EpisodeSpec]:
+    """One static EpisodeSpec per level, each normalized by its level par."""
+    return [
+        EpisodeSpec(kind="static", seed=0, level_path=str(p),
+                    world_seed=int(world_seed), max_steps=int(max_steps),
+                    norm=compute_level_par(p))
+        for p in level_paths
+    ]

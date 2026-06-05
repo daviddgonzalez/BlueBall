@@ -91,3 +91,42 @@ def test_level_par_empty_returns_one():
         "spawn": [0, 0], "chunks": [],
     }
     assert compute_level_par(level) == 1.0
+
+
+def test_generate_seeds_single():
+    from blueball.ai.episodes import generate_seeds
+    assert generate_seeds(1234, 1) == [1234]
+
+
+def test_generate_seeds_distinct_deterministic_and_includes_base():
+    from blueball.ai.episodes import generate_seeds
+    a = generate_seeds(1234, 4)
+    b = generate_seeds(1234, 4)
+    assert a == b                # deterministic
+    assert a[0] == 1234          # base seed first
+    assert len(set(a)) == 4      # distinct
+
+
+def test_infinite_episodes_build():
+    from blueball.ai.episodes import infinite_episodes
+    eps = infinite_episodes([1, 2], world_seed=1, max_steps=100)
+    assert [e.kind for e in eps] == ["infinite", "infinite"]
+    assert [e.seed for e in eps] == [1, 2]
+    assert all(e.norm == pytest.approx(1.0) and e.level_path is None for e in eps)
+
+
+def test_resolve_level_paths_unknown_raises():
+    from blueball.ai.episodes import resolve_level_paths
+    with pytest.raises(ValueError) as exc:
+        resolve_level_paths(["does_not_exist"])
+    assert "Available" in str(exc.value)
+
+
+def test_resolve_and_static_episodes_tutorial_hill():
+    from blueball.ai.episodes import (compute_level_par, resolve_level_paths,
+                                      static_episodes)
+    paths = resolve_level_paths(["tutorial_hill"])
+    assert paths[0].endswith("tutorial_hill.json")
+    eps = static_episodes(paths, world_seed=1, max_steps=100)
+    assert eps[0].kind == "static"
+    assert eps[0].norm == pytest.approx(compute_level_par(paths[0]))
