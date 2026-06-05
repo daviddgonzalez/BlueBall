@@ -114,6 +114,7 @@ GA_MUTATION_RATE    = 0.1
 GA_MUTATION_SIGMA   = 0.1
 GA_TOURNAMENT_K     = 4
 GA_ELITISM          = 1
+GA_FITNESS_STD_PENALTY = 1.0  # lambda: per-episode std penalty (mean - lam*std)
 
 # Reference seeds for reproducible training runs. Pinning these makes a run
 # fully deterministic: GA_SEED fixes evolution (population init, mutation,
