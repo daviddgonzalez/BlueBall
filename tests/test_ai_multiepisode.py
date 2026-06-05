@@ -130,3 +130,55 @@ def test_resolve_and_static_episodes_tutorial_hill():
     eps = static_episodes(paths, world_seed=1, max_steps=100)
     assert eps[0].kind == "static"
     assert eps[0].norm == pytest.approx(compute_level_par(paths[0]))
+
+
+def test_evaluate_episodes_single_equals_raw_evaluate_infinite():
+    from blueball.ai.episodes import EpisodeSpec
+    from blueball.ai.genome import random_genome
+    from blueball.ai.trainer import evaluate_episodes, evaluate_infinite
+    g = random_genome(np.random.default_rng(0))
+    _, raw = evaluate_infinite((0, g, 1234, 1, 120))
+    ep = EpisodeSpec(kind="infinite", seed=1234, level_path=None,
+                     world_seed=1, max_steps=120)
+    _, agg = evaluate_episodes((0, g, (ep,), 1.0))
+    assert agg == pytest.approx(raw)
+
+
+def test_evaluate_episodes_empty_raises():
+    from blueball.ai.trainer import evaluate_episodes
+    g = np.zeros(5, dtype=np.float32)
+    with pytest.raises(ValueError):
+        evaluate_episodes((0, g, (), 1.0))
+
+
+def test_train_multi_episode_is_deterministic():
+    from blueball.ai.episodes import infinite_episodes
+    from blueball.ai.trainer import train
+    eps = infinite_episodes([1234, 777], world_seed=1, max_steps=120)
+    a = train(pop_size=6, generations=3, episodes=eps, ga_seed=0)
+    b = train(pop_size=6, generations=3, episodes=eps, ga_seed=0)
+    assert np.array_equal(a.best_genome, b.best_genome)
+
+
+def test_train_multi_episode_smoke():
+    from blueball.ai.episodes import infinite_episodes
+    from blueball.ai.trainer import train
+    eps = infinite_episodes([1234, 777], world_seed=1, max_steps=80)
+    result = train(pop_size=8, generations=3, episodes=eps, ga_seed=0)
+    assert len(result.history) == 3
+    for h in result.history:
+        assert np.isfinite(h["best"]) and np.isfinite(h["mean"]) and np.isfinite(h["min"])
+    assert result.best_genome.shape == (510,)
+    assert result.best_genome.dtype == np.float32
+
+
+def test_train_multi_episode_pool_matches_serial():
+    import multiprocessing as mp
+    from blueball.ai.episodes import infinite_episodes
+    from blueball.ai.trainer import train
+    eps = infinite_episodes([1234, 777], world_seed=1, max_steps=60)
+    serial = train(pop_size=6, generations=2, episodes=eps, ga_seed=0, map_fn=map)
+    with mp.Pool(2) as pool:
+        par = train(pop_size=6, generations=2, episodes=eps, ga_seed=0,
+                    map_fn=pool.imap)
+    assert np.array_equal(serial.best_genome, par.best_genome)
