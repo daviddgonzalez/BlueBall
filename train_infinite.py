@@ -50,7 +50,7 @@ def main() -> int:
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = Path(GENOMES_ROOT) / run_dir_name(
-        infinite_seed=args.infinite_seed, world_seed=args.world_seed,
+        infinite_seed=seeds[0], world_seed=args.world_seed,
         timestamp=timestamp, num_seeds=len(seeds),
     )
 

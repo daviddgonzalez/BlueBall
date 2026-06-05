@@ -246,3 +246,15 @@ def test_train_levels_cli_unknown_level_errors(tmp_path):
     )
     assert r.returncode != 0
     assert "Available" in (r.stderr + r.stdout)
+
+
+def test_train_legacy_infinite_seed_equals_one_episode_path():
+    # Backward-compat anchor: the legacy single-target arg (infinite_seed=) must
+    # produce the byte-identical best_genome as the explicit one-episode path.
+    from blueball.ai.episodes import infinite_episodes
+    from blueball.ai.trainer import train
+    legacy = train(pop_size=6, generations=3, infinite_seed=1234,
+                   world_seed=1, max_steps=80, ga_seed=0)
+    eps = infinite_episodes([1234], world_seed=1, max_steps=80)
+    multi = train(pop_size=6, generations=3, episodes=eps, ga_seed=0)
+    assert np.array_equal(legacy.best_genome, multi.best_genome)
