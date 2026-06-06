@@ -125,3 +125,95 @@ def test_evaluate_curriculum_granted_keys_dont_inflate_fitness():
     _, fit_no_grant, _ = evaluate_curriculum((0, g, 1, path, 120, start.spawn_xy, 0))
     _, fit_granted, _ = evaluate_curriculum((0, g, 1, path, 120, start.spawn_xy, 0xFF))
     assert fit_no_grant == pytest.approx(fit_granted)
+
+
+def test_train_curriculum_is_deterministic():
+    from blueball.ai.curriculum import train_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    path = resolve_level_paths(["maze"])[0]
+    a = train_curriculum(level_path=path, pop_size=6, generations=3,
+                         ga_seed=0, world_seed=1, max_steps=60)
+    b = train_curriculum(level_path=path, pop_size=6, generations=3,
+                         ga_seed=0, world_seed=1, max_steps=60)
+    assert np.array_equal(a.best_genome, b.best_genome)
+    assert [h["stage"] for h in a.history] == [h["stage"] for h in b.history]
+    assert len(a.history) == 3
+    for h in a.history:
+        assert {"gen", "stage", "stage_label", "best", "mean",
+                "best_reached_goal"} <= set(h)
+
+
+def test_train_curriculum_advances_stage_when_elite_clears(monkeypatch):
+    """Stub the evaluator so the elite always 'reaches goal' -> the stage index
+    must climb each generation until it saturates at the last stage."""
+    import blueball.ai.curriculum as curr
+    from blueball.ai.episodes import resolve_level_paths
+    path = resolve_level_paths(["maze"])[0]
+    n_stages = len(curr.build_spawn_curriculum(path))
+
+    def fake_eval(args):
+        idx = args[0]
+        return idx, float(idx), True   # elite (max idx) always reaches goal
+
+    monkeypatch.setattr(curr, "evaluate_curriculum", fake_eval)
+    res = curr.train_curriculum(level_path=path, pop_size=4,
+                                generations=n_stages + 3, ga_seed=0, world_seed=1,
+                                max_steps=10)
+    # advances one stage per generation, then saturates at the last stage
+    assert res.history[-1]["stage"] == n_stages - 1
+    assert res.history[0]["stage"] == 0
+
+
+def test_train_curriculum_holds_stage_when_never_clears(monkeypatch):
+    import blueball.ai.curriculum as curr
+    from blueball.ai.episodes import resolve_level_paths
+    path = resolve_level_paths(["maze"])[0]
+
+    def fake_eval(args):
+        idx = args[0]
+        return idx, float(idx), False  # nobody ever reaches goal
+
+    monkeypatch.setattr(curr, "evaluate_curriculum", fake_eval)
+    res = curr.train_curriculum(level_path=path, pop_size=4, generations=5,
+                                ga_seed=0, world_seed=1, max_steps=10)
+    assert all(h["stage"] == 0 for h in res.history)
+
+
+def test_train_curriculum_writes_run_json(tmp_path):
+    import json
+    from blueball.ai.curriculum import train_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    path = resolve_level_paths(["maze"])[0]
+    run_dir = tmp_path / "mazecurr_run"
+    train_curriculum(level_path=path, pop_size=4, generations=2, ga_seed=0,
+                     world_seed=1, max_steps=60, save_dir=run_dir)
+    assert (run_dir / "final_best.npy").exists()
+    meta = json.loads((run_dir / "run.json").read_text())
+    assert meta["mode"] == "curriculum"
+    cur = meta["curriculum"]
+    assert isinstance(cur["stages"], list) and cur["stages"][-1] == "start"
+    assert len(cur["trajectory"]) == len(cur["stages"])
+    assert "reached_gen" in cur["trajectory"][0] and "cleared_gen" in cur["trajectory"][0]
+
+
+def test_train_curriculum_marks_cracked_when_all_stages_clear(tmp_path, monkeypatch):
+    """When the elite clears every stage (incl. the true-start stage), run.json
+    records cracked=True and the final stage as 'start'."""
+    import json
+    import blueball.ai.curriculum as curr
+    from blueball.ai.episodes import resolve_level_paths
+    path = resolve_level_paths(["maze"])[0]
+    n = len(curr.build_spawn_curriculum(path))
+
+    def fake_eval(args):
+        return args[0], float(args[0]), True  # elite always clears
+
+    monkeypatch.setattr(curr, "evaluate_curriculum", fake_eval)
+    run_dir = tmp_path / "crack_run"
+    curr.train_curriculum(level_path=path, pop_size=4, generations=n + 2,
+                          ga_seed=0, world_seed=1, max_steps=10, save_dir=run_dir)
+    cur = json.loads((run_dir / "run.json").read_text())["curriculum"]
+    assert cur["cracked"] is True
+    assert cur["final_stage_index"] == n - 1
+    assert cur["final_stage_label"] == "start"
+    assert cur["trajectory"][-1]["cleared_gen"] is not None

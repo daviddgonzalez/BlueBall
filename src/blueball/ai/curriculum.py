@@ -12,14 +12,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Union
+from typing import Callable, Union
 
+import numpy as np
+
+from .. import config
 from ..agent import FTNNAgent
 from ..collision import register as register_collisions
 from ..entities.player import Player
 from ..levels.loader import load_level
 from ..world import World
 from .fitness import FitnessInputs, fitness
+from .ftnn import GENOME_SIZE
+from .ga import breed
+from .genome import random_genome
+from .trainer import TrainingResult
 
 _KEY_NAME = "Key"
 _GOAL_NAME = "Goal"
@@ -164,3 +171,126 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
         level_width=float(meta.total_width),
     ))
     return idx, float(f), bool(player.reached_goal)
+
+
+def train_curriculum(
+    *,
+    level_path: Union[str, Path],
+    pop_size: int,
+    generations: int,
+    ga_seed: int = 0,
+    world_seed: int = config.DEFAULT_SEED,
+    max_steps: int = config.MAX_STEPS,
+    map_fn: Callable = map,
+    save_dir: Union[Path, str, None] = None,
+) -> "TrainingResult":
+    """Adaptive reverse spawn-curriculum GA loop for one level.
+
+    Holds a current stage index (starts at 0 = near_goal). Each generation the
+    whole population is evaluated at the current stage's spawn + granted keys;
+    selection uses raw fitness (the unchanged GA: breed/elitism/tournament). If
+    the generation's best (elite) genome reached the goal from the current spawn,
+    the stage recedes one step toward the true start. Deterministic given
+    (ga_seed, world_seed): population, evaluations, and the stage trajectory are
+    all reproducible. The saved best genome is curriculum-free at evaluation.
+    Note: best_genome is the argmax of in-loop fitness, which spans stages with
+    different spawn scaffolding, so its quality is only meaningful when
+    re-evaluated from the true start after training (the CLI does this).
+    """
+    if pop_size < 1:
+        raise ValueError(f"train_curriculum requires pop_size >= 1, got {pop_size}")
+    if generations < 1:
+        raise ValueError(f"train_curriculum requires generations >= 1, got {generations}")
+
+    stages = build_spawn_curriculum(level_path)
+
+    writer = None
+    if save_dir is not None:
+        from .persistence import TrainingRunWriter
+        writer = TrainingRunWriter(save_dir)
+
+    ga_rng = np.random.default_rng(ga_seed)
+    population = [random_genome(ga_rng) for _ in range(pop_size)]
+    history: list[dict] = []
+    best_genome = population[0].copy()
+    best_fitness = -np.inf
+
+    stage_index = 0
+    reached_gen: dict[int, int] = {0: 0}  # stage_index -> first gen current (stage 0 from gen 0)
+    cleared_gen: dict[int, int] = {}      # stage_index -> first gen elite cleared it
+
+    for gen in range(generations):
+        stage = stages[stage_index]
+        args_iter = [
+            (i, population[i], world_seed, str(level_path), max_steps,
+             stage.spawn_xy, stage.granted_keys)
+            for i in range(pop_size)
+        ]
+        results = list(map_fn(evaluate_curriculum, args_iter))
+        results.sort(key=lambda r: r[0])  # restore order (Pool may reorder)
+        fitnesses = np.array([r[1] for r in results], dtype=np.float64)
+        reached = [bool(r[2]) for r in results]
+
+        gen_best_idx = int(np.argmax(fitnesses))
+        gen_best = float(fitnesses[gen_best_idx])
+        if gen_best > best_fitness:
+            best_fitness = gen_best
+            best_genome = population[gen_best_idx].copy()
+
+        elite_cleared = reached[gen_best_idx]
+        history.append({
+            "gen": gen,
+            "stage": stage_index,
+            "stage_label": stage.label,
+            "best": gen_best,
+            "mean": float(fitnesses.mean()),
+            "best_reached_goal": elite_cleared,
+        })
+
+        if writer is not None:
+            writer.save_generation(gen, best_genome)
+
+        # Adaptive advancement: recede one stage once the elite clears this one.
+        if elite_cleared:
+            cleared_gen.setdefault(stage_index, gen)
+            if stage_index < len(stages) - 1:
+                stage_index += 1
+                reached_gen.setdefault(stage_index, gen + 1)
+
+        population = breed(
+            population, fitnesses, ga_rng,
+            elitism=config.GA_ELITISM,
+            tournament_k=config.GA_TOURNAMENT_K,
+            mutation_rate=config.GA_MUTATION_RATE,
+            mutation_sigma=config.GA_MUTATION_SIGMA,
+        )
+
+    if writer is not None:
+        trajectory = [
+            {"stage": i, "label": stages[i].label,
+             "reached_gen": reached_gen.get(i), "cleared_gen": cleared_gen.get(i)}
+            for i in range(len(stages))
+        ]
+        last = len(stages) - 1
+        writer.finalize(best_genome, {
+            "mode": "curriculum",
+            "level_path": str(level_path),
+            "ga_seed": ga_seed,
+            "world_seed": world_seed,
+            "pop_size": pop_size,
+            "generations": generations,
+            "max_steps": max_steps,
+            "genome_size": int(GENOME_SIZE),
+            "best_fitness": float(best_fitness),
+            "curriculum": {
+                "stages": [s.label for s in stages],
+                "trajectory": trajectory,
+                "final_stage_index": stage_index,
+                "final_stage_label": stages[stage_index].label,
+                "cracked": stage_index == last and last in cleared_gen,
+            },
+            "history": history,
+        })
+
+    return TrainingResult(history=history, best_genome=best_genome,
+                          final_population=population)
