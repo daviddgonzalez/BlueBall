@@ -1,5 +1,7 @@
 """Tests for the reverse spawn-curriculum subsystem (ai/curriculum.py)."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -217,3 +219,52 @@ def test_train_curriculum_marks_cracked_when_all_stages_clear(tmp_path, monkeypa
     assert cur["final_stage_index"] == n - 1
     assert cur["final_stage_label"] == "start"
     assert cur["trajectory"][-1]["cleared_gen"] is not None
+
+
+def test_run_dir_name_curriculum_variant():
+    from blueball.ai.persistence import run_dir_name
+    assert run_dir_name(world_seed=1, timestamp="T", level_name="maze",
+                        curriculum=True) == "mazecurr_w1_T"
+    # existing variants still work
+    assert run_dir_name(world_seed=1, timestamp="T", num_levels=5) == "lvls5_w1_T"
+    assert run_dir_name(world_seed=1, timestamp="T",
+                        level_name="maze") == "maze_w1_T"
+    # no level_name -> 'level' fallback
+    assert run_dir_name(world_seed=1, timestamp="T", curriculum=True) == "levelcurr_w1_T"
+
+
+def test_train_maze_curriculum_cli_writes_run(tmp_path):
+    import json, os, subprocess, sys
+    import blueball
+    repo_root = Path(blueball.__file__).resolve().parents[2]
+    script = repo_root / "train_maze_curriculum.py"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(repo_root / "src")
+    r = subprocess.run(
+        [sys.executable, str(script), "--level", "maze", "--pop", "4",
+         "--gens", "2", "--max-steps", "60", "--workers", "1"],
+        cwd=tmp_path, capture_output=True, text=True, timeout=300, env=env,
+    )
+    assert r.returncode == 0, r.stderr
+    runs = list((tmp_path / "genomes").glob("mazecurr_w1_*"))
+    assert len(runs) == 1
+    assert (runs[0] / "final_best.npy").exists()
+    meta = json.loads((runs[0] / "run.json").read_text())
+    assert meta["mode"] == "curriculum"
+    assert meta["curriculum"]["stages"][-1] == "start"
+    assert "reached_goal" in r.stdout
+
+
+def test_train_maze_curriculum_cli_unknown_level_errors(tmp_path):
+    import os, subprocess, sys
+    import blueball
+    repo_root = Path(blueball.__file__).resolve().parents[2]
+    script = repo_root / "train_maze_curriculum.py"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(repo_root / "src")
+    r = subprocess.run(
+        [sys.executable, str(script), "--level", "nope", "--pop", "2", "--gens", "1"],
+        cwd=tmp_path, capture_output=True, text=True, timeout=60, env=env,
+    )
+    assert r.returncode != 0
+    assert "Available" in (r.stderr + r.stdout)
