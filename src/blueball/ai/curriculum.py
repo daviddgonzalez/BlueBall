@@ -14,9 +14,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Union
 
+from ..agent import FTNNAgent
 from ..collision import register as register_collisions
+from ..entities.player import Player
 from ..levels.loader import load_level
 from ..world import World
+from .fitness import FitnessInputs, fitness
 
 _KEY_NAME = "Key"
 _GOAL_NAME = "Goal"
@@ -105,3 +108,59 @@ def build_spawn_curriculum(level: Union[str, Path, dict]) -> list[CurriculumStag
         label="start",
     ))
     return stages
+
+
+def make_curriculum_player(world, genome, spawn_xy, granted_keys: int) -> Player:
+    """Spawn a Player at `spawn_xy`, add it to `world`, and grant `granted_keys`
+    (OR'd into keys_held) so doors behind the spawn are openable. Shared by the
+    evaluator and tests."""
+    player = Player(agent=FTNNAgent(genome),
+                    spawn_xy=(float(spawn_xy[0]), float(spawn_xy[1])))
+    world.add_entity(player)
+    player.keys_held |= int(granted_keys)
+    return player
+
+
+def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
+    """One genome -> (idx, fitness, reached_goal) on a curriculum stage. Picklable
+    in/out for multiprocessing.Pool. Args is
+    (idx, genome, world_seed, level_path, max_steps, spawn_xy, granted_keys).
+
+    Mirrors trainer.evaluate's drift-free substep loop, but spawns at the stage
+    override with granted keys and additionally returns whether the goal was
+    reached (the success signal the adaptive curriculum loop consumes)."""
+    idx, genome, world_seed, level_path, max_steps, spawn_xy, granted_keys = args
+
+    world = World(seed=int(world_seed))
+    register_collisions(world.space, world_ref=world)
+    meta = load_level(level_path, world)
+
+    spawn_x = float(spawn_xy[0])
+    player = make_curriculum_player(world, genome, spawn_xy, granted_keys)
+
+    max_x = spawn_x
+    steps = 0
+    while steps < max_steps:
+        # Use substep() — exactly one PHYS_DT step with no accumulator residual,
+        # so long headless runs are bit-identical across machines (see trainer).
+        world.substep()
+        steps += 1
+        if player.body.position.x > max_x:
+            max_x = player.body.position.x
+        if player.dead or player.reached_goal:
+            break
+
+    # Granted keys are training scaffolding, not achievements: count only the
+    # keys actually collected this episode (bits set that were NOT granted), so
+    # the curriculum can't hand out free fitness.
+    collected = bin(player.keys_held & ~int(granted_keys)).count("1")
+    f = fitness(FitnessInputs(
+        progress_x=float(max_x - spawn_x),
+        collectibles=int(player.collectibles_collected),
+        reached_goal=bool(player.reached_goal),
+        died=bool(player.dead),
+        steps_taken=steps,
+        keys_collected=collected,
+        level_width=float(meta.total_width),
+    ))
+    return idx, float(f), bool(player.reached_goal)
