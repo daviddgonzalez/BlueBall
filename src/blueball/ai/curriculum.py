@@ -48,7 +48,7 @@ class CurriculumStage:
 
     spawn_xy: tuple[float, float]
     granted_keys: int
-    label: str   # "near_goal" | "before_key<id>" | "start"
+    label: str   # "near_goal" | "before_key<id>" | "start" | "box_lava"
 
 
 def granted_keys_before(keys: list[tuple[int, float]], spawn_x: float) -> int:
@@ -125,7 +125,7 @@ def build_spawn_curriculum(level: Union[str, Path, dict]) -> list[CurriculumStag
 def build_box_lava_curriculum(level: Union[str, Path, dict]) -> list[CurriculumStage]:
     """Single-stage curriculum for the box-lava section: spawn just left of the
     PushableBox (so rolling right pushes it into the lava as a stepping stone)
-    with every key granted (both gates are behind this spawn). Used to train a
+    with every key behind the spawn granted (for the maze, both gates). Used to train a
     box-lava specialist.
 
     Returns exactly one CurriculumStage labelled "box_lava". Raises ValueError

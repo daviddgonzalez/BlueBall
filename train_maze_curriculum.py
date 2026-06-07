@@ -61,7 +61,7 @@ def main() -> int:
         level_name=level_name, curriculum=True,
     )
     print(
-        f"Curriculum training {args.pop}x{args.gens} on {args.level} "
+        f"Curriculum training {args.pop}x{args.gens} on {level_name} "
         f"({len(stages)} stages) world={args.world_seed} ga={args.ga_seed}\n"
         f"  -> {run_dir}"
     )
