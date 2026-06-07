@@ -19,7 +19,8 @@ from datetime import datetime
 from pathlib import Path
 
 from blueball import config
-from blueball.ai.curriculum import (build_spawn_curriculum, evaluate_curriculum,
+from blueball.ai.curriculum import (build_box_lava_curriculum,
+                                    build_spawn_curriculum, evaluate_curriculum,
                                     train_curriculum)
 from blueball.ai.episodes import resolve_level_paths
 from blueball.ai.persistence import GENOMES_ROOT, run_dir_name
@@ -34,6 +35,10 @@ def main() -> int:
     parser.add_argument("--ga-seed", type=int, default=config.GA_SEED)
     parser.add_argument("--world-seed", type=int, default=config.DEFAULT_SEED)
     parser.add_argument("--workers", type=int, default=multiprocessing.cpu_count())
+    parser.add_argument("--box-lava", action="store_true",
+                        help="train a box-lava specialist: single fixed stage "
+                             "spawned just left of the PushableBox, all keys "
+                             "granted (writes a mazeboxlavacurr_* run dir).")
     args = parser.parse_args()
 
     try:
@@ -42,14 +47,19 @@ def main() -> int:
         raise SystemExit(str(e))
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    # --box-lava trains a single fixed box-lava stage (run dir mazeboxlavacurr_*);
+    # otherwise the full reverse spawn-curriculum (run dir mazecurr_*).
+    if args.box_lava:
+        stages = build_box_lava_curriculum(level_path)
+        level_name = "mazeboxlava"
+    else:
+        stages = build_spawn_curriculum(level_path)
+        level_name = args.level
+
     run_dir = Path(GENOMES_ROOT) / run_dir_name(
         world_seed=args.world_seed, timestamp=timestamp,
-        level_name=args.level, curriculum=True,
+        level_name=level_name, curriculum=True,
     )
-
-    # Built here for the stage-count print + the true-start verdict spawn below;
-    # train_curriculum builds its own copy internally.
-    stages = build_spawn_curriculum(level_path)
     print(
         f"Curriculum training {args.pop}x{args.gens} on {args.level} "
         f"({len(stages)} stages) world={args.world_seed} ga={args.ga_seed}\n"
@@ -67,6 +77,7 @@ def main() -> int:
             max_steps=args.max_steps,
             map_fn=pool.imap if pool is not None else map,
             save_dir=run_dir,
+            stages=stages,
         )
     finally:
         if pool is not None:

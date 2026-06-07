@@ -404,3 +404,24 @@ def test_train_curriculum_default_stages_unchanged(tmp_path):
                      world_seed=1, max_steps=60, save_dir=run_dir)
     meta = json.loads((run_dir / "run.json").read_text())
     assert meta["curriculum"]["stages"][-1] == "start"
+
+
+def test_train_maze_curriculum_cli_box_lava_writes_run(tmp_path):
+    import json, os, subprocess, sys
+    import blueball
+    repo_root = Path(blueball.__file__).resolve().parents[2]
+    script = repo_root / "train_maze_curriculum.py"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(repo_root / "src")
+    r = subprocess.run(
+        [sys.executable, str(script), "--box-lava", "--pop", "4",
+         "--gens", "2", "--max-steps", "60", "--workers", "1"],
+        cwd=tmp_path, capture_output=True, text=True, timeout=300, env=env,
+    )
+    assert r.returncode == 0, r.stderr
+    runs = list((tmp_path / "genomes").glob("mazeboxlavacurr_w1_*"))
+    assert len(runs) == 1
+    assert (runs[0] / "final_best.npy").exists()
+    meta = json.loads((runs[0] / "run.json").read_text())
+    assert meta["curriculum"]["stages"] == ["box_lava"]
+    assert "reached_goal" in r.stdout
