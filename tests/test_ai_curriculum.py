@@ -362,3 +362,45 @@ def test_build_box_lava_curriculum_requires_box():
     level = Path(blueball.__file__).parent / "levels" / "tutorial_hill.json"
     with pytest.raises(ValueError, match="PushableBox"):
         build_box_lava_curriculum(level)
+
+
+def test_train_curriculum_custom_stages_used(tmp_path):
+    """Passing stages=build_box_lava_curriculum(maze) trains at that single fixed
+    stage: run.json records exactly ['box_lava'] and the loop never recedes."""
+    import json
+    from blueball.ai.curriculum import train_curriculum, build_box_lava_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    path = resolve_level_paths(["maze"])[0]
+    stages = build_box_lava_curriculum(path)
+    run_dir = tmp_path / "boxlava_run"
+    train_curriculum(level_path=path, pop_size=4, generations=2, ga_seed=0,
+                     world_seed=1, max_steps=60, save_dir=run_dir, stages=stages)
+    meta = json.loads((run_dir / "run.json").read_text())
+    assert meta["curriculum"]["stages"] == ["box_lava"]
+    assert all(h["stage"] == 0 for h in meta["history"])
+
+
+def test_train_curriculum_custom_stages_deterministic():
+    from blueball.ai.curriculum import train_curriculum, build_box_lava_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    path = resolve_level_paths(["maze"])[0]
+    stages = build_box_lava_curriculum(path)
+    a = train_curriculum(level_path=path, pop_size=4, generations=2, ga_seed=0,
+                         world_seed=1, max_steps=60, stages=stages)
+    b = train_curriculum(level_path=path, pop_size=4, generations=2, ga_seed=0,
+                         world_seed=1, max_steps=60, stages=stages)
+    assert np.array_equal(a.best_genome, b.best_genome)
+
+
+def test_train_curriculum_default_stages_unchanged(tmp_path):
+    """stages=None (default) still builds the full reverse curriculum:
+    run.json's last stage is 'start' as before."""
+    import json
+    from blueball.ai.curriculum import train_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    path = resolve_level_paths(["maze"])[0]
+    run_dir = tmp_path / "default_run"
+    train_curriculum(level_path=path, pop_size=4, generations=2, ga_seed=0,
+                     world_seed=1, max_steps=60, save_dir=run_dir)
+    meta = json.loads((run_dir / "run.json").read_text())
+    assert meta["curriculum"]["stages"][-1] == "start"

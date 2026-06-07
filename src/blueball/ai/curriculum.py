@@ -234,6 +234,7 @@ def train_curriculum(
     max_steps: int = config.MAX_STEPS,
     map_fn: Callable = map,
     save_dir: Union[Path, str, None] = None,
+    stages: Union[list[CurriculumStage], None] = None,
 ) -> "TrainingResult":
     """Adaptive reverse spawn-curriculum GA loop for one level.
 
@@ -253,7 +254,10 @@ def train_curriculum(
     if generations < 1:
         raise ValueError(f"train_curriculum requires generations >= 1, got {generations}")
 
-    stages = build_spawn_curriculum(level_path)
+    # Default None preserves today's behavior exactly; a custom one-element list
+    # (e.g. build_box_lava_curriculum) trains a fixed-spawn specialist that never
+    # recedes (it's already the last stage).
+    stages = stages if stages is not None else build_spawn_curriculum(level_path)
 
     writer = None
     if save_dir is not None:
