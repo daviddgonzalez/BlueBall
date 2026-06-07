@@ -7,7 +7,7 @@
     {
       "id": 1,
       "subject": "Task 1: RenderCore — virtual surface + upscale",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** 640x360 virtual surface, nearest-neighbor upscale x2 to 1280x720, camera.scale=1/PIXEL_SCALE preserves visible-world span.\n\n**Files:** create render/core.py; modify config.py (PIXEL_SCALE=2), render/renderer.py:32-39 (accept RenderCore or Surface), scenes/play.py:49-50,185, scenes/train.py; test tests/test_render_core.py\n\n**Verify:** test_render_core.py PASS + full suite green\n\n```json:metadata\n{\"files\": [\"src/blueball/render/core.py\", \"src/blueball/config.py\", \"src/blueball/render/renderer.py\", \"src/blueball/scenes/play.py\", \"src/blueball/scenes/train.py\", \"tests/test_render_core.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./.venv/bin/python -m pytest -q tests/test_render_core.py\", \"acceptanceCriteria\": [\"surface 640x360\", \"present upscales\", \"rejects indivisible\", \"Renderer dual-accept\", \"span preserved\", \"suite green\"]}\n```"
     },
     {

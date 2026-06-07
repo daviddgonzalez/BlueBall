@@ -3,6 +3,7 @@ config.ACTIVE_THEME. Themes register themselves at import time."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from .. import config
@@ -20,11 +21,11 @@ class ParallaxLayer:
 
 @dataclass(frozen=True)
 class Theme:
-    palette: dict[str, Color]
-    sprites: dict[str, object] = field(default_factory=dict)   # name -> SpriteDef (Task 3)
+    palette: Mapping[str, Color]
+    sprites: dict[str, object] = field(default_factory=dict)   # name -> SpriteDef (Task 4)
     parallax: list[ParallaxLayer] = field(default_factory=list)
     pixel_scale: int = config.PIXEL_SCALE
-    params: dict = field(default_factory=dict)
+    params: Mapping[str, float | int] = field(default_factory=dict)
 
 
 _REGISTRY: dict[str, Theme] = {}
@@ -39,7 +40,12 @@ def get_theme(name: str) -> Theme:
 
 
 def get_active_theme() -> Theme:
-    return _REGISTRY[config.ACTIVE_THEME]
+    name = config.ACTIVE_THEME
+    if name not in _REGISTRY:
+        raise KeyError(
+            f"Active theme {name!r} is not registered. Available: {list(_REGISTRY)}"
+        )
+    return _REGISTRY[name]
 
 
 # Import side effect: register built-in themes. Placed at the bottom so the

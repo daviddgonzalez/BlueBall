@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from ..theme import Theme
-
 PALETTE = {
     "ball": (58, 138, 255),
     "ball_hi": (191, 224, 255),
@@ -16,7 +14,16 @@ PALETTE = {
 }
 
 
-def build() -> Theme:
-    return Theme(palette=dict(PALETTE), params={
-        "squash_max": 0.35, "shake_decay": 8.0, "particle_cap": 300,
-    })
+def build():
+    # Local imports avoid a circular import: theme.py registers this theme at
+    # its own import time, so pixel.py must not import theme.py at module load.
+    from types import MappingProxyType
+
+    from ..theme import Theme
+
+    return Theme(
+        palette=MappingProxyType(dict(PALETTE)),
+        params=MappingProxyType({
+            "squash_max": 0.35, "shake_decay": 8.0, "particle_cap": 300,
+        }),
+    )
