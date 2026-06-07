@@ -6,6 +6,10 @@ WINDOW_HEIGHT = 720
 TARGET_FPS = 60
 BACKGROUND_COLOR = (126, 199, 255)
 
+# Pixel-art render pipeline: world is drawn to a (WINDOW / PIXEL_SCALE) virtual
+# surface and nearest-neighbor-upscaled to the window. Must divide WINDOW evenly.
+PIXEL_SCALE = 2
+
 # Physics loop
 PHYS_HZ = 120
 PHYS_DT = 1.0 / PHYS_HZ

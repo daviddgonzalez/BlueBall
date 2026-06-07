@@ -30,8 +30,15 @@ def _lerp(a, b, t):
 
 
 class Renderer:
-    def __init__(self, screen: pygame.Surface, camera) -> None:
-        self.screen = screen
+    def __init__(self, screen, camera) -> None:
+        # `screen` accepts a RenderCore (production) or a raw Surface (legacy tests).
+        from .core import RenderCore
+        if isinstance(screen, RenderCore):
+            self.core = screen
+            self.screen = screen.surface
+        else:
+            self.core = None
+            self.screen = screen
         self.camera = camera
         # Track previous positions per body for interpolation
         self._prev_pos: dict[int, tuple[float, float]] = {}

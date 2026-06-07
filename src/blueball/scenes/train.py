@@ -75,8 +75,10 @@ class TrainScene(Scene):
         self._eval_fn = evaluate if infinite_seed is None else evaluate_infinite
 
         pygame.display.set_caption("Blue Ball — Train")
+        from ..render.core import RenderCore
+        self.core = RenderCore(screen, pixel_scale=1)
         self.camera = FreeCamera(screen.get_width(), screen.get_height())
-        self.renderer = Renderer(screen, self.camera)
+        self.renderer = Renderer(self.core, self.camera)
         self._font = pygame.font.Font(None, 20)
 
         self._ga_rng = np.random.default_rng(ga_seed)
@@ -248,7 +250,7 @@ class TrainScene(Scene):
         for entity in self.world.entities:
             entity.draw(self.renderer, alpha)
         self._draw_hud()
-        pygame.display.flip()
+        self.core.present()
 
     def _draw_hud(self) -> None:
         if self._done:
@@ -261,4 +263,4 @@ class TrainScene(Scene):
                 f"best {self.best_fitness:.1f}  mean {self.best_mean:.1f}{evaluating}"
             )
         surf = self._font.render(label, True, (255, 255, 255))
-        self.screen.blit(surf, (12, 12))
+        self.core.surface.blit(surf, (12, 12))

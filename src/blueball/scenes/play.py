@@ -46,8 +46,12 @@ class PlayScene(Scene):
         # Streaming is opted into by providing sampler_seed. Regular hand-built
         # levels still load eagerly via load_level().
         self._streaming: bool = sampler_seed is not None
-        self.camera = FollowCamera(screen.get_width(), screen.get_height())
-        self.renderer = Renderer(screen, self.camera)
+        from ..render.core import RenderCore
+        self.core = RenderCore(screen)
+        self.camera = FollowCamera(self.core.vw, self.core.vh)
+        # Preserve the pre-overhaul visible-world span on the smaller surface.
+        self.camera.scale = 1.0 / self.core.scale
+        self.renderer = Renderer(self.core, self.camera)
         self._last_respawn_xy: tuple[float, float] | None = None
         self._exit_to_menu: bool = False
         # Infinite Run score = 10 * furthest x reached this run; best persists
@@ -182,4 +186,4 @@ class PlayScene(Scene):
             entity.draw(self.renderer, alpha)
         if self._streaming:
             self.renderer.draw_score(self._score, max(self._best_score, self._score))
-        pygame.display.flip()
+        self.core.present()
