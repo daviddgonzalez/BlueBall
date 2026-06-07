@@ -90,3 +90,49 @@ def test_load_level_accepts_dict():
     meta = load_level(data, w)
     assert meta.name == "Test"
     assert meta.total_width > 0
+
+
+def test_starting_abilities_defaults_empty(tmp_path):
+    level = {
+        "name": "NoAbilities", "background": "#000000", "ground": "#000000",
+        "spawn": [0, 0],
+        "chunks": [{"type": "flat", "width_tiles": 2}, {"type": "goal"}],
+    }
+    path = tmp_path / "lvl.json"
+    path.write_text(json.dumps(level))
+    meta = load_level(path, World())
+    assert meta.starting_abilities == frozenset()
+
+
+def test_starting_abilities_parsed_from_level(tmp_path):
+    from blueball.abilities import Ability
+    level = {
+        "name": "WithDJ", "background": "#000000", "ground": "#000000",
+        "spawn": [0, 0], "starting_abilities": ["double_jump"],
+        "chunks": [{"type": "flat", "width_tiles": 2}, {"type": "goal"}],
+    }
+    path = tmp_path / "dj.json"
+    path.write_text(json.dumps(level))
+    meta = load_level(path, World())
+    assert meta.starting_abilities == frozenset({Ability.DOUBLE_JUMP})
+
+
+def test_maze_declares_double_jump_starting_ability():
+    from pathlib import Path
+    import blueball
+    from blueball.abilities import Ability
+    maze = Path(blueball.__file__).parent / "levels" / "maze.json"
+    meta = load_level(maze, World())
+    assert Ability.DOUBLE_JUMP in meta.starting_abilities
+
+
+def test_unknown_starting_ability_raises(tmp_path):
+    level = {
+        "name": "BadAbility", "background": "#000000", "ground": "#000000",
+        "spawn": [0, 0], "starting_abilities": ["triple_jump"],
+        "chunks": [{"type": "flat", "width_tiles": 2}, {"type": "goal"}],
+    }
+    path = tmp_path / "bad.json"
+    path.write_text(json.dumps(level))
+    with pytest.raises(ValueError):
+        load_level(path, World())
