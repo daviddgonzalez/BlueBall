@@ -364,6 +364,28 @@ def test_fitness_no_goal_is_independent_of_width():
     assert a == b
 
 
+def test_fitness_box_progress_adds_box_push_term():
+    """A positive box_progress adds exactly config.BOX_PUSH_MULT * box_progress
+    on top of otherwise-identical inputs."""
+    from blueball import config
+    from blueball.ai.fitness import fitness, FitnessInputs
+    base = dict(progress_x=100.0, collectibles=0, reached_goal=False,
+                died=False, steps_taken=0, keys_collected=0, level_width=0.0)
+    f_no_box = fitness(FitnessInputs(**base))                 # box_progress defaults 0.0
+    f_box = fitness(FitnessInputs(box_progress=250.0, **base))
+    assert f_box - f_no_box == pytest.approx(config.BOX_PUSH_MULT * 250.0)
+    assert config.BOX_PUSH_MULT == 1.0
+
+
+def test_fitness_box_progress_defaults_to_zero():
+    """Omitting box_progress (every existing caller) leaves fitness unchanged:
+    the field defaults to 0.0 so the new term vanishes."""
+    from blueball.ai.fitness import fitness, FitnessInputs
+    kw = dict(progress_x=300.0, collectibles=1, reached_goal=False, died=False,
+              steps_taken=10, keys_collected=1, level_width=0.0)
+    assert fitness(FitnessInputs(box_progress=0.0, **kw)) == fitness(FitnessInputs(**kw))
+
+
 # ----- Task 5: FTNNAgent -----
 
 def test_ftnn_agent_returns_action_enum():

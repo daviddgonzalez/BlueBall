@@ -120,6 +120,13 @@ GA_FITNESS_STD_PENALTY = 1.0  # lambda: per-episode std penalty (mean - lam*std)
 # traversal (which maxes near level_width) and auto-scales with level length.
 GOAL_MULT              = 2.0
 
+# Box-push shaping: fitness reward per pixel of net rightward PushableBox
+# displacement. Applied ONLY in the curriculum evaluator (the box-lava
+# specialist) — callers that don't pass box_progress are unaffected. 0.0
+# reduces to progress-only; 1.0 is the starting guess (selection is comparative,
+# so the exact value isn't load-bearing).
+BOX_PUSH_MULT          = 1.0
+
 # Reference seeds for reproducible training runs. Pinning these makes a run
 # fully deterministic: GA_SEED fixes evolution (population init, mutation,
 # crossover, tournament); INFINITE_RUN_SEED fixes the Infinite Run chunk

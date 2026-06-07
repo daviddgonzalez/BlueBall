@@ -20,6 +20,7 @@ class FitnessInputs:
     steps_taken: int     # the loop counter from the evaluator
     keys_collected: int  # popcount of player.keys_held
     level_width: float   # level total width; 0.0 for goalless (infinite) modes
+    box_progress: float = 0.0  # net rightward PushableBox displacement (px); 0 when no box
 
 
 def fitness(inputs: FitnessInputs) -> float:
@@ -30,4 +31,5 @@ def fitness(inputs: FitnessInputs) -> float:
         + config.GOAL_MULT * inputs.level_width * (1.0 if inputs.reached_goal else 0.0)
         -   0.01 * inputs.steps_taken
         - 200.0 * (1.0 if inputs.died else 0.0)
+        + config.BOX_PUSH_MULT * inputs.box_progress
     )
