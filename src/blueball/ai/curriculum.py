@@ -155,12 +155,16 @@ def build_box_lava_curriculum(level: Union[str, Path, dict]) -> list[CurriculumS
     )]
 
 
-def make_curriculum_player(world, genome, spawn_xy, granted_keys: int) -> Player:
+def make_curriculum_player(world, genome, spawn_xy, granted_keys: int,
+                           abilities=frozenset()) -> Player:
     """Spawn a Player at `spawn_xy`, add it to `world`, and grant `granted_keys`
-    (OR'd into keys_held) so doors behind the spawn are openable. Shared by the
-    evaluator and tests."""
+    (OR'd into keys_held) so doors behind the spawn are openable. `abilities`
+    are the level's assumed starting abilities (e.g. double jump). Passed as a
+    fresh mutable set so the player's shared abilities set stays mutable. Shared
+    by the evaluator and tests."""
     player = Player(agent=FTNNAgent(genome),
-                    spawn_xy=(float(spawn_xy[0]), float(spawn_xy[1])))
+                    spawn_xy=(float(spawn_xy[0]), float(spawn_xy[1])),
+                    abilities=set(abilities))
     world.add_entity(player)
     player.keys_held |= int(granted_keys)
     return player
@@ -181,7 +185,8 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
     meta = load_level(level_path, world)
 
     spawn_x = float(spawn_xy[0])
-    player = make_curriculum_player(world, genome, spawn_xy, granted_keys)
+    player = make_curriculum_player(world, genome, spawn_xy, granted_keys,
+                                    meta.starting_abilities)
 
     # Track the PushableBox's rightward displacement (the box-push reward
     # gradient). Levels with no box leave box_progress at 0.0 -> no behavior

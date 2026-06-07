@@ -425,3 +425,58 @@ def test_train_maze_curriculum_cli_box_lava_writes_run(tmp_path):
     meta = json.loads((runs[0] / "run.json").read_text())
     assert meta["curriculum"]["stages"] == ["box_lava"]
     assert "reached_goal" in r.stdout
+
+
+def test_make_curriculum_player_default_no_abilities():
+    from blueball.world import World
+    from blueball.collision import register as register_collisions
+    from blueball.levels.loader import load_level
+    from blueball.ai.curriculum import make_curriculum_player
+    from blueball.ai.genome import random_genome
+    from blueball.ai.episodes import resolve_level_paths
+    path = resolve_level_paths(["maze"])[0]
+    world = World(seed=1)
+    register_collisions(world.space, world_ref=world)
+    load_level(path, world)
+    g = random_genome(np.random.default_rng(0))
+    p = make_curriculum_player(world, g, (80.0, 540.0), 0)
+    assert p.abilities == set()
+
+
+def test_make_curriculum_player_grants_abilities():
+    from blueball.world import World
+    from blueball.collision import register as register_collisions
+    from blueball.levels.loader import load_level
+    from blueball.ai.curriculum import make_curriculum_player
+    from blueball.ai.genome import random_genome
+    from blueball.ai.episodes import resolve_level_paths
+    from blueball.abilities import Ability
+    path = resolve_level_paths(["maze"])[0]
+    world = World(seed=1)
+    register_collisions(world.space, world_ref=world)
+    load_level(path, world)
+    g = random_genome(np.random.default_rng(0))
+    p = make_curriculum_player(world, g, (80.0, 540.0), 0,
+                               frozenset({Ability.DOUBLE_JUMP}))
+    assert Ability.DOUBLE_JUMP in p.abilities
+    assert Ability.DOUBLE_JUMP in p.jump_ctrl.abilities
+    assert isinstance(p.abilities, set)  # mutable, so unlock() still works
+
+
+def test_evaluate_curriculum_grants_level_starting_abilities(monkeypatch):
+    import blueball.ai.curriculum as cur
+    from blueball.ai.genome import random_genome
+    from blueball.ai.episodes import resolve_level_paths
+    from blueball.abilities import Ability
+    captured = {}
+    real = cur.make_curriculum_player
+
+    def spy(world, genome, spawn_xy, granted_keys, abilities=frozenset()):
+        captured["abilities"] = abilities
+        return real(world, genome, spawn_xy, granted_keys, abilities)
+
+    monkeypatch.setattr(cur, "make_curriculum_player", spy)
+    path = resolve_level_paths(["maze"])[0]
+    g = random_genome(np.random.default_rng(0))
+    cur.evaluate_curriculum((0, g, 1, path, 5, (3250.0, 540.0), 0b11))
+    assert Ability.DOUBLE_JUMP in captured["abilities"]
