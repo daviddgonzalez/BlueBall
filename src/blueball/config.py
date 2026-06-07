@@ -110,6 +110,9 @@ PROJECTILE_DEFAULT_RADIUS = 10
 MAX_RAY_LEN = 300.0
 NUM_RAYS = 8
 
+# Active render theme. "pixel" ships now; "neon" is a future slot.
+ACTIVE_THEME = "pixel"
+
 # AI / GA training
 TRAIN_POP_SIZE      = 80      # spec default for real training
 TRAIN_GENERATIONS   = 200     # spec default for real training
