@@ -77,7 +77,7 @@ class TrainScene(Scene):
         pygame.display.set_caption("Blue Ball — Train")
         from ..render.core import RenderCore
         self.core = RenderCore(screen, pixel_scale=1)
-        self.camera = FreeCamera(screen.get_width(), screen.get_height())
+        self.camera = FreeCamera(self.core.vw, self.core.vh)
         self.renderer = Renderer(self.core, self.camera)
         self._font = pygame.font.Font(None, 20)
 

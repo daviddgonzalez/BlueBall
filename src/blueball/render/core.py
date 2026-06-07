@@ -14,6 +14,8 @@ class RenderCore:
     def __init__(self, window: pygame.Surface, pixel_scale: int | None = None) -> None:
         self.window = window
         self.scale = pixel_scale if pixel_scale is not None else config.PIXEL_SCALE
+        if self.scale < 1:
+            raise ValueError(f"pixel_scale must be >= 1, got {self.scale}")
         ww, wh = window.get_size()
         if ww % self.scale or wh % self.scale:
             raise ValueError(

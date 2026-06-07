@@ -33,3 +33,18 @@ def test_rejects_indivisible_window():
     window = pygame.Surface((1281, 720))
     with pytest.raises(ValueError):
         RenderCore(window, pixel_scale=2)
+
+
+def test_rejects_scale_below_one():
+    window = pygame.Surface((1280, 720))
+    with pytest.raises(ValueError):
+        RenderCore(window, pixel_scale=0)
+
+
+def test_present_identity_scale():
+    window = pygame.Surface((640, 360))
+    core = RenderCore(window, pixel_scale=1)
+    assert core.surface.get_size() == (640, 360)
+    core.surface.fill((99, 88, 77))
+    core.present(flip=False)
+    assert window.get_at((0, 0))[:3] == (99, 88, 77)
