@@ -13,7 +13,7 @@
     {
       "id": 2,
       "subject": "Task 2: Theme system — dataclass + registry + config flag",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [1],
       "description": "**Goal:** Switchable Theme selected by config.ACTIVE_THEME; pixel registered by default; neon slot stubbed.\n\n**Files:** create render/theme.py, render/themes/__init__.py, render/themes/pixel.py (palette stub); modify config.py (ACTIVE_THEME); test tests/test_theme.py\n\n**Verify:** test_theme.py PASS + suite green\n\n```json:metadata\n{\"files\": [\"src/blueball/render/theme.py\", \"src/blueball/render/themes/__init__.py\", \"src/blueball/render/themes/pixel.py\", \"src/blueball/config.py\", \"tests/test_theme.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./.venv/bin/python -m pytest -q tests/test_theme.py\", \"acceptanceCriteria\": [\"default pixel\", \"register/get round-trip\", \"switch changes result\", \"Theme fields present\", \"suite green\"]}\n```"
     },

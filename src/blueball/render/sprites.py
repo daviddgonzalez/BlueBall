@@ -12,8 +12,23 @@ Color = tuple[int, int, int]
 class SpriteDef:
     def __init__(self, grid, palette_key: str, frames: int = 1) -> None:
         # Single-frame: grid is list[str]. Multi-frame: grid is list[list[str]].
-        self.frames_n = frames
-        self._grids = grid if frames > 1 else [grid]
+        # Validate the shape up front so a frames/grid mismatch fails loudly here
+        # instead of as an out-of-range frame() lookup later.
+        if frames > 1:
+            if not (grid and isinstance(grid[0], list)):
+                raise TypeError(
+                    "multi-frame SpriteDef (frames>1) needs grid=list[list[str]]"
+                )
+            if len(grid) != frames:
+                raise ValueError(
+                    f"frames={frames} but grid has {len(grid)} frame(s)"
+                )
+            self._grids = grid
+        else:
+            self._grids = [grid]
+        # Derive the real frame count from the grids so frame()'s modulo can
+        # never index past the cache.
+        self.frames_n = len(self._grids)
         self.palette_key = palette_key
         self._cache: list[pygame.Surface] | None = None
 
@@ -39,6 +54,9 @@ class SpriteDef:
         return self.frame(0, palette)
 
     def frame(self, i: int, palette=None) -> pygame.Surface:
+        # The sprite is baked ONCE against the palette of the first call and the
+        # result cached; `palette` is ignored on later calls (sprites are static
+        # per theme — a theme switch builds fresh SpriteDefs).
         if self._cache is None:
             if palette is None:
                 raise ValueError("first bake needs a palette")
