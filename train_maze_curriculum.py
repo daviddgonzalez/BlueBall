@@ -84,7 +84,9 @@ def main() -> int:
             pool.close()
             pool.join()
 
-    # Verdict: evaluate the final best genome from the TRUE start (no scaffolding).
+    # Verdict: re-evaluate the final best genome from the last stage's spawn
+    # (the level's true start for the reverse curriculum; the box-lava spawn
+    # for --box-lava). No new keys beyond that stage's granted scaffolding.
     start = stages[-1]
     _, fit, reached = evaluate_curriculum(
         (0, result.best_genome, args.world_seed, level_path, args.max_steps,
@@ -92,7 +94,7 @@ def main() -> int:
 
     final = result.history[-1]
     print(f"Done. gen {final['gen']}: final stage '{final['stage_label']}'")
-    print(f"Verdict @ true start: reached_goal={reached} fitness={fit:.1f}")
+    print(f"Verdict @ '{start.label}': reached_goal={reached} fitness={fit:.1f}")
     print(f"Best genome + history written to {run_dir}")
     return 0
 
