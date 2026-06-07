@@ -311,3 +311,54 @@ def test_evaluate_curriculum_no_box_unaffected_by_box_mult(monkeypatch):
     monkeypatch.setattr(bbconfig, "BOX_PUSH_MULT", 5.0)
     _, fit_on, _ = evaluate_curriculum(args)
     assert fit_off == fit_on
+
+
+def test_build_box_lava_curriculum_single_stage_left_of_box():
+    from blueball.ai.curriculum import (build_box_lava_curriculum,
+                                        BOX_LAVA_SPAWN_MARGIN, granted_keys_before)
+    path, world, meta = _maze_world()
+    keys = _maze_keys(world)
+    box = next(e for e in world.entities if type(e).__name__ == "PushableBox")
+    box_x = float(box.body.position.x)
+    all_bits = 0
+    for kid, _ in keys:
+        all_bits |= (1 << kid)
+
+    stages = build_box_lava_curriculum(path)
+    assert len(stages) == 1
+    s = stages[0]
+    assert s.label == "box_lava"
+    assert s.spawn_xy[0] == pytest.approx(box_x - box.size / 2.0 - BOX_LAVA_SPAWN_MARGIN)
+    assert s.spawn_xy[0] < box_x
+    assert s.spawn_xy[1] == pytest.approx(float(meta.spawn[1]))
+    assert s.granted_keys == all_bits
+    assert s.granted_keys == granted_keys_before(keys, s.spawn_xy[0])
+
+
+def test_build_box_lava_curriculum_spawn_is_frame1_safe():
+    """The box-lava spawn lands on the approach ledge, not in lava/geometry."""
+    from blueball.ai.curriculum import (build_box_lava_curriculum,
+                                        make_curriculum_player)
+    from blueball.ai.episodes import resolve_level_paths
+    from blueball.ai.genome import random_genome
+    from blueball.collision import register as register_collisions
+    from blueball.levels.loader import load_level
+    from blueball.world import World
+    path = resolve_level_paths(["maze"])[0]
+    g = random_genome(np.random.default_rng(0))
+    stage = build_box_lava_curriculum(path)[0]
+    world = World(seed=1)
+    register_collisions(world.space, world_ref=world)
+    load_level(path, world)
+    p = make_curriculum_player(world, g, stage.spawn_xy, stage.granted_keys)
+    world.substep()
+    assert not p.dead
+
+
+def test_build_box_lava_curriculum_requires_box():
+    from pathlib import Path
+    import blueball
+    from blueball.ai.curriculum import build_box_lava_curriculum
+    level = Path(blueball.__file__).parent / "levels" / "tutorial_hill.json"
+    with pytest.raises(ValueError, match="PushableBox"):
+        build_box_lava_curriculum(level)

@@ -36,6 +36,11 @@ _GOAL_NAME = "Goal"
 # easy iteration; selection is comparative so the exact value isn't load-bearing.
 SPAWN_MARGIN = 96.0
 
+# How far left of the box's left face (px) the box-lava specialist spawns, so
+# rolling right immediately contacts and pushes the box. Module constant for
+# easy iteration; selection is comparative so the exact value isn't load-bearing.
+BOX_LAVA_SPAWN_MARGIN = 12.0
+
 
 @dataclass(frozen=True)
 class CurriculumStage:
@@ -115,6 +120,39 @@ def build_spawn_curriculum(level: Union[str, Path, dict]) -> list[CurriculumStag
         label="start",
     ))
     return stages
+
+
+def build_box_lava_curriculum(level: Union[str, Path, dict]) -> list[CurriculumStage]:
+    """Single-stage curriculum for the box-lava section: spawn just left of the
+    PushableBox (so rolling right pushes it into the lava as a stepping stone)
+    with every key granted (both gates are behind this spawn). Used to train a
+    box-lava specialist.
+
+    Returns exactly one CurriculumStage labelled "box_lava". Raises ValueError
+    if the level has no PushableBox.
+    """
+    world = World(seed=0)
+    register_collisions(world.space, world_ref=world)
+    meta = load_level(level, world)
+
+    box = next((e for e in world.entities
+                if type(e).__name__ == "PushableBox"), None)
+    if box is None:
+        raise ValueError("build_box_lava_curriculum: level has no PushableBox")
+
+    keys: list[tuple[int, float]] = [
+        (int(e.key_id), float(e.position[0]))
+        for e in world.entities if type(e).__name__ == _KEY_NAME
+    ]
+
+    box_x = float(box.body.position.x)
+    spawn_x = box_x - box.size / 2.0 - BOX_LAVA_SPAWN_MARGIN
+    spawn_y = float(meta.spawn[1])
+    return [CurriculumStage(
+        spawn_xy=(spawn_x, spawn_y),
+        granted_keys=granted_keys_before(keys, spawn_x),
+        label="box_lava",
+    )]
 
 
 def make_curriculum_player(world, genome, spawn_xy, granted_keys: int) -> Player:
