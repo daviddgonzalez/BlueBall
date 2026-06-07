@@ -268,3 +268,46 @@ def test_train_maze_curriculum_cli_unknown_level_errors(tmp_path):
     )
     assert r.returncode != 0
     assert "Available" in (r.stderr + r.stdout)
+
+
+def test_evaluate_curriculum_tracks_box_progress(monkeypatch):
+    """On maze, spawning just left of the PushableBox and pushing it right makes
+    box-push shaping raise fitness: evaluate_curriculum with BOX_PUSH_MULT=1.0
+    exceeds the identical run scored with 0.0 by the (positive) box term."""
+    import blueball.config as bbconfig
+    from blueball.ai.curriculum import evaluate_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    from blueball.ai.genome import random_genome
+    path = resolve_level_paths(["maze"])[0]
+    # Just left of the maze box (x=3294, size 64 -> left face 3262); both maze
+    # keys (ids 0,1) granted. Genome 20 rolls right and shoves the box.
+    spawn_xy = (3250.0, 540.0)
+    granted = (1 << 0) | (1 << 1)
+    g = random_genome(np.random.default_rng(20))
+    args = (0, g, 1, path, 600, spawn_xy, granted)
+
+    monkeypatch.setattr(bbconfig, "BOX_PUSH_MULT", 0.0)
+    _, fit_off, reached_off = evaluate_curriculum(args)
+    monkeypatch.setattr(bbconfig, "BOX_PUSH_MULT", 1.0)
+    _, fit_on, reached_on = evaluate_curriculum(args)
+
+    assert fit_on > fit_off          # box moved right -> positive box term
+    assert reached_off == reached_on # box term doesn't change the goal verdict
+
+
+def test_evaluate_curriculum_no_box_unaffected_by_box_mult(monkeypatch):
+    """On a box-less level, box_progress is 0.0 so BOX_PUSH_MULT has no effect:
+    fitness is identical whether shaping is on or off."""
+    import blueball.config as bbconfig
+    from pathlib import Path
+    import blueball
+    from blueball.ai.curriculum import evaluate_curriculum
+    from blueball.ai.genome import random_genome
+    level = Path(blueball.__file__).parent / "levels" / "tutorial_hill.json"
+    g = random_genome(np.random.default_rng(0))
+    args = (0, g, 1, level, 200, (80.0, 540.0), 0)
+    monkeypatch.setattr(bbconfig, "BOX_PUSH_MULT", 0.0)
+    _, fit_off, _ = evaluate_curriculum(args)
+    monkeypatch.setattr(bbconfig, "BOX_PUSH_MULT", 5.0)
+    _, fit_on, _ = evaluate_curriculum(args)
+    assert fit_off == fit_on

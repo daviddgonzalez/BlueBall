@@ -145,6 +145,14 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
     spawn_x = float(spawn_xy[0])
     player = make_curriculum_player(world, genome, spawn_xy, granted_keys)
 
+    # Track the PushableBox's rightward displacement (the box-push reward
+    # gradient). Levels with no box leave box_progress at 0.0 -> no behavior
+    # change. Mirrors the player's max_x high-water mark (robust to knockback).
+    box = next((e for e in world.entities
+                if type(e).__name__ == "PushableBox"), None)
+    box_start_x = float(box.body.position.x) if box is not None else None
+    box_max_x = box_start_x
+
     max_x = spawn_x
     steps = 0
     while steps < max_steps:
@@ -154,8 +162,12 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
         steps += 1
         if player.body.position.x > max_x:
             max_x = player.body.position.x
+        if box is not None and box.body.position.x > box_max_x:
+            box_max_x = box.body.position.x
         if player.dead or player.reached_goal:
             break
+
+    box_progress = max(0.0, box_max_x - box_start_x) if box is not None else 0.0
 
     # Granted keys are training scaffolding, not achievements: count only the
     # keys actually collected this episode (bits set that were NOT granted), so
@@ -169,6 +181,7 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
         steps_taken=steps,
         keys_collected=collected,
         level_width=float(meta.total_width),
+        box_progress=float(box_progress),
     ))
     return idx, float(f), bool(player.reached_goal)
 
