@@ -20,7 +20,7 @@
     {
       "id": 3,
       "subject": "Task 3: Sprite format + baker (grid -> cached Surface)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [2],
       "description": "**Goal:** SpriteDef bakes a grid of palette-key chars into a cached pygame.Surface; multi-frame support.\n\n**Files:** create render/sprites.py; test tests/test_sprites.py\n\n**Verify:** test_sprites.py PASS + suite green\n\n```json:metadata\n{\"files\": [\"src/blueball/render/sprites.py\", \"tests/test_sprites.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./.venv/bin/python -m pytest -q tests/test_sprites.py\", \"acceptanceCriteria\": [\"correct dims+SRCALPHA\", \". transparent, lower=base, upper=_hi\", \"cached\", \"multi-frame frame(i)\", \"suite green\"]}\n```"
     },
