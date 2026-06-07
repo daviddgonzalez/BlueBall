@@ -1,0 +1,40 @@
+import os
+os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+import pygame, pymunk, pytest
+from blueball.camera import FollowCamera
+from blueball.render.core import RenderCore
+from blueball.render.renderer import Renderer
+from blueball.render.theme import get_active_theme
+
+
+@pytest.fixture(autouse=True)
+def _pg():
+    pygame.init(); yield; pygame.quit()
+
+
+def _renderer():
+    core = RenderCore(pygame.Surface((1280, 720)))
+    cam = FollowCamera(core.vw, core.vh); cam.scale = 1.0 / core.scale
+    return core, Renderer(core, cam)
+
+
+def test_ball_draws_theme_color_pixels():
+    core, r = _renderer()
+    r.camera.position = (320, 180)
+    body = pymunk.Body(1, 1); body.position = (320, 180)
+    core.surface.fill((0, 0, 0))
+    r.draw_ball(body, alpha=1.0)
+    ball_rgb = get_active_theme().palette["ball"]
+    # The camera is positioned at the ball's world coords, so world_to_screen
+    # projects it to the viewport center (vw/2, vh/2) in surface space.
+    cx, cy = core.vw // 2, core.vh // 2
+    found = any(core.surface.get_at((cx + dx, cy + dy))[:3] == ball_rgb
+                for dx in range(-8, 9) for dy in range(-8, 9))
+    assert found
+
+
+def test_no_color_constants_remain():
+    import pathlib, re
+    src = pathlib.Path("src/blueball/render/renderer.py").read_text()
+    assert not re.search(r"_COLOR", src)

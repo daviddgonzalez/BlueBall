@@ -1,4 +1,5 @@
-"""Renderer — draws the world to a PyGame surface using flat primitives."""
+"""Renderer — draws the world by blitting theme sprites (with primitive
+fallbacks for entities not yet themed)."""
 
 from __future__ import annotations
 
@@ -8,21 +9,6 @@ import pygame
 import pymunk
 
 from .. import config
-
-
-_BALL_COLOR = (58, 138, 255)
-_BALL_DARK = (26, 90, 204)
-_SPIKE_COLOR = (204, 68, 68)
-_PATROLLER_COLOR = (220, 100, 60)
-_COLLECTIBLE_COLOR = (255, 220, 60)
-_GOAL_COLOR = (255, 240, 120)
-_GOAL_FLAG = (220, 60, 60)
-_GROUND_COLOR = (59, 138, 74)
-_GROUND_EDGE = (40, 90, 50)
-_ABILITY_PICKUP_DEFAULT = (220, 220, 220)
-_ABILITY_PICKUP_COLORS = {"double_jump": (255, 220, 80)}
-_BOOST_PAD_COLOR = (80, 220, 240)   # cyan
-_BOOST_PAD_EDGE = (30, 150, 180)    # deeper cyan
 
 
 def _lerp(a, b, t):
@@ -79,6 +65,24 @@ class Renderer:
     def _w2s(self, world_xy):
         return self.camera.world_to_screen(world_xy)
 
+    def _theme(self):
+        from .theme import get_active_theme
+        return get_active_theme()
+
+    def _blit_sprite(self, world_xy, key, *, deg=0.0, frame=0, scale=None):
+        theme = self._theme()
+        surf = theme.sprites[key].frame(frame, theme.palette)
+        if scale is not None:
+            sx, sy = scale
+            surf = pygame.transform.scale(
+                surf, (max(1, round(surf.get_width() * sx)),
+                       max(1, round(surf.get_height() * sy))))
+        if deg:
+            surf = pygame.transform.rotate(surf, deg)
+        px, py = self.camera.world_to_screen(world_xy)
+        ox, oy = self.core.shake_offset if self.core else (0.0, 0.0)
+        self.screen.blit(surf, surf.get_rect(center=(round(px + ox), round(py + oy))))
+
     def _interp_body_pos(self, body: pymunk.Body, alpha: float) -> tuple[float, float]:
         prev = self._prev_pos.get(id(body), (body.position.x, body.position.y))
         return (_lerp(prev[0], body.position.x, alpha), _lerp(prev[1], body.position.y, alpha))
@@ -112,41 +116,24 @@ class Renderer:
 
     def draw_ball(self, body: pymunk.Body, alpha: float) -> None:
         wx, wy = self._interp_body_pos(body, alpha)
-        sx, sy = self._w2s((wx, wy))
-        r = config.BALL_RADIUS
-        pygame.draw.circle(self.screen, _BALL_COLOR, (int(sx), int(sy)), r)
-        # Rotated darker arc to show spin
         angle = self._interp_body_angle(body, alpha)
-        arc_x = sx + math.cos(angle) * r * 0.5
-        arc_y = sy + math.sin(angle) * r * 0.5
-        pygame.draw.circle(self.screen, _BALL_DARK, (int(arc_x), int(arc_y)), int(r * 0.4))
+        self._blit_sprite((wx, wy), "ball", deg=-math.degrees(angle))
 
     def draw_spike(self, pos, width, height, orientation: str = "up"):
-        """Draw a spike triangle oriented to the given direction."""
-        x, y = pos
-        hw = width / 2
-        if orientation == "up":
-            verts = [(x - hw, y), (x + hw, y), (x, y - height)]
-        elif orientation == "down":
-            verts = [(x - hw, y), (x + hw, y), (x, y + height)]
-        elif orientation == "left":
-            verts = [(x, y - hw), (x, y + hw), (x - height, y)]
-        else:  # right
-            verts = [(x, y - hw), (x, y + hw), (x + height, y)]
-        points = [self._w2s(v) for v in verts]
-        pygame.draw.polygon(self.screen, _SPIKE_COLOR, points)
+        """Draw a spike sprite oriented to the given direction."""
+        deg = {"up": 0, "right": -90, "down": 180, "left": 90}[orientation]
+        self._blit_sprite(pos, "spike", deg=deg)
 
     def draw_collectible(self, pos):
-        x, y = pos
-        sx, sy = self._w2s((x, y))
-        r = int(config.COLLECTIBLE_RADIUS * self._pulse())
-        pygame.draw.circle(self.screen, _COLLECTIBLE_COLOR, (int(sx), int(sy)), r)
+        self._blit_sprite(pos, "collectible")
 
     def draw_ability_pickup(self, pos, radius, ability: str) -> None:
+        ability_pickup_default = (220, 220, 220)
+        ability_pickup_colors = {"double_jump": (255, 220, 80)}
         x, y = pos
         sx, sy = self._w2s((x, y))
         r = int(radius * self._pulse())
-        color = _ABILITY_PICKUP_COLORS.get(ability, _ABILITY_PICKUP_DEFAULT)
+        color = ability_pickup_colors.get(ability, ability_pickup_default)
         pygame.draw.polygon(self.screen, color, self._diamond_points(sx, sy, r))
 
     def draw_boost_pad(self, pos, width, direction: float = 1.0) -> None:
@@ -154,37 +141,32 @@ class Renderer:
         x, y = pos
         hw = width / 2
         pad_h = config.BOOST_PAD_THICKNESS / 2
-        self._fill_rect(x, y, hw, pad_h, _BOOST_PAD_COLOR)
+        self._fill_rect(x, y, hw, pad_h, (80, 220, 240))
         cx, cy = self._w2s((x, y))
         s = -1 if direction < 0 else 1
         pygame.draw.polygon(
             self.screen,
-            _BOOST_PAD_EDGE,
+            (30, 150, 180),
             [(cx - 8 * s, cy - 6), (cx + 6 * s, cy), (cx - 8 * s, cy + 6)],
         )
 
     def draw_goal(self, pos, width, height):
-        x, y = pos
-        hw, hh = width / 2, height / 2
-        self._fill_rect(x, y, hw, hh, _GOAL_COLOR)
-        # Flag bunting
-        fp1 = self._w2s((x - hw, y - hh))
-        fp2 = self._w2s((x - hw + 30, y - hh + 10))
-        fp3 = self._w2s((x - hw, y - hh + 20))
-        pygame.draw.polygon(self.screen, _GOAL_FLAG, [fp1, fp2, fp3])
+        self._blit_sprite(pos, "goal")
 
     def draw_patroller(self, body, size, alpha):
         wx, wy = self._interp_body_pos(body, alpha)
         hw, hh = size[0] / 2, size[1] / 2
-        self._fill_rect(wx, wy, hw, hh, _PATROLLER_COLOR)
+        self._fill_rect(wx, wy, hw, hh, (220, 100, 60))
 
     def draw_falling_hazard(self, body, radius, alpha):
         wx, wy = self._interp_body_pos(body, alpha)
         sx, sy = self._w2s((wx, wy))
-        pygame.draw.circle(self.screen, _SPIKE_COLOR, (int(sx), int(sy)), radius)
+        pygame.draw.circle(self.screen, self._theme().palette["spike"], (int(sx), int(sy)), radius)
 
-    def draw_static_segments(self, space: pymunk.Space, color=_GROUND_COLOR) -> None:
+    def draw_static_segments(self, space: pymunk.Space, color=None) -> None:
         """Draw every static pymunk.Segment as a thick line plus a darker top edge."""
+        if color is None:
+            color = self._theme().palette["ground"]
         sw, sh = self.screen.get_size()
         for shape in space.shapes:
             if isinstance(shape, pymunk.Segment) and shape.body is space.static_body:
@@ -198,7 +180,7 @@ class Renderer:
                         or max(a[1], b[1]) < 0 or min(a[1], b[1]) > sh):
                     continue
                 pygame.draw.line(self.screen, color, a, b, 6)
-                pygame.draw.line(self.screen, _GROUND_EDGE, a, b, 2)
+                pygame.draw.line(self.screen, (40, 90, 50), a, b, 2)
 
     # ------------------------------------------------------------------ #
     # Phase 3 entity renderers                                            #
@@ -285,7 +267,8 @@ class Renderer:
         pygame.draw.line(self.screen, (160, 140, 100), sa, sb, 2)
         # Bob: filled circle + spike points around perimeter
         sbx, sby = int(sb[0]), int(sb[1])
-        pygame.draw.circle(self.screen, _SPIKE_COLOR, (sbx, sby), int(bob_radius))
+        spike_color = self._theme().palette["spike"]
+        pygame.draw.circle(self.screen, spike_color, (sbx, sby), int(bob_radius))
         pygame.draw.circle(self.screen, (240, 100, 100), (sbx, sby), int(bob_radius), 2)
         # 4 spike tips
         for angle_deg in (0, 90, 180, 270):
@@ -296,7 +279,7 @@ class Renderer:
                      sby + int(3 * math.sin(a_rad + math.pi / 2)))
             base2 = (sbx + int(3 * math.cos(a_rad - math.pi / 2)),
                      sby + int(3 * math.sin(a_rad - math.pi / 2)))
-            pygame.draw.polygon(self.screen, _SPIKE_COLOR, [base1, base2, (tip_x, tip_y)])
+            pygame.draw.polygon(self.screen, spike_color, [base1, base2, (tip_x, tip_y)])
 
     def draw_one_way_platform(self, pos, width: float) -> None:
         """Thin platform strip with a downward chevron arrow."""

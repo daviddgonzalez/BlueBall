@@ -27,7 +27,7 @@
     {
       "id": 4,
       "subject": "Task 4: Pixel theme data — palette + core sprites",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [3],
       "description": "**Goal:** Pixel theme palette + initial sprites (ball/spike/collectible/goal/coin) at 2x grain; remaining entities in Task 9.\n\n**Files:** modify render/themes/pixel.py; test tests/test_pixel_theme.py\n\n**Verify:** test_pixel_theme.py PASS + suite green\n\n```json:metadata\n{\"files\": [\"src/blueball/render/themes/pixel.py\", \"tests/test_pixel_theme.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./.venv/bin/python -m pytest -q tests/test_pixel_theme.py\", \"acceptanceCriteria\": [\"core sprites present\", \"all bake\", \"palette covers keys\", \"suite green\"]}\n```"
     },
