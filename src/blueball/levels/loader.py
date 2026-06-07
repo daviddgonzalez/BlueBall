@@ -9,6 +9,7 @@ from typing import Union
 
 # Importing the chunks package registers every chunk type
 from . import chunks  # noqa: F401
+from ..abilities import Ability
 from ..entities.lava import Lava
 from .chunks.base import CHUNK_REGISTRY
 
@@ -20,6 +21,7 @@ class LevelMeta:
     background: tuple[int, int, int]
     ground: tuple[int, int, int]
     total_width: float
+    starting_abilities: frozenset[Ability] = frozenset()
 
 
 def _hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
@@ -80,6 +82,11 @@ def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
                 phase_s=float(c.get("phase_s", 0.0)),
             ))
 
+    # Abilities the player is assumed to already have on arrival (declared by
+    # the level; e.g. double jump unlocked in an earlier level). Default empty.
+    starting_abilities = frozenset(
+        Ability(a) for a in data.get("starting_abilities", [])
+    )
     spawn = tuple(data["spawn"])
     return LevelMeta(
         name=data["name"],
@@ -87,4 +94,5 @@ def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
         background=_hex_to_rgb(data["background"]),
         ground=_hex_to_rgb(data["ground"]),
         total_width=x,
+        starting_abilities=starting_abilities,
     )
