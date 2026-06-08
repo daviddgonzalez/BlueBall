@@ -62,6 +62,34 @@ class Renderer:
     def draw_background(self, color: tuple[int, int, int]) -> None:
         self.screen.fill(color)
 
+    def _sky_surface(self) -> pygame.Surface:
+        # Cached vertical gradient sized to the virtual surface.
+        if getattr(self, "_sky", None) is None:
+            theme = self._theme()
+            w, h = self.screen.get_size()
+            sky = pygame.Surface((w, h))
+            top, bot = theme.palette["sky_top"], theme.palette["sky_bottom"]
+            for y in range(h):
+                t = y / max(1, h - 1)
+                col = tuple(round(_lerp(top[i], bot[i], t)) for i in range(3))
+                pygame.draw.line(sky, col, (0, y), (w, y))
+            self._sky = sky
+        return self._sky
+
+    def draw_parallax(self, camera) -> None:
+        from .parallax import layer_offset
+        theme = self._theme()
+        self.screen.blit(self._sky_surface(), (0, 0))
+        vw = self.screen.get_width()
+        cam_x = camera.position[0]
+        for layer in theme.parallax:
+            surf = theme.sprites[layer.sprite_key].bake(theme.palette)
+            tw = surf.get_width()
+            x = layer_offset(cam_x, layer.factor, tw)
+            while x < vw:
+                self.screen.blit(surf, (int(x), layer.y))
+                x += tw
+
     def _w2s(self, world_xy):
         return self.camera.world_to_screen(world_xy)
 

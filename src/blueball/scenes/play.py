@@ -222,7 +222,7 @@ class PlayScene(Scene):
         )
 
     def draw(self) -> None:
-        self.renderer.draw_background(self.level_meta.background)
+        self.renderer.draw_parallax(self.camera)
         self.renderer.draw_static_segments(self.world.space, color=self.level_meta.ground)
         alpha = self.world.alpha
         for entity in self.world.entities:
