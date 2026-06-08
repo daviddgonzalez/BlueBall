@@ -315,17 +315,22 @@ def test_play_scene_maze_grants_double_jump_from_level(headless_pygame, tmp_save
     """maze declares starting_abilities=[double_jump]; even with an empty save
     the player arrives with double jump (level union)."""
     _path, _save_mod = tmp_save
+    assert _save_mod.load() == set()   # empty save: double jump can only come from the level
     scene = PlayScene(headless_pygame, _maze_path())
     assert Ability.DOUBLE_JUMP in scene.player.abilities
 
 
-def test_play_scene_unions_save_and_level_abilities(headless_pygame, tmp_save):
-    """Save-unlocked abilities union with the level's starting abilities."""
+def test_play_scene_maze_overlapping_save_dedupes_to_double_jump(headless_pygame, tmp_save):
+    """maze declares double_jump AND the save unlocks it; the union dedupes to
+    exactly {DOUBLE_JUMP} (a single ability enum can't express a non-overlapping
+    union — the level operand is covered by the empty-save test above, the save
+    operand by test_play_scene_loads_unlocked_abilities_from_save)."""
     path, _save_mod = tmp_save
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"unlocked_abilities": ["double_jump"]}))
     scene = PlayScene(headless_pygame, _maze_path())
-    assert Ability.DOUBLE_JUMP in scene.player.abilities
+    assert scene.player.abilities == {Ability.DOUBLE_JUMP}
+    assert isinstance(scene.player.abilities, set)
 
 
 def test_play_scene_cull_purges_shape_index(headless_pygame, tmp_save):
