@@ -55,21 +55,21 @@
     {
       "id": 8,
       "subject": "Task 8: Parallax background (layered scrolling)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [2, 5],
       "description": "**Goal:** Replace flat background with N scrolling parallax layers defined in theme data.\n\n**Files:** create render/parallax.py; modify render/renderer.py (draw_parallax), render/themes/pixel.py (layers), scenes/play.py:178; test tests/test_parallax.py\n\n**Verify:** test_parallax.py PASS + suite green + visual check\n\n```json:metadata\n{\"files\": [\"src/blueball/render/parallax.py\", \"src/blueball/render/renderer.py\", \"src/blueball/render/themes/pixel.py\", \"src/blueball/scenes/play.py\", \"tests/test_parallax.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./.venv/bin/python -m pytest -q tests/test_parallax.py\", \"acceptanceCriteria\": [\"layer_offset wraps\", \"factor 0 static / 1 locked\", \"draw_parallax tiles layers\", \"suite green\"]}\n```"
     },
     {
       "id": 9,
       "subject": "Task 9: Per-entity visual treatment pass",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [5, 6, 7, 8],
       "description": "**Goal:** Finish every remaining entity from spec section 5 (sprite + anim + FX); by-eye art pass. HUD pixel font.\n\n**Files:** modify render/themes/pixel.py (all remaining sprites/frames + font), render/renderer.py (convert remaining draw_*); test tests/test_renderer_all_entities.py (smoke per entity)\n\n**Verify:** test_renderer_all_entities.py PASS + full suite green\n\n```json:metadata\n{\"files\": [\"src/blueball/render/themes/pixel.py\", \"src/blueball/render/renderer.py\", \"tests/test_renderer_all_entities.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./.venv/bin/python -m pytest -q tests/test_renderer_all_entities.py\", \"acceptanceCriteria\": [\"all terrain/platforms\", \"all hazards animated\", \"all pickups/interactive\", \"HUD pixel font\", \"no RGB outside palette; smoke tests green\"]}\n```"
     },
     {
       "id": 10,
       "subject": "Task 10: Render tests, training-isolation guard & smoke render",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [9],
       "description": "**Goal:** Consolidate render tests; training never imports/instantiates renderer; full-scene smoke render.\n\n**Files:** create tests/test_render_isolation.py, tests/test_render_smoke.py\n\n**Verify:** full suite (>=409 + new) PASS\n\n```json:metadata\n{\"files\": [\"tests/test_render_isolation.py\", \"tests/test_render_smoke.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./.venv/bin/python -m pytest -q\", \"acceptanceCriteria\": [\"training renderer-free\", \"theme-switch render\", \"full-scene smoke present()\", \"upscale 1280x720\", \"suite green\"]}\n```"
     }
