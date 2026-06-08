@@ -35,6 +35,13 @@ def test_ball_draws_theme_color_pixels():
 
 
 def test_no_color_constants_remain():
+    # Resolve the renderer source relative to THIS test file, not the cwd, so
+    # the scan can't FileNotFoundError when pytest is invoked from elsewhere.
     import pathlib, re
-    src = pathlib.Path("src/blueball/render/renderer.py").read_text()
-    assert not re.search(r"_COLOR", src)
+    repo_root = pathlib.Path(__file__).resolve().parents[1]
+    src = (repo_root / "src" / "blueball" / "render" / "renderer.py").read_text()
+    # Guard against re-introducing baked-in color constants under the
+    # color-ish suffixes the overhaul stripped out. Kept scoped to those
+    # suffixes so it doesn't trip on legit non-color constants.
+    leaked = re.findall(r"\b[A-Z][A-Z0-9_]*(?:_COLOR|_DARK|_FLAG|_EDGE|_DEFAULT)\b", src)
+    assert not leaked, f"color-ish constants leaked back into renderer.py: {leaked}"

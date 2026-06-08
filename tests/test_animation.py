@@ -12,6 +12,14 @@ def test_fast_rise_stretches_vertically():
     assert abs(sx * sy - 1.0) < 0.05       # ~area-preserving
 
 
+def test_fast_fall_squashes_vertically():
+    # pymunk y-down: vy>0 is falling. A fast fall should squash the ball
+    # short+wide (the inverse of the rising stretch), still ~area-preserving.
+    sx, sy = squash_stretch(400.0, max_amount=0.3)
+    assert sy < 1.0 and sx > 1.0           # shorter, wider
+    assert abs(sx * sy - 1.0) < 0.05       # ~area-preserving
+
+
 def test_anim_cycles():
     a = Anim(n_frames=3, fps=10)
     assert a.index(0.0) == 0
