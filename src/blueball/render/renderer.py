@@ -4,6 +4,7 @@ fallbacks for entities not yet themed)."""
 from __future__ import annotations
 
 import math
+import weakref
 
 import pygame
 import pymunk
@@ -30,6 +31,14 @@ class Renderer:
         self._prev_pos: dict[int, tuple[float, float]] = {}
         self._prev_angle: dict[int, float] = {}
         self._hud_font = None  # lazily created (needs pygame.font init)
+        # Active-theme memo (see _theme); re-resolved when ACTIVE_THEME changes.
+        self._theme_name: str | None = None
+        self._cached_theme = None
+        # Static-segment world-endpoint cache (see _static_segments). Rebuilt
+        # only when the space identity or its shape count changes.
+        self._seg_space: weakref.ref | None = None
+        self._seg_count: int = -1
+        self._seg_cache: list[tuple[float, float, float, float]] = []
 
     def begin_frame(self, world) -> None:
         """Snapshot previous positions for next frame's interpolation.
@@ -94,8 +103,18 @@ class Renderer:
         return self.camera.world_to_screen(world_xy)
 
     def _theme(self):
-        from .theme import get_active_theme
-        return get_active_theme()
+        # Resolve the active theme once per ACTIVE_THEME value and reuse it.
+        # _theme() is called dozens of times per frame (per sprite AND per
+        # particle); re-running get_active_theme() — a module import + registry
+        # lookup — each time is pure waste. Keying on the live config value keeps
+        # runtime theme switching working: a switch changes the name, so the next
+        # call re-resolves.
+        name = config.ACTIVE_THEME
+        if name != self._theme_name:
+            from .theme import get_active_theme
+            self._cached_theme = get_active_theme()
+            self._theme_name = name
+        return self._cached_theme
 
     def _blit_sprite(self, world_xy, key, *, deg=0.0, frame=0, scale=None, anchor="center"):
         theme = self._theme()
@@ -173,24 +192,59 @@ class Renderer:
         s = (2 * radius) * self.camera.scale / self._sprite_w("falling_hazard")
         self._blit_sprite((wx, wy), "falling_hazard", scale=(s, s))
 
+    def _static_segments(
+        self, space: pymunk.Space
+    ) -> list[tuple[float, float, float, float]]:
+        """Cached (ax, ay, bx, by) WORLD endpoints of every static Segment in
+        *space*.
+
+        Static geometry never moves, so the world coords are constant — only
+        the camera that projects them changes. The old per-frame scan paid
+        pymunk Vec2d property access (shape.a / shape.b) over *every* shape every
+        frame, which dominated draw time on long streamed Infinite-Run levels.
+        We extract the floats once and re-project them each frame instead.
+
+        The cache is rebuilt when the space object changes (world swap — a
+        weakref so old worlds can still be GC'd) or its shape count changes
+        (streamed chunks added/culled). A weakref+count key avoids id() reuse
+        hazards a bare id() would have after a world is collected.
+        """
+        prev = self._seg_space() if self._seg_space is not None else None
+        shapes = space.shapes
+        n = len(shapes)
+        if prev is not space or n != self._seg_count:
+            static = space.static_body
+            self._seg_cache = [
+                (s.a.x, s.a.y, s.b.x, s.b.y)
+                for s in shapes
+                if isinstance(s, pymunk.Segment) and s.body is static
+            ]
+            self._seg_space = weakref.ref(space)
+            self._seg_count = n
+        return self._seg_cache
+
     def draw_static_segments(self, space: pymunk.Space, color=None) -> None:
         """Draw every static pymunk.Segment as a thick line plus a darker top edge."""
+        theme = self._theme()
         if color is None:
-            color = self._theme().palette["ground"]
+            color = theme.palette["ground"]
+        edge = theme.palette["ground_edge"]
         sw, sh = self.screen.get_size()
-        for shape in space.shapes:
-            if isinstance(shape, pymunk.Segment) and shape.body is space.static_body:
-                a = self._w2s((shape.a.x, shape.a.y))
-                b = self._w2s((shape.b.x, shape.b.y))
-                # Skip segments whose screen-space bounding box is entirely off
-                # the viewport — they contribute no on-screen pixels. Uses min/max
-                # of both endpoints so a long segment crossing the screen with
-                # both endpoints off-screen is still drawn.
-                if (max(a[0], b[0]) < 0 or min(a[0], b[0]) > sw
-                        or max(a[1], b[1]) < 0 or min(a[1], b[1]) > sh):
-                    continue
-                pygame.draw.line(self.screen, color, a, b, 6)
-                pygame.draw.line(self.screen, self._theme().palette["ground_edge"], a, b, 2)
+        w2s = self.camera.world_to_screen
+        line = pygame.draw.line
+        screen = self.screen
+        for ax, ay, bx, by in self._static_segments(space):
+            a = w2s((ax, ay))
+            b = w2s((bx, by))
+            # Skip segments whose screen-space bounding box is entirely off the
+            # viewport — they contribute no on-screen pixels. Uses min/max of
+            # both endpoints so a long segment crossing the screen with both
+            # endpoints off-screen is still drawn.
+            if (max(a[0], b[0]) < 0 or min(a[0], b[0]) > sw
+                    or max(a[1], b[1]) < 0 or min(a[1], b[1]) > sh):
+                continue
+            line(screen, color, a, b, 6)
+            line(screen, edge, a, b, 2)
 
     # ------------------------------------------------------------------ #
     # Phase 3 entity renderers                                            #

@@ -34,6 +34,25 @@ def test_ball_draws_theme_color_pixels():
     assert found
 
 
+def test_theme_cache_honors_runtime_switch(monkeypatch):
+    """The per-renderer theme memo must re-resolve when config.ACTIVE_THEME
+    changes, so runtime theme switching still works despite the cache."""
+    from blueball import config
+    from blueball.render import theme as theme_mod
+
+    _, r = _renderer()
+    pixel = r._theme()                       # resolves + caches "pixel"
+    assert pixel is get_active_theme()
+
+    sentinel = object()
+    theme_mod.register_theme("test_alt", sentinel)
+    monkeypatch.setattr(config, "ACTIVE_THEME", "test_alt")
+    try:
+        assert r._theme() is sentinel        # cache re-resolved on name change
+    finally:
+        theme_mod._REGISTRY.pop("test_alt", None)
+
+
 def test_no_color_constants_remain():
     # Resolve the renderer source relative to THIS test file, not the cwd, so
     # the scan can't FileNotFoundError when pytest is invoked from elsewhere.

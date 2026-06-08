@@ -72,3 +72,73 @@ def test_draw_static_segments_culls_offscreen_keeps_onscreen(monkeypatch):
     assert (10.0, 10.0) in endpoints and (200.0, 200.0) in endpoints  # on-screen drawn
     assert (500.0, 50.0) not in endpoints  # off-screen culled
     assert (700.0, 50.0) not in endpoints
+
+
+class _ShiftCamera:
+    """Identity projection plus a mutable (dx, dy) world offset."""
+    def __init__(self):
+        self.dx = self.dy = 0.0
+
+    def world_to_screen(self, p):
+        return (p[0] + self.dx, p[1] + self.dy)
+
+
+def _spy_segments(monkeypatch, pygame, r, space):
+    drawn = []
+    monkeypatch.setattr(
+        pygame.draw, "line",
+        lambda surf, color, a, b, width=1: drawn.append((tuple(a), tuple(b))),
+    )
+    r.draw_static_segments(space)
+    return drawn
+
+
+def test_static_segments_reproject_when_camera_moves(monkeypatch):
+    """Endpoints are cached in WORLD space, so a camera move on an unchanged
+    space must still shift the drawn screen coords (guards a stale screen-space
+    cache)."""
+    import os
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    import pygame
+
+    pygame.display.init()
+    screen = pygame.display.set_mode((400, 300))
+    cam = _ShiftCamera()
+    r = Renderer(screen=screen, camera=cam)
+    space = pymunk.Space()
+    space.add(pymunk.Segment(space.static_body, (10, 10), (200, 200), 3))
+    try:
+        first = _spy_segments(monkeypatch, pygame, r, space)
+        cam.dx = cam.dy = 25.0  # scroll the camera, geometry unchanged
+        second = _spy_segments(monkeypatch, pygame, r, space)
+    finally:
+        pygame.display.quit()
+
+    assert ((10.0, 10.0), (200.0, 200.0)) in first
+    assert ((35.0, 35.0), (225.0, 225.0)) in second  # re-projected, not stale
+
+
+def test_static_segments_cache_refreshes_when_geometry_changes(monkeypatch):
+    """Adding a static segment (as streamed chunks do) must appear on the next
+    draw — the cache cannot go permanently stale."""
+    import os
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    import pygame
+
+    pygame.display.init()
+    screen = pygame.display.set_mode((400, 300))
+    r = Renderer(screen=screen, camera=_ShiftCamera())
+    space = pymunk.Space()
+    space.add(pymunk.Segment(space.static_body, (10, 10), (50, 50), 3))
+    try:
+        first = _spy_segments(monkeypatch, pygame, r, space)
+        space.add(pymunk.Segment(space.static_body, (60, 60), (120, 120), 3))
+        second = _spy_segments(monkeypatch, pygame, r, space)
+    finally:
+        pygame.display.quit()
+
+    first_pts = {pt for seg in first for pt in seg}
+    second_pts = {pt for seg in second for pt in seg}
+    assert (60.0, 60.0) not in first_pts          # not present before it existed
+    assert (60.0, 60.0) in second_pts             # appears after geometry change
+    assert (10.0, 10.0) in second_pts             # original still drawn
