@@ -90,7 +90,8 @@ def evaluate(args: tuple) -> tuple[int, float]:
     meta = load_level(level_path, world)
 
     spawn_x, spawn_y = float(meta.spawn[0]), float(meta.spawn[1])
-    player = Player(agent=FTNNAgent(genome), spawn_xy=(spawn_x, spawn_y))
+    player = Player(agent=FTNNAgent(genome), spawn_xy=(spawn_x, spawn_y),
+                    abilities=set(meta.starting_abilities))
     world.add_entity(player)
 
     max_x = spawn_x
