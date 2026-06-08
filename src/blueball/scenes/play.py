@@ -70,10 +70,13 @@ class PlayScene(Scene):
         unlocked_names = save.load()
         valid_names = {a.value for a in Ability}
         unlocked = {Ability(name) for name in unlocked_names if name in valid_names}
+        # The level may declare abilities the player is assumed to arrive with
+        # (e.g. double jump unlocked earlier); union so a direct load is fair.
+        abilities = unlocked | set(self.level_meta.starting_abilities)
         self.player = Player(
             agent=HumanAgent(),
             spawn_xy=tuple(self.level_meta.spawn),
-            abilities=unlocked,
+            abilities=abilities,
         )
         if self._last_respawn_xy is not None:
             self.player.body.position = self._last_respawn_xy

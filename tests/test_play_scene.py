@@ -307,6 +307,27 @@ def test_play_scene_draw_runs_headless(headless_pygame, tmp_save):
     scene.draw()  # must not raise
 
 
+def _maze_path() -> Path:
+    return Path(blueball.__file__).parent / "levels" / "maze.json"
+
+
+def test_play_scene_maze_grants_double_jump_from_level(headless_pygame, tmp_save):
+    """maze declares starting_abilities=[double_jump]; even with an empty save
+    the player arrives with double jump (level union)."""
+    _path, _save_mod = tmp_save
+    scene = PlayScene(headless_pygame, _maze_path())
+    assert Ability.DOUBLE_JUMP in scene.player.abilities
+
+
+def test_play_scene_unions_save_and_level_abilities(headless_pygame, tmp_save):
+    """Save-unlocked abilities union with the level's starting abilities."""
+    path, _save_mod = tmp_save
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"unlocked_abilities": ["double_jump"]}))
+    scene = PlayScene(headless_pygame, _maze_path())
+    assert Ability.DOUBLE_JUMP in scene.player.abilities
+
+
 def test_play_scene_cull_purges_shape_index(headless_pygame, tmp_save):
     """The streaming cull bypasses Entity._remove_from_space, so it must purge
     the shape->entity index itself — otherwise every culled entity-shape leaks
