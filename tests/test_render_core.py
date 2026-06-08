@@ -48,3 +48,12 @@ def test_present_identity_scale():
     core.surface.fill((99, 88, 77))
     core.present(flip=False)
     assert window.get_at((0, 0))[:3] == (99, 88, 77)
+
+
+def test_shake_decays():
+    window = pygame.Surface((1280, 720))
+    core = RenderCore(window, pixel_scale=2)
+    core.add_shake(10.0)
+    for _ in range(200):
+        core.update(0.1)
+    assert abs(core.shake_offset[0]) < 1.0 and abs(core.shake_offset[1]) < 1.0

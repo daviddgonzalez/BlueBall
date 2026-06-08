@@ -83,6 +83,13 @@ class Renderer:
         ox, oy = self.core.shake_offset if self.core else (0.0, 0.0)
         self.screen.blit(surf, surf.get_rect(center=(round(px + ox), round(py + oy))))
 
+    def _blit_point(self, world_xy, color, size):
+        px, py = self.camera.world_to_screen(world_xy)
+        ox, oy = self.core.shake_offset if self.core else (0.0, 0.0)
+        s = max(1, int(size))
+        x, y = round(px + ox) - s // 2, round(py + oy) - s // 2
+        self.screen.fill(color, (x, y, s, s))
+
     def _interp_body_pos(self, body: pymunk.Body, alpha: float) -> tuple[float, float]:
         prev = self._prev_pos.get(id(body), (body.position.x, body.position.y))
         return (_lerp(prev[0], body.position.x, alpha), _lerp(prev[1], body.position.y, alpha))

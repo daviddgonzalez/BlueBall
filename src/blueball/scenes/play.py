@@ -52,6 +52,15 @@ class PlayScene(Scene):
         # Preserve the pre-overhaul visible-world span on the smaller surface.
         self.camera.scale = 1.0 / self.core.scale
         self.renderer = Renderer(self.core, self.camera)
+        # Visual-only FX. Persist across _reset() so a death-burst keeps
+        # animating after respawn.
+        from ..render.particles import ParticleSystem
+        from ..render.theme import get_active_theme
+        self.particles = ParticleSystem(
+            int(get_active_theme().params.get("particle_cap", 300))
+        )
+        self._was_grounded = False
+        self._prev_collected = 0
         self._last_respawn_xy: tuple[float, float] | None = None
         self._exit_to_menu: bool = False
         # Infinite Run score = 10 * furthest x reached this run; best persists
@@ -83,6 +92,11 @@ class PlayScene(Scene):
             self.player.body.position = self._last_respawn_xy
         self.world.add_entity(self.player)
         self.camera.position = (self.player.body.position.x, self.player.body.position.y)
+        # Reset transition trackers so a fresh run's first frame doesn't
+        # spuriously emit landing/collect FX. The ParticleSystem and shake
+        # state intentionally persist across the reset.
+        self._was_grounded = False
+        self._prev_collected = 0
 
     def _init_streaming_level(self) -> None:
         """Set up the per-tick chunk pipeline for Infinite Run.
@@ -147,11 +161,25 @@ class PlayScene(Scene):
         self.renderer.begin_frame(self.world)
         if self._streaming:
             self._maintain_streaming(self.player.body.position.x)
+        # Sampled BEFORE the step purely to scale a landing's screen shake to the
+        # impact speed — read-only, no effect on physics.
+        pre_vy = self.player.body.velocity.y
         self.world.step(frame_dt)
+        # Age existing visual FX every frame (before emitting new ones).
+        self.core.update(frame_dt)
+        self.particles.update(frame_dt)
         if self._streaming:
             self._run_max_x = max(self._run_max_x, self.player.body.position.x)
             self._score = int(10 * self._run_max_x)
         if self.player.dead:
+            # Visual-only death burst + shake, emitted before the existing
+            # score/reset logic so it animates through the respawn.
+            self.particles.emit(
+                "burst",
+                (self.player.body.position.x, self.player.body.position.y),
+                n=16,
+            )
+            self.core.add_shake(6.0)
             if self._streaming:
                 # Bank the run's score, then re-randomize the run on death
                 # instead of replaying the same deterministic layout; no
@@ -173,6 +201,21 @@ class PlayScene(Scene):
             self._last_respawn_xy = None
             self._exit_to_menu = True
             return
+        # Player is alive and the level isn't complete: emit visual-only FX by
+        # observing existing player state (landing / collect / boost). None of
+        # this feeds back into physics.
+        pos = (self.player.body.position.x, self.player.body.position.y)
+        grounded = self.player.grounded
+        if grounded and not self._was_grounded:
+            self.particles.emit("dust", pos, n=8)
+            if abs(pre_vy) > 200:
+                self.core.add_shake(min(8.0, abs(pre_vy) / 60.0))
+        self._was_grounded = grounded
+        if self.player.collectibles_collected > self._prev_collected:
+            self.particles.emit("sparkle", pos, n=10)
+            self._prev_collected = self.player.collectibles_collected
+        if self.player._boost_multiplier > 1.0:
+            self.particles.emit("trail", pos, n=3)
         self.camera.update(
             target=(self.player.body.position.x, self.player.body.position.y),
             dt=frame_dt,
@@ -184,6 +227,7 @@ class PlayScene(Scene):
         alpha = self.world.alpha
         for entity in self.world.entities:
             entity.draw(self.renderer, alpha)
+        self.particles.draw(self.renderer)
         if self._streaming:
             self.renderer.draw_score(self._score, max(self._best_score, self._score))
         self.core.present()

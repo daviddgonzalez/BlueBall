@@ -10,6 +10,9 @@ BACKGROUND_COLOR = (126, 199, 255)
 # surface and nearest-neighbor-upscaled to the window. Must divide WINDOW evenly.
 PIXEL_SCALE = 2
 
+# Screen-shake magnitude decays exponentially toward 0 at this rate (per second).
+SHAKE_DECAY = 8.0
+
 # Physics loop
 PHYS_HZ = 120
 PHYS_DT = 1.0 / PHYS_HZ
