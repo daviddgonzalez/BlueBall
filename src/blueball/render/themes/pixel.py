@@ -151,16 +151,18 @@ _PATROLLER = SpriteDef(grid=[
     "p.pp.pp.pp.pp.",
 ], palette_key="patroller")
 
-# Falling hazard: round spiked boulder.
+# Falling hazard: red anvil (flat top, narrow waist, flared foot).
 _FALLING_HAZARD = SpriteDef(grid=[
-    "...f..f..f...",
-    "..ffffffffff.",
-    ".fffFFffffff.",
-    "ffffFFffffffF",
-    "ffffffffffffF",
-    "ffffffffffff.",
-    ".ffffffffff..",
-    ".f..f..f..f..",
+    "FFFFFFFFFFFFF",
+    "fffffffffffff",
+    "fffffffffffff",
+    ".fffffffffff.",
+    "...fffffff...",
+    ".....fff.....",
+    ".....fff.....",
+    "....fffff....",
+    "..fffffffff..",
+    "fffffffffffff",
 ], palette_key="falling_hazard")
 
 # Horizontal moving platform: 32x8, scaled to length in renderer.

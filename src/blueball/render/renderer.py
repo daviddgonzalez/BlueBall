@@ -97,7 +97,7 @@ class Renderer:
         from .theme import get_active_theme
         return get_active_theme()
 
-    def _blit_sprite(self, world_xy, key, *, deg=0.0, frame=0, scale=None):
+    def _blit_sprite(self, world_xy, key, *, deg=0.0, frame=0, scale=None, anchor="center"):
         theme = self._theme()
         surf = theme.sprites[key].frame(frame, theme.palette)
         if scale is not None:
@@ -109,7 +109,9 @@ class Renderer:
             surf = pygame.transform.rotate(surf, deg)
         px, py = self.camera.world_to_screen(world_xy)
         ox, oy = self.core.shake_offset if self.core else (0.0, 0.0)
-        self.screen.blit(surf, surf.get_rect(center=(round(px + ox), round(py + oy))))
+        # `anchor` is any pygame Rect kwarg (center, midbottom, midtop, ...), so
+        # callers can sit a sprite ON a surface instead of centering through it.
+        self.screen.blit(surf, surf.get_rect(**{anchor: (round(px + ox), round(py + oy))}))
 
     def _blit_point(self, world_xy, color, size):
         px, py = self.camera.world_to_screen(world_xy)
@@ -132,17 +134,18 @@ class Renderer:
         return 1.0 + magnitude * math.sin(t * 2 * math.pi * config.COLLECTIBLE_PULSE_HZ)
 
     def draw_ball(self, body: pymunk.Body, alpha: float) -> None:
-        from .animation import squash_stretch
         wx, wy = self._interp_body_pos(body, alpha)
         angle = self._interp_body_angle(body, alpha)
-        sx, sy = squash_stretch(body.velocity.y,
-                                self._theme().params.get("squash_max", 0.3))
-        self._blit_sprite((wx, wy), "ball", deg=-math.degrees(angle), scale=(sx, sy))
+        self._blit_sprite((wx, wy), "ball", deg=-math.degrees(angle))
 
     def draw_spike(self, pos, width, height, orientation: str = "up"):
-        """Draw a spike sprite oriented to the given direction."""
+        """Spike sized to its hitbox and anchored so its base sits ON the
+        surface (tip pointing outward) for each orientation."""
+        sx, sy = self._fit_scale(width, height, "spike")
         deg = {"up": 0, "right": -90, "down": 180, "left": 90}[orientation]
-        self._blit_sprite(pos, "spike", deg=deg)
+        anchor = {"up": "midbottom", "down": "midtop",
+                  "left": "midright", "right": "midleft"}[orientation]
+        self._blit_sprite(pos, "spike", deg=deg, scale=(sx, sy), anchor=anchor)
 
     def draw_collectible(self, pos):
         self._blit_sprite(pos, "collectible")
@@ -155,7 +158,7 @@ class Renderer:
     def draw_boost_pad(self, pos, width, direction: float = 1.0) -> None:
         """Boost-pad strip sprite; chevrons point along the launch arrow
         (flipped 180deg when the pad launches left)."""
-        sx = width / self._sprite_w("boost_pad")
+        sx = width * self.camera.scale / self._sprite_w("boost_pad")
         self._blit_sprite(pos, "boost_pad", deg=180 if direction < 0 else 0, scale=(sx, 1.0))
 
     def draw_goal(self, pos, width, height):
@@ -167,7 +170,8 @@ class Renderer:
 
     def draw_falling_hazard(self, body, radius, alpha):
         wx, wy = self._interp_body_pos(body, alpha)
-        self._blit_sprite((wx, wy), "falling_hazard")
+        s = (2 * radius) * self.camera.scale / self._sprite_w("falling_hazard")
+        self._blit_sprite((wx, wy), "falling_hazard", scale=(s, s))
 
     def draw_static_segments(self, space: pymunk.Space, color=None) -> None:
         """Draw every static pymunk.Segment as a thick line plus a darker top edge."""
@@ -202,15 +206,23 @@ class Renderer:
         theme = self._theme()
         return theme.sprites[key].frame(0, theme.palette).get_height()
 
+    def _fit_scale(self, world_w: float, world_h: float, key: str) -> tuple[float, float]:
+        """(sx, sy) to render `key` at a given WORLD size. Multiplying by the
+        camera's world->surface scale makes the sprite match the entity's hitbox
+        instead of overshooting it by the pixel-scale factor."""
+        cs = self.camera.scale
+        return ((world_w * cs) / self._sprite_w(key),
+                (world_h * cs) / self._sprite_h(key))
+
     def draw_moving_platform(self, body: pymunk.Body, alpha: float, length: float) -> None:
         """Interpolated horizontal platform, sprite scaled to the entity length."""
         wx, wy = self._interp_body_pos(body, alpha)
-        sx = length / self._sprite_w("platform")
+        sx = length * self.camera.scale / self._sprite_w("platform")
         self._blit_sprite((wx, wy), "platform", scale=(sx, 1.0))
 
     def draw_spring(self, pos, width: float, t: float) -> None:
         """Spring pad sprite with a gentle vertical squish pulse via `t`."""
-        sx = width / self._sprite_w("spring")
+        sx = width * self.camera.scale / self._sprite_w("spring")
         sy = 1.0 + 0.15 * abs(math.sin(t * 6))
         self._blit_sprite(pos, "spring", scale=(sx, sy))
 
@@ -221,7 +233,7 @@ class Renderer:
     def draw_crumbling_platform(self, pos, alpha: float, width: float, progress: float) -> None:
         """Crumbling platform sprite scaled to width (progress darkening dropped
         for this pass — single sprite)."""
-        sx = width / self._sprite_w("crumbling")
+        sx = width * self.camera.scale / self._sprite_w("crumbling")
         self._blit_sprite(pos, "crumbling", scale=(sx, 1.0))
 
     def draw_key(self, pos, radius: int, key_id: int) -> None:
@@ -229,17 +241,20 @@ class Renderer:
         self._blit_sprite(pos, "key")
 
     def draw_door(self, pos, height: int, open_: bool) -> None:
-        """Door sprite; passable `door_open` variant when open. The entity
-        position is the door's base; the sprite is centered on the door's span."""
+        """Door sprite scaled to fill the gap exactly: its span is the collision
+        segment (pos.y down to pos.y-height), so it sits perfectly between the
+        walls above and below. Width is a fixed door thickness (no stretch)."""
         x, y = pos
-        self._blit_sprite((x, y - height / 2), "door_open" if open_ else "door",
-                          scale=(1.0, height / self._sprite_h("door")))
+        key = "door_open" if open_ else "door"
+        cs = self.camera.scale
+        sx = (14.0 * cs) / self._sprite_w(key)
+        sy = (height * cs) / self._sprite_h(key)
+        self._blit_sprite((x, y - height / 2), key, scale=(sx, sy))
 
     def draw_pushable_box(self, body: pymunk.Body, alpha: float, size: float) -> None:
-        """Interpolated crate sprite scaled to the box footprint."""
+        """Interpolated crate sprite scaled to match the box's hitbox."""
         wx, wy = self._interp_body_pos(body, alpha)
-        s = size / self._sprite_w("box")
-        self._blit_sprite((wx, wy), "box", scale=(s, s))
+        self._blit_sprite((wx, wy), "box", scale=self._fit_scale(size, size, "box"))
 
     def draw_swinging_hazard(
         self,
@@ -254,12 +269,12 @@ class Renderer:
         sa = self._w2s((ax, ay))
         sb = self._w2s((bx, by))
         pygame.draw.line(self.screen, self._theme().palette["door_hi"], sa, sb, 2)
-        s = (2 * bob_radius) / self._sprite_w("swing_hazard")
+        s = (2 * bob_radius) * self.camera.scale / self._sprite_w("swing_hazard")
         self._blit_sprite((bx, by), "swing_hazard", scale=(s, s))
 
     def draw_one_way_platform(self, pos, width: float) -> None:
         """One-way platform strip sprite (down-chevrons baked in)."""
-        sx = width / self._sprite_w("one_way")
+        sx = width * self.camera.scale / self._sprite_w("one_way")
         self._blit_sprite(pos, "one_way", scale=(sx, 1.0))
 
     def draw_charger(self, body: pymunk.Body, alpha: float, state: str, radius: int = 12) -> None:
@@ -268,17 +283,17 @@ class Renderer:
         self._blit_sprite((wx, wy), "charger_charge" if state == "charge" else "charger")
 
     def draw_lava(self, body: pymunk.Body, alpha: float, width: float, height: float) -> None:
-        """Lava block sprite. body.position is the top-edge center, so the sprite
-        is offset down by half its height to sit below the deadly surface."""
+        """Lava block sprite, scaled to the hitbox. body.position is the top-edge
+        center, so the sprite is offset down by half its height to sit below the
+        deadly surface."""
         wx, wy = self._interp_body_pos(body, alpha)
-        sx = width / self._sprite_w("lava")
-        sy = height / self._sprite_h("lava")
-        self._blit_sprite((wx, wy + height / 2), "lava", scale=(sx, sy))
+        self._blit_sprite((wx, wy + height / 2), "lava",
+                          scale=self._fit_scale(width, height, "lava"))
 
     def draw_projectile(self, body: pymunk.Body, alpha: float, radius: int = 10) -> None:
         """Interpolated fiery orb fired by a cannon."""
         wx, wy = self._interp_body_pos(body, alpha)
-        s = (2 * radius) / self._sprite_w("projectile")
+        s = (2 * radius) * self.camera.scale / self._sprite_w("projectile")
         self._blit_sprite((wx, wy), "projectile", scale=(s, s))
 
     def draw_cannon(self, position, direction: str) -> None:
