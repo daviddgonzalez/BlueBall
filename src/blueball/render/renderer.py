@@ -115,9 +115,12 @@ class Renderer:
         return [(sx, sy - r), (sx + r, sy), (sx, sy + r), (sx - r, sy)]
 
     def draw_ball(self, body: pymunk.Body, alpha: float) -> None:
+        from .animation import squash_stretch
         wx, wy = self._interp_body_pos(body, alpha)
         angle = self._interp_body_angle(body, alpha)
-        self._blit_sprite((wx, wy), "ball", deg=-math.degrees(angle))
+        sx, sy = squash_stretch(body.velocity.y,
+                                self._theme().params.get("squash_max", 0.3))
+        self._blit_sprite((wx, wy), "ball", deg=-math.degrees(angle), scale=(sx, sy))
 
     def draw_spike(self, pos, width, height, orientation: str = "up"):
         """Draw a spike sprite oriented to the given direction."""
