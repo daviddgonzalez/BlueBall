@@ -26,16 +26,17 @@ class RenderCore:
         # .convert() requires a display; guard so headless construction works.
         self.surface = surf.convert() if pygame.display.get_surface() else surf
         self.shake_offset: tuple[float, float] = (0.0, 0.0)
+        self._shake_mag: float = 0.0
+        self._t: int = 0
 
     def add_shake(self, magnitude: float) -> None:
-        self._shake_mag = getattr(self, "_shake_mag", 0.0) + magnitude
+        self._shake_mag += magnitude
 
     def update(self, dt: float) -> None:
-        mag = getattr(self, "_shake_mag", 0.0)
-        mag = max(0.0, mag - config.SHAKE_DECAY * mag * dt)
+        mag = max(0.0, self._shake_mag - config.SHAKE_DECAY * self._shake_mag * dt)
         self._shake_mag = mag
         # Deterministic jitter from a frame counter (NO random — keeps replays/tests stable).
-        self._t = getattr(self, "_t", 0) + 1
+        self._t += 1
         jx = (self._t % 7 - 3) * mag * 0.3
         jy = ((self._t // 3) % 5 - 2) * mag * 0.3
         self.shake_offset = (jx, jy)

@@ -97,6 +97,6 @@ def build():
             "goal": _GOAL,
         },
         params=MappingProxyType({
-            "squash_max": 0.35, "shake_decay": 8.0, "particle_cap": 300,
+            "squash_max": 0.35, "particle_cap": 300,
         }),
     )
