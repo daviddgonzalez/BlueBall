@@ -26,12 +26,13 @@ from .. import config
 class EpisodeSpec:
     """One evaluation episode. Picklable so it survives multiprocessing.Pool."""
 
-    kind: str                 # "infinite" | "static"
-    seed: int                 # sampler_seed for infinite; ignored for static
+    kind: str                 # "infinite" | "static" | "gym"
+    seed: int                 # sampler_seed for infinite/gym; ignored for static
     level_path: str | None    # for static (str so it pickles cleanly)
     world_seed: int
     max_steps: int
     norm: float = 1.0         # divisor applied to this episode's raw fitness
+    abilities: tuple[str, ...] = ()  # gym: granted ability names; () elsewhere
 
 
 def aggregate_fitness(scores: Sequence[float], lam: float, mode: str = "mean_std") -> float:
@@ -112,6 +113,20 @@ def infinite_episodes(seeds: Sequence[int], world_seed: int, max_steps: int) -> 
     return [
         EpisodeSpec(kind="infinite", seed=int(s), level_path=None,
                     world_seed=int(world_seed), max_steps=int(max_steps))
+        for s in seeds
+    ]
+
+
+def gym_episodes(seeds: Sequence[int], world_seed: int, max_steps: int,
+                 abilities: Sequence[str]) -> list[EpisodeSpec]:
+    """One completion-gym EpisodeSpec per chain seed. `abilities` is the
+    granted ability-name set, shared across all seeds (norm=1.0: all gym
+    chains share the same reward scale)."""
+    ab = tuple(str(a) for a in abilities)
+    return [
+        EpisodeSpec(kind="gym", seed=int(s), level_path=None,
+                    world_seed=int(world_seed), max_steps=int(max_steps),
+                    abilities=ab)
         for s in seeds
     ]
 

@@ -131,6 +131,8 @@ GA_FITNESS_STD_PENALTY = 1.0  # lambda: per-episode std penalty (mean - lam*std)
 GOAL_MULT              = 2.0
 
 # --- Completion Gym ---
+GYM_SPAWN = (80.0, 540.0)  # ball spawn; lands on the streamer's x=0 flat footing. Intentionally equals trainer.INFINITE_SPAWN — both streamers use the same x=0 footing convention.
+GYM_MAX_STEPS = 6000       # default max-steps for the completion-gym CLI; higher than Infinite Run since puzzles cover less x per step.
 # Flat reward banked per cleared gym segment. ~ GOAL_MULT (2.0) * a typical
 # segment width (~600 px), so reward-per-completion is in the same range as the
 # campaign goal bonus (aids transfer). Tunable.
