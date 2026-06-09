@@ -9,9 +9,12 @@ Segments are the gym's analogue of Infinite Run's chunks.
 
 from __future__ import annotations
 
+import math
 import random
+from typing import Iterator
 
 from ..abilities import Ability
+from .. import config
 from .chunks.flat import Flat
 from .chunks.key import KeyChunk
 from .chunks.door import DoorChunk
@@ -119,3 +122,63 @@ SEGMENT_TEMPLATES: list[type[SegmentTemplate]] = [
     BoxLavaSegment,
     KeyDoorBoxLavaSegment,
 ]
+
+
+class SegmentSampler:
+    """Deterministic, depth-ramped segment emitter. Tier target rises with
+    depth; templates are Gaussian-weighted by closeness to the target tier and
+    immediate repeats are suppressed. Only templates whose `min_abilities` are
+    all granted are eligible. Mirrors levels/sampler.py:ChunkSampler."""
+
+    def __init__(
+        self,
+        seed: int,
+        granted_abilities: frozenset[Ability],
+        *,
+        ramp_per_segment: float = config.GYM_RAMP_PER_SEGMENT,
+        sigma: float = config.GYM_SIGMA,
+    ) -> None:
+        self.rng = random.Random(int(seed))
+        self.ramp = ramp_per_segment
+        self.sigma = sigma
+        self.depth = 0
+        self._last_name: str | None = None
+        granted = frozenset(granted_abilities)
+        self._pool = sorted(
+            (t for t in SEGMENT_TEMPLATES if t.min_abilities <= granted),
+            key=lambda t: t.__name__,
+        )
+        if not self._pool:
+            raise ValueError(
+                "no segment templates are solvable under the granted abilities"
+            )
+        self._max_tier = max(t.tier for t in self._pool)
+
+    def emit_next(self) -> SegmentTemplate:
+        target = min(float(self._max_tier), self.depth * self.ramp)
+        weights = [
+            math.exp(-((t.tier - target) ** 2) / (2 * self.sigma ** 2))
+            for t in self._pool
+        ]
+        idx = self._weighted_pick(weights)
+        if self._pool[idx].__name__ == self._last_name and len(self._pool) > 1:
+            weights[idx] = 0.0
+            idx = self._weighted_pick(weights)
+        cls = self._pool[idx]
+        self._last_name = cls.__name__
+        self.depth += 1
+        return cls.random(self.rng)
+
+    def __iter__(self) -> Iterator[SegmentTemplate]:
+        while True:
+            yield self.emit_next()
+
+    def _weighted_pick(self, weights: list[float]) -> int:
+        total = sum(weights)
+        r = self.rng.random() * total
+        cum = 0.0
+        for i, w in enumerate(weights):
+            cum += w
+            if r <= cum:
+                return i
+        return len(weights) - 1
