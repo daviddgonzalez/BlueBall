@@ -137,6 +137,9 @@ GOAL_MULT              = 2.0
 GYM_SEGMENT_BONUS = 1200.0
 GYM_RAMP_PER_SEGMENT = 0.15  # target tier climbs by this per segment of depth
 GYM_SIGMA = 1.0              # Gaussian spread mixing adjacent tiers
+GYM_LOAD_AHEAD = 2000.0    # px of segments kept materialized ahead of the ball
+GYM_LOAD_BEHIND = 800.0    # px behind the ball before a unit is culled
+GYM_INITIAL_SEGMENTS = 4   # segments built at construction (after spawn footing)
 
 # Reference seeds for reproducible training runs. Pinning these makes a run
 # fully deterministic: GA_SEED fixes evolution (population init, mutation,
