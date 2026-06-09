@@ -20,6 +20,7 @@ class FitnessInputs:
     steps_taken: int     # the loop counter from the evaluator
     keys_collected: int  # popcount of player.keys_held
     level_width: float   # level total width; 0.0 for goalless (infinite) modes
+    segments_cleared: int = 0  # gym: count of solved segments; 0 elsewhere
 
 
 def fitness(inputs: FitnessInputs) -> float:
@@ -28,6 +29,7 @@ def fitness(inputs: FitnessInputs) -> float:
         + 100.0 * inputs.keys_collected
         +  50.0 * inputs.collectibles
         + config.GOAL_MULT * inputs.level_width * (1.0 if inputs.reached_goal else 0.0)
+        + config.GYM_SEGMENT_BONUS * inputs.segments_cleared
         -   0.01 * inputs.steps_taken
         - 200.0 * (1.0 if inputs.died else 0.0)
     )

@@ -130,6 +130,12 @@ GA_FITNESS_STD_PENALTY = 1.0  # lambda: per-episode std penalty (mean - lam*std)
 # traversal (which maxes near level_width) and auto-scales with level length.
 GOAL_MULT              = 2.0
 
+# --- Completion Gym ---
+# Flat reward banked per cleared gym segment. ~ GOAL_MULT (2.0) * a typical
+# segment width (~600 px), so reward-per-completion is in the same range as the
+# campaign goal bonus (aids transfer). Tunable.
+GYM_SEGMENT_BONUS = 1200.0
+
 # Reference seeds for reproducible training runs. Pinning these makes a run
 # fully deterministic: GA_SEED fixes evolution (population init, mutation,
 # crossover, tournament); INFINITE_RUN_SEED fixes the Infinite Run chunk
