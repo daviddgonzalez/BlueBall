@@ -151,3 +151,5 @@ GYM_INITIAL_SEGMENTS = 4   # segments built at construction (after spawn footing
 # reference course.
 GA_SEED             = 0
 INFINITE_RUN_SEED   = 1234
+GYM_SEED            = 4242           # default base gym chain seed
+GYM_DEFAULT_NUM_SEEDS = 8            # multi-seed by default: gym chains must generalize
