@@ -16,6 +16,7 @@ from .chunks.flat import Flat
 from .chunks.key import KeyChunk
 from .chunks.door import DoorChunk
 from .chunks.goal import GoalChunk
+from .chunks.box_lava_gap import BoxLavaGap
 
 
 class SegmentTemplate:
@@ -71,8 +72,50 @@ class KeyDoorGoalSegment(SegmentTemplate):
         return x - x_offset
 
 
-# Registry that the sampler draws from. Extended with higher tiers in a later task.
+class BoxLavaSegment(SegmentTemplate):
+    """Tier 2 — shove the box into the lava pit as a stepping stone, then reach
+    the goal. Requires DOUBLE_JUMP (granted by default); the box_lava_gap chunk's
+    own solvability is covered by tests/test_chunks.py."""
+
+    tier = 2
+    min_abilities = frozenset({Ability.DOUBLE_JUMP})
+
+    def __init__(self, pit_tiles: int = 6) -> None:
+        self.pit_tiles = pit_tiles
+
+    @classmethod
+    def random(cls, rng: random.Random) -> "BoxLavaSegment":
+        return cls(pit_tiles=rng.randint(5, 7))
+
+    def build(self, world, x_offset: float) -> float:
+        x = x_offset
+        x += self._chunk(Flat(width_tiles=2), world, x)
+        x += self._chunk(BoxLavaGap(pit_tiles=self.pit_tiles), world, x)
+        x += self._chunk(GoalChunk(width_tiles=2), world, x)
+        return x - x_offset
+
+
+class KeyDoorBoxLavaSegment(SegmentTemplate):
+    """Tier 3 — unlock a door, then cross a box/lava pit, then the goal."""
+
+    tier = 3
+    min_abilities = frozenset({Ability.DOUBLE_JUMP})
+
+    def build(self, world, x_offset: float) -> float:
+        x = x_offset
+        x += self._chunk(Flat(width_tiles=2), world, x)
+        x += self._chunk(KeyChunk(width_tiles=2, key_id=0, y_offset=40), world, x)
+        x += self._chunk(DoorChunk(width_tiles=2, key_id=0), world, x)
+        x += self._chunk(Flat(width_tiles=2), world, x)
+        x += self._chunk(BoxLavaGap(), world, x)
+        x += self._chunk(GoalChunk(width_tiles=2), world, x)
+        return x - x_offset
+
+
+# Registry that the sampler draws from.
 SEGMENT_TEMPLATES: list[type[SegmentTemplate]] = [
     GoalSegment,
     KeyDoorGoalSegment,
+    BoxLavaSegment,
+    KeyDoorBoxLavaSegment,
 ]

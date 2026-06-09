@@ -4,6 +4,10 @@ from blueball.entities.player import Player
 from blueball.agent import Agent, Action
 from blueball.levels.chunks.flat import GROUND_Y
 from blueball.levels.segments import GoalSegment, KeyDoorGoalSegment
+from blueball.abilities import Ability
+from blueball.levels.segments import (
+    BoxLavaSegment, KeyDoorBoxLavaSegment, SEGMENT_TEMPLATES,
+)
 
 
 def _fresh_world():
@@ -65,3 +69,33 @@ def test_keydoorgoal_is_solvable_by_rolling_right():
     w.add_entity(p)
     # Rolling right collects the low key, opens the door, reaches the goal.
     assert _rolls_to_goal(w, p)
+
+
+def test_boxlava_segment_composition_and_requirements():
+    w = _fresh_world()
+    width = BoxLavaSegment(pit_tiles=6).build(w, x_offset=0.0)
+    names = _names(w)
+    assert "Lava" in names and "PushableBox" in names and "Goal" in names
+    assert BoxLavaSegment.tier == 2
+    assert Ability.DOUBLE_JUMP in BoxLavaSegment.min_abilities
+    assert width > 0
+
+
+def test_boxlava_random_varies_pit_width():
+    import random
+    widths = {BoxLavaSegment.random(random.Random(s)).pit_tiles for s in range(20)}
+    assert len(widths) > 1  # not constant
+
+
+def test_tier3_combo_composition():
+    w = _fresh_world()
+    KeyDoorBoxLavaSegment().build(w, x_offset=0.0)
+    names = _names(w)
+    for kind in ("Key", "Door", "Lava", "PushableBox", "Goal"):
+        assert kind in names, kind
+    assert KeyDoorBoxLavaSegment.tier == 3
+    assert Ability.DOUBLE_JUMP in KeyDoorBoxLavaSegment.min_abilities
+
+
+def test_all_four_tiers_registered():
+    assert {t.tier for t in SEGMENT_TEMPLATES} == {0, 1, 2, 3}
