@@ -117,6 +117,8 @@ that, given `(world, x_offset)`, builds its chunks left-to-right on the
   manipulation.
 - **Tier 3** — combos, e.g. `key→door → box_lava_gap → goal`.
 
+Box-lava pits use ~20-24 tiles (matching campaign `maze.json`'s `pit_tiles=24`) so a granted double-jump cannot vault them without the box — verified by `test_boxlava_pit_requires_the_box_not_vaultable`.
+
 Each template declares `min_abilities`. The sampler filters to templates whose
 `min_abilities ⊆ granted_abilities`. Default granted set is `{DOUBLE_JUMP}`
 (configurable via CLI) — this makes the single-vs-double-jump assumption

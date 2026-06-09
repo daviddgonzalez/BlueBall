@@ -77,18 +77,19 @@ class KeyDoorGoalSegment(SegmentTemplate):
 
 class BoxLavaSegment(SegmentTemplate):
     """Tier 2 — shove the box into the lava pit as a stepping stone, then reach
-    the goal. Requires DOUBLE_JUMP (granted by default); the box_lava_gap chunk's
-    own solvability is covered by tests/test_chunks.py."""
+    the goal. The pit is wide (20-24 tiles, matching campaign maze.json's
+    pit_tiles=24) so a DOUBLE_JUMP agent cannot vault it without the box — the
+    box-push is mandatory. Requires DOUBLE_JUMP (granted by default)."""
 
     tier = 2
     min_abilities = frozenset({Ability.DOUBLE_JUMP})
 
-    def __init__(self, pit_tiles: int = 6) -> None:
+    def __init__(self, pit_tiles: int = 22) -> None:
         self.pit_tiles = pit_tiles
 
     @classmethod
     def random(cls, rng: random.Random) -> "BoxLavaSegment":
-        return cls(pit_tiles=rng.randint(5, 7))
+        return cls(pit_tiles=rng.randint(20, 24))
 
     def build(self, world, x_offset: float) -> float:
         x = x_offset
@@ -99,7 +100,9 @@ class BoxLavaSegment(SegmentTemplate):
 
 
 class KeyDoorBoxLavaSegment(SegmentTemplate):
-    """Tier 3 — unlock a door, then cross a box/lava pit, then the goal."""
+    """Tier 3 — unlock a door, then cross a box/lava pit, then the goal.
+    The pit uses vault-proof pit_tiles=24 (matching campaign maze.json) so the
+    box-push is mandatory even with DOUBLE_JUMP granted."""
 
     tier = 3
     min_abilities = frozenset({Ability.DOUBLE_JUMP})
@@ -110,7 +113,7 @@ class KeyDoorBoxLavaSegment(SegmentTemplate):
         x += self._chunk(KeyChunk(width_tiles=2, key_id=0, y_offset=40), world, x)
         x += self._chunk(DoorChunk(width_tiles=2, key_id=0), world, x)
         x += self._chunk(Flat(width_tiles=2), world, x)
-        x += self._chunk(BoxLavaGap(), world, x)
+        x += self._chunk(BoxLavaGap(pit_tiles=24), world, x)
         x += self._chunk(GoalChunk(width_tiles=2), world, x)
         return x - x_offset
 
