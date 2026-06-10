@@ -10,18 +10,16 @@ settles near the middle, turning one long jump into two short ones:
 
 from __future__ import annotations
 
-import pymunk
-
 from ...entities.lava import Lava
 from ...entities.pushable_box import PushableBox
 from .base import Chunk, TILE, register_chunk
 from .flat import GROUND_Y
+from .lava_gap import build_lava_pit
 
 _PIT_DEPTH = 72       # pit floor sits this far below the ledges (px)
 _BOX_SIZE = 64        # box edge length (px) — large so it reads as a real plug/step
 _BOX_MASS = 0.6
 _LAVA_BELOW_BOX = 8   # lava surface sits this far below the resting box's top
-_PIT_FLOOR_FRICTION = 0.1  # low friction so a firm push carries the box to mid
 
 
 @register_chunk("box_lava_gap")
@@ -52,41 +50,17 @@ class BoxLavaGap(Chunk):
         return {"pit_tiles": rng.randint(5, 7)}
 
     def build(self, world, x_offset: float, base_y: float = GROUND_Y) -> float:
-        ax = self.approach_tiles * TILE
+        pit_left, pit_right, floor_y, total = build_lava_pit(
+            world, x_offset, base_y, self.approach_tiles, self.pit_tiles,
+            self.exit_tiles, self.depth)
         px = self.pit_tiles * TILE
-        ex = self.exit_tiles * TILE
-        total = ax + px + ex
-        pit_left = x_offset + ax
-        pit_right = pit_left + px
-        floor_y = base_y + self.depth
-
-        def seg(a, b, friction=1.0):
-            s = pymunk.Segment(world.space.static_body, a, b, 5)
-            s.friction = friction
-            world.space.add(s)
-
-        seg((x_offset, base_y), (pit_left, base_y))           # approach ledge
-        seg((pit_right, base_y), (x_offset + total, base_y))  # exit ledge
-        seg((pit_left, base_y), (pit_left, floor_y))          # near wall
-        seg((pit_right, base_y), (pit_right, floor_y))        # far wall
-        seg((pit_left, floor_y), (pit_right, floor_y), _PIT_FLOOR_FRICTION)  # floor
-
         box_rest_top = floor_y - self.box_size
         lava_surface = box_rest_top + _LAVA_BELOW_BOX
         world.add_entity(Lava(
-            world,
-            position=(pit_left + px / 2, lava_surface),
-            width=px,
-            rise_speed=0.0,
-            height=self.depth,
-        ))
-
-        # Box starts on the approach ledge at the pit edge, ready to shove in.
-        # -2 px so the box doesn't clip the near pit wall; -1 y so it doesn't intersect the ledge segment.
+            world, position=(pit_left + px / 2, lava_surface),
+            width=px, rise_speed=0.0, height=self.depth))
         world.add_entity(PushableBox(
             world,
             position=(pit_left - self.box_size / 2 - 2, base_y - self.box_size / 2 - 1),
-            size=self.box_size,
-            mass=self.box_mass,
-        ))
+            size=self.box_size, mass=self.box_mass))
         return total

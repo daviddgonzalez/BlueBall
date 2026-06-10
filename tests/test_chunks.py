@@ -802,3 +802,38 @@ def test_goal_vault_elevated_to_y_offset():
     doors = [e for e in w.entities if isinstance(e, Door)]
     for d in doors:
         assert abs(d.position[1] - floor_y) < 1e-6
+
+
+# ---------------------------------------------------------------------------
+# lava_gap chunk
+# ---------------------------------------------------------------------------
+
+def test_lava_gap_builds_pit_with_lava_and_no_box():
+    from blueball.world import World
+    from blueball.collision import register
+    from blueball.levels.chunks.lava_gap import LavaGapChunk
+    w = World(); register(w.space, world_ref=w)
+    width = LavaGapChunk(pit_tiles=10).build(w, x_offset=0.0)
+    names = [type(e).__name__ for e in w.entities]
+    assert "Lava" in names
+    assert "PushableBox" not in names
+    assert width == (2 + 10 + 2) * 32
+
+
+def test_lava_gap_registered():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "lava_gap" in CHUNK_REGISTRY
+
+
+def test_build_lava_pit_returns_geometry():
+    from blueball.world import World
+    from blueball.collision import register
+    from blueball.levels.chunks.lava_gap import build_lava_pit
+    from blueball.levels.chunks.flat import GROUND_Y
+    w = World(); register(w.space, world_ref=w)
+    pit_left, pit_right, floor_y, total = build_lava_pit(
+        w, x_offset=0.0, base_y=GROUND_Y, approach_tiles=2,
+        pit_tiles=8, exit_tiles=2, depth=72)
+    assert pit_right - pit_left == 8 * 32
+    assert floor_y == GROUND_Y + 72
+    assert total == (2 + 8 + 2) * 32
