@@ -95,6 +95,12 @@ BOOST_PAD_DEFAULT_MULTIPLIER = 2.0
 # instant kick at pickup time. The kick is applied along the pad's arrow
 # direction. 1.0 = snap to the new cap; lower = gentler launch.
 BOOST_PAD_KICK_FACTOR = 0.3
+# Every pad's multiplier is scaled by this, so all boosts are 30% stronger
+# (raised cap = MAX_LINEAR_SPEED * multiplier * BOOST_STRENGTH_SCALE).
+BOOST_STRENGTH_SCALE = 1.3
+# How long a boost lasts on the ground before it expires. If the player jumps
+# before it runs out, the boost is kept until they land instead.
+BOOST_DURATION_S = 2.0
 
 # Phase 3 chunks
 ICE_FLOOR_FRICTION = 0.05

@@ -164,7 +164,11 @@ def test_sampler_level_world_determinism():
 # exact end-state of a representative run through real entity-bearing chunks
 # (spikes, patrollers, etc. in speed_run.json) so any such drift fails loudly.
 # If a deliberate physics/level change moves this value, re-capture the literal.
-_SPEED_RUN_GOLDEN = (1510.696259153366, 477.88475786363176, 174.99458003187, 190.01083993626003)
+# Re-captured 2026-06-10 after the boost-pad rework: boost survives incidental
+# seam hops, welded ground no longer hops, boosts are 30% stronger, and a
+# grounded boost expires after BOOST_DURATION_S. The no-jump RIGHT-only agent
+# gets a stronger 2s boost and travels further before running off the end.
+_SPEED_RUN_GOLDEN = (2256.1649016300134, 1650.629974802841, 316.82, 1016.0)
 
 
 def test_speed_run_matches_frozen_golden():

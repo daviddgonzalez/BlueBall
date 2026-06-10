@@ -86,6 +86,7 @@ def test_player_unlocks_ability_on_pickup_contact(tmp_save):
 
 
 def test_player_receives_boost_on_pad_contact():
+    from blueball import config
     from blueball.entities.boost_pad import BoostPad
     w, p = _player_world()
     # Place a boost pad overlapping the player position so contact is immediate
@@ -96,7 +97,7 @@ def test_player_receives_boost_on_pad_contact():
         w.step(1 / 60)
         if p._boost_multiplier > 1.0:
             break
-    assert p._boost_multiplier == 2.0
+    assert p._boost_multiplier == 2.0 * config.BOOST_STRENGTH_SCALE
     # Pad must still be present in the space (not consumed)
     assert pad.shapes[0] in w.space.shapes
     assert pad.body in w.space.bodies  # body also not removed
@@ -158,9 +159,9 @@ def test_player_resting_on_pad_keeps_boost():
     for _ in range(20):
         w.step(1 / 60)
 
-    # Boost must stick: it was granted while grounded, so it persists until the
-    # next airborne→grounded cycle (which never happens here).
-    assert p._boost_multiplier == 2.0
+    # Boost must stick: granted while grounded, it persists through these 20
+    # ticks (well under the BOOST_DURATION_S grounded timer, and no jump).
+    assert p._boost_multiplier == 2.0 * config.BOOST_STRENGTH_SCALE
     # And the directional kick actually moved the grounded ball rightward.
     assert p.body.velocity.x > 0
 
