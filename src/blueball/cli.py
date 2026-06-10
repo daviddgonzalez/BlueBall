@@ -16,6 +16,9 @@ top-level scripts (main.py / train_main.py / train_infinite.py / train_levels.py
     python main.py repro-boost      # reproduce the boost-pad bug (headless trace)
     python main.py repro-boost --play   # ...as a playable level instead
 
+    python main.py play-gym box-lava    # play one gym segment by hand (tune by feel)
+    python main.py play-gym boost-gap --gap 28
+
 Every `train` subcommand keeps the flags the old scripts had. Run any of them
 with `-h` for the full list.
 """
@@ -216,6 +219,13 @@ def cmd_repro_boost(args) -> int:
     return play_repro() if args.play else trace_repro()
 
 
+def cmd_play_gym(args) -> int:
+    from .debug.gym_play import play_segment
+    if args.segment == "box-lava":
+        return play_segment("box-lava", pit_tiles=args.pit, depth=args.depth)
+    return play_segment("boost-gap", gap_tiles=args.gap)
+
+
 # --------------------------------------------------------------------------- #
 # parser
 # --------------------------------------------------------------------------- #
@@ -232,6 +242,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_repro.add_argument("--play", action="store_true",
                          help="boot a playable boost-pad level instead of the headless trace")
     p_repro.set_defaults(func=cmd_repro_boost)
+
+    p_pg = sub.add_parser("play-gym", help="play a single completion-gym segment by hand")
+    p_pg.add_argument("segment", choices=["box-lava", "boost-gap"],
+                      help="which gym segment to play")
+    p_pg.add_argument("--pit", type=int, default=None, help="box-lava: pit_tiles")
+    p_pg.add_argument("--depth", type=int, default=None, help="box-lava: pit depth (px)")
+    p_pg.add_argument("--gap", type=int, default=None, help="boost-gap: lava_gap pit_tiles")
+    p_pg.set_defaults(func=cmd_play_gym)
 
     p_train = sub.add_parser("train", help="headless GA training")
     tsub = p_train.add_subparsers(dest="mode", required=True)
