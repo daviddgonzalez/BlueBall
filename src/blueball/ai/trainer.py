@@ -294,6 +294,10 @@ def train(
     fixes the chunk layout. Two runs with the same seeds produce byte-identical
     `best_genome`.
 
+    If `init_genome` is given, it seeds population index 0 (a known-good warm
+    start) after the random draws, leaving the rest of the population's RNG
+    sequence unchanged.
+
     If `save_dir` is given, the running best genome is snapshotted there after
     every generation (best_gen<NNN>.npy) and the final best + a run.json
     metadata sidecar are written at the end. See `ai/persistence.py`.
@@ -334,7 +338,7 @@ def train(
     # draws above, so the ga_rng draw sequence for the random remainder is
     # unchanged (a None warm-start is byte-identical to no warm-start at all).
     if init_genome is not None:
-        init = np.asarray(init_genome, dtype=np.float64)
+        init = np.asarray(init_genome, dtype=np.float32)
         if init.shape[0] != GENOME_SIZE:
             raise ValueError(
                 f"init_genome length {init.shape[0]} != GENOME_SIZE {GENOME_SIZE}"

@@ -147,3 +147,29 @@ def test_warm_start_reproduces_mover_score():
     )
 
     assert res.history[0]["best"] >= mover_score - 1e-6
+
+
+def test_warm_start_seed_slot_is_float32():
+    # Genomes are float32 everywhere; the warm-start must not leak float64 into
+    # the seeded population slot (which would propagate to best_genome and the
+    # persisted .npy on the success path).
+    seed = np.zeros(GENOME_SIZE, dtype=np.float64)
+    seed[0] = 1.0
+
+    captured = {}
+
+    def on_gen(gen, best, population):
+        if gen == 0 and "pop0" not in captured:
+            captured["pop0"] = np.asarray(population[0])
+
+    trainer.train(
+        pop_size=4,
+        generations=1,
+        infinite_seed=1,
+        ga_seed=0,
+        max_steps=60,
+        init_genome=seed,
+        on_generation=on_gen,
+    )
+
+    assert captured["pop0"].dtype == np.float32
