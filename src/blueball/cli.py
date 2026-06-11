@@ -226,6 +226,11 @@ def cmd_play_gym(args) -> int:
     return play_segment("boost-gap", gap_tiles=args.gap)
 
 
+def cmd_play_doublejump(args) -> int:
+    from .debug.double_jump_play import play_showcase
+    return play_showcase()
+
+
 # --------------------------------------------------------------------------- #
 # parser
 # --------------------------------------------------------------------------- #
@@ -250,6 +255,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_pg.add_argument("--depth", type=int, default=None, help="box-lava: pit depth (px)")
     p_pg.add_argument("--gap", type=int, default=None, help="boost-gap: lava_gap pit_tiles")
     p_pg.set_defaults(func=cmd_play_gym)
+
+    sub.add_parser(
+        "play-doublejump",
+        help="play a hand-built level showcasing the double-jump chunks",
+    ).set_defaults(func=cmd_play_doublejump)
 
     p_train = sub.add_parser("train", help="headless GA training")
     tsub = p_train.add_subparsers(dest="mode", required=True)

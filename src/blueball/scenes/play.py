@@ -36,6 +36,7 @@ class PlayScene(Scene):
         level_path: Path | None = None,
         level_data: dict | None = None,
         sampler_seed: int | None = None,
+        extra_abilities: set[Ability] | frozenset[Ability] = frozenset(),
     ) -> None:
         if (level_path is None) == (level_data is None):
             raise ValueError("PlayScene requires exactly one of level_path or level_data")
@@ -43,6 +44,9 @@ class PlayScene(Scene):
         self.level_path = level_path
         self.level_data = level_data
         self.sampler_seed = sampler_seed
+        # Abilities force-granted on top of whatever the save unlocked. Lets a
+        # debug/showcase loop guarantee e.g. double jump without touching the save.
+        self._extra_abilities = frozenset(extra_abilities)
         # Streaming is opted into by providing sampler_seed. Regular hand-built
         # levels still load eagerly via load_level().
         self._streaming: bool = sampler_seed is not None
@@ -83,6 +87,7 @@ class PlayScene(Scene):
         unlocked_names = save.load()
         valid_names = {a.value for a in Ability}
         unlocked = {Ability(name) for name in unlocked_names if name in valid_names}
+        unlocked |= self._extra_abilities
         self.player = Player(
             agent=HumanAgent(),
             spawn_xy=tuple(self.level_meta.spawn),
