@@ -65,6 +65,16 @@ def test_play_scene_ignores_unknown_abilities_in_save(headless_pygame, tmp_save)
     assert scene.player.abilities == {Ability.DOUBLE_JUMP}
 
 
+def test_play_scene_extra_abilities_are_force_granted(headless_pygame, tmp_save):
+    # An empty save grants nothing; extra_abilities force-grants on top (used by
+    # the double-jump showcase so it's playable regardless of the local save).
+    _path, _save_mod = tmp_save
+    scene = PlayScene(
+        headless_pygame, _level_path(), extra_abilities={Ability.DOUBLE_JUMP}
+    )
+    assert scene.player.abilities == {Ability.DOUBLE_JUMP}
+
+
 def test_play_scene_persists_unlocks_on_level_complete(headless_pygame, tmp_save):
     """Unlocks gained during a successful run are written to disk when the
     player reaches the goal."""

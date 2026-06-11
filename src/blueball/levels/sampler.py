@@ -20,11 +20,16 @@ class ChunkSampler:
         sigma: float = 1.0,
         checkpoint_every: int = 25,
         emit_checkpoints: bool = True,
+        abilities=frozenset(),
     ) -> None:
         self.seed = seed
         self.rng = random.Random(seed)
         self.target = target_chunks
         self.emit_checkpoints = emit_checkpoints
+        # Abilities granted to the run. Chunks requiring an ability the run
+        # wasn't granted are filtered out of the pool below, so a single-jump
+        # run never samples a double-jump-only chunk.
+        self.abilities = frozenset(abilities)
         # Difficulty climbs ~3x faster than the original 0.006 so escalation
         # (and variety) arrives within a typical run instead of after hundreds
         # of chunks. A wider sigma (1.0 vs 0.7) mixes adjacent difficulty tiers
@@ -38,7 +43,12 @@ class ChunkSampler:
         # Stable-sorted pool of sampler-included chunks. Sorting by name removes
         # dict-ordering as a determinism risk.
         self._pool: list[tuple[str, type[Chunk]]] = sorted(
-            ((name, cls) for name, cls in CHUNK_REGISTRY.items() if cls.sampler_include),
+            (
+                (name, cls)
+                for name, cls in CHUNK_REGISTRY.items()
+                if cls.sampler_include
+                and (cls.requires_ability is None or cls.requires_ability in self.abilities)
+            ),
             key=lambda item: item[0],
         )
 

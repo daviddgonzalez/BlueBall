@@ -31,4 +31,7 @@ from . import (  # noqa: F401
     box_spring_trampoline,
     box_spring_relay,
     goal_vault,
+    double_gap,
+    double_ledge,
+    double_step,
 )
