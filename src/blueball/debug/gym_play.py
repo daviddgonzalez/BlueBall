@@ -55,9 +55,44 @@ def _boost_gap_level(gap_tiles: int = 27) -> dict:
     }
 
 
+def _double_hop_level() -> dict:
+    # Mirrors DoubleHopSegment: leap a small gap and double-jump onto a raised
+    # ledge, land on the run-out flat, reach the goal.
+    return {
+        "name": "Double-Hop",
+        "background": _BG,
+        "ground": _GROUND,
+        "spawn": list(_SPAWN),
+        "chunks": [
+            {"type": "flat", "width_tiles": 6},
+            {"type": "double_ledge", "gap_tiles": 5, "height": 172},
+            {"type": "flat", "width_tiles": 14},
+            {"type": "goal", "width_tiles": 2},
+        ],
+    }
+
+
+def _double_vault_level() -> dict:
+    # Mirrors DoubleVaultSegment: vault a wide fall-death gap, land, reach goal.
+    return {
+        "name": "Double-Vault",
+        "background": _BG,
+        "ground": _GROUND,
+        "spawn": list(_SPAWN),
+        "chunks": [
+            {"type": "flat", "width_tiles": 6},
+            {"type": "double_gap", "width_tiles": 16},
+            {"type": "flat", "width_tiles": 14},
+            {"type": "goal", "width_tiles": 2},
+        ],
+    }
+
+
 _SEGMENTS = {
     "box-lava": _box_lava_level,
     "boost-gap": _boost_gap_level,
+    "double-hop": _double_hop_level,
+    "double-vault": _double_vault_level,
 }
 
 
@@ -74,6 +109,7 @@ def play_segment(name: str, **params) -> int:
     import pygame
 
     from .. import config
+    from ..abilities import Ability
     from ..scenes.play import PlayScene
 
     level_data = build_level(name, **params)
@@ -83,7 +119,11 @@ def play_segment(name: str, **params) -> int:
     screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
     pygame.display.set_caption(f"Blue Ball — {level_data['name']}")
     clock = pygame.time.Clock()
-    scene = PlayScene(screen, level_data=level_data)
+    # Every gym segment is built assuming double jump is granted, so grant it
+    # here rather than depending on the local save.
+    scene = PlayScene(
+        screen, level_data=level_data, extra_abilities={Ability.DOUBLE_JUMP}
+    )
     while scene is not None:
         scene = scene.handle_events(pygame.event.get())
         if scene is None:
