@@ -29,6 +29,7 @@ from tests.segment_maneuvers import (
     fresh_world,
     find_entity,
     run_segment,
+    remove_entity,
 )
 
 
@@ -45,20 +46,10 @@ def _build_world(pit_tiles, depth, box_size, box_frac):
     return w
 
 
-def _remove_entity(world, entity):
-    if entity in world.entities:
-        world.entities.remove(entity)
-    for shp in list(getattr(entity, "shapes", [])):
-        if shp in world.space.shapes:
-            world.space.remove(shp)
-        world._shape_to_entity.pop(shp, None)
-    for bod in list(getattr(entity, "bodies", [])):
-        if bod in world.space.bodies:
-            world.space.remove(bod)
-
-
 def check_solvable(pit_tiles, depth, box_size, box_frac):
     """Return True if at least one SingleStepAgent combo reaches GOAL."""
+    # launch_x values bracket the x=256 pit_left edge (Flat(2)+Flat(3)+approach
+    # = 256px): the single-jump arc fired from ~232..252 lands on the mid-pit box.
     sweep = [
         (lx, obr)
         for lx in (232, 238, 245, 252)
@@ -84,10 +75,12 @@ def check_solvable(pit_tiles, depth, box_size, box_frac):
 
 def check_vault_proof(pit_tiles, depth, box_size):
     """Return True if NO DoubleJumpVaultAgent (box removed) reaches GOAL."""
+    # launch_x values bracket the x=256 pit_left edge so the max double-jump arc
+    # is fired right at the near ledge, the strongest possible vault attempt.
     for lx in (220, 240, 248, 254, 260):
         w = _build_world(pit_tiles, depth, box_size, box_frac=0.5)
         box = find_entity(w, "PushableBox")
-        _remove_entity(w, box)
+        remove_entity(w, box)
         agent = DoubleJumpVaultAgent(launch_x=lx)
         p = Player(
             agent=agent,

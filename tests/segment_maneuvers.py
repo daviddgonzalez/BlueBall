@@ -42,6 +42,21 @@ def run_segment(world, player, steps: int = 2500) -> str:
     return "TIMEOUT"
 
 
+def remove_entity(world, entity) -> None:
+    """Fully detach an entity from a world: drop it from the entity list and
+    remove its shapes/bodies from the physics space. Used by anti-cheese tests
+    that prove a box is necessary by deleting it and confirming no agent solves."""
+    if entity in world.entities:
+        world.entities.remove(entity)
+    for shp in list(getattr(entity, "shapes", [])):
+        if shp in world.space.shapes:
+            world.space.remove(shp)
+        world._shape_to_entity.pop(shp, None)
+    for bod in list(getattr(entity, "bodies", [])):
+        if bod in world.space.bodies:
+            world.space.remove(bod)
+
+
 class _Maneuver:
     """Mixin: one max-distance double jump to the right. Set self.player first."""
     def _start_jump(self):

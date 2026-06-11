@@ -122,7 +122,7 @@ class BoxStepSegment(SegmentTemplate):
     min_abilities = frozenset({Ability.DOUBLE_JUMP})
 
     @classmethod
-    def random(cls, rng):
+    def random(cls, rng: random.Random) -> "BoxStepSegment":
         return cls()  # fixed, probe-tuned geometry
 
     def build(self, world, x_offset: float) -> float:
@@ -133,6 +133,40 @@ class BoxStepSegment(SegmentTemplate):
                                     depth=_BOX_STEP_DEPTH,
                                     box_size=_BOX_STEP_BOX,
                                     box_frac=0.5), world, x)
+        x += self._chunk(GoalChunk(width_tiles=2), world, x)
+        return x - x_offset
+
+
+_BOX_LEAP_PIT_TILES = 40
+_BOX_LEAP_DEPTH = 96
+_BOX_LEAP_BOX = 96
+_BOX_LEAP_FRAC = 0.55
+
+
+class BoxLeapSegment(SegmentTemplate):
+    """Tier 3 — curriculum stage 2: a DOUBLE jump ONTO a bigger pre-placed box,
+    then a double jump OFF it to the goal. The pit is wider and the box larger
+    than stage 1, placed where a natural max double-jump lands: a SINGLE jump
+    cannot reach it (that's the stage-1→stage-2 discriminator), and a bare
+    DOUBLE_JUMP cannot vault the box-removed pit, so the box-leap is the only way
+    across. Probe-tuned (probes/tune_box_leap.py) to a robust SAFE cell: 24/24
+    DoubleStepAgent combos solve, vault-proof, not single-jumpable."""
+
+    tier = 3
+    min_abilities = frozenset({Ability.DOUBLE_JUMP})
+
+    @classmethod
+    def random(cls, rng: random.Random) -> "BoxLeapSegment":
+        return cls()  # fixed, probe-tuned geometry
+
+    def build(self, world, x_offset: float) -> float:
+        x = x_offset
+        x += self._chunk(Flat(width_tiles=2), world, x)
+        x += self._chunk(Flat(width_tiles=3), world, x)
+        x += self._chunk(BoxLavaGap(pit_tiles=_BOX_LEAP_PIT_TILES,
+                                    depth=_BOX_LEAP_DEPTH,
+                                    box_size=_BOX_LEAP_BOX,
+                                    box_frac=_BOX_LEAP_FRAC), world, x)
         x += self._chunk(GoalChunk(width_tiles=2), world, x)
         return x - x_offset
 
