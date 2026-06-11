@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from blueball import cli
 from blueball.abilities import Ability
 from blueball.ai import trainer
 from blueball.ai.episodes import (
@@ -14,6 +15,7 @@ from blueball.ai.episodes import (
 )
 from blueball.ai.genome import random_genome
 from blueball.ai.ftnn import GENOME_SIZE
+from blueball.ai.persistence import run_dir_name
 
 
 def test_mixed_episodes_composition():
@@ -78,6 +80,46 @@ def test_static_evaluate_grants_episode_abilities(monkeypatch):
     trainer.evaluate((0, genome, 1, tutorial_path, 60, ("double_jump",)))
 
     assert Ability.DOUBLE_JUMP in captured["abilities"]
+
+
+def test_run_dir_name_generalist():
+    name = run_dir_name(world_seed=1, timestamp="T", num_levels=5, generalist=True)
+    assert name == "genL5_w1_T"
+
+
+def test_per_kind_scores_grouping(monkeypatch):
+    # Stub the three evaluators so the test is fast and the grouping is exact.
+    def fake_infinite(args):
+        idx, genome, seed, world_seed, max_steps = args
+        return idx, float(seed)  # score == seed so we can check the average
+
+    def fake_gym(args):
+        idx, genome, seed, world_seed, max_steps, abilities = args
+        return idx, float(seed)
+
+    def fake_static(args):
+        idx, genome, world_seed, level_path, max_steps, abilities = args
+        return idx, 42.0
+
+    monkeypatch.setattr(trainer, "evaluate_infinite", fake_infinite)
+    monkeypatch.setattr(trainer, "evaluate_gym", fake_gym)
+    monkeypatch.setattr(trainer, "evaluate", fake_static)
+
+    eps = mixed_episodes(
+        infinite_seeds=[10, 30],          # avg = 20.0
+        level_names=["tutorial_hill"],
+        gym_seeds=[4, 8],                 # avg = 6.0
+        world_seed=1,
+        max_steps=50,
+        abilities=("double_jump",),
+    )
+    genome = random_genome(np.random.default_rng(0))
+    scores = cli._per_kind_scores(genome, eps)
+
+    assert scores["infinite"] == 20.0
+    assert scores["gym"] == 6.0
+    assert scores["static:tutorial_hill"] == 42.0
+    assert set(scores) == {"infinite", "gym", "static:tutorial_hill"}
 
 
 def test_warm_start_places_genome_first():

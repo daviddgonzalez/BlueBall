@@ -169,6 +169,87 @@ def cmd_train_gym(args) -> int:
     return 0
 
 
+def _per_kind_scores(genome, episodes) -> dict[str, float]:
+    """Score `genome` on each EpisodeSpec, grouped by kind, using the SAME
+    per-kind evaluators (and tuple arities) that `evaluate_episodes` uses.
+
+    Returns a dict with the average infinite score under "infinite", the average
+    gym score under "gym", and one entry per static level keyed
+    "static:<level_stem>". Kinds with no episodes are omitted.
+    """
+    from .ai.trainer import evaluate, evaluate_gym, evaluate_infinite
+
+    infinite_scores: list[float] = []
+    gym_scores: list[float] = []
+    static_scores: dict[str, float] = {}
+    for ep in episodes:
+        if ep.kind == "infinite":
+            _, raw = evaluate_infinite(
+                (0, genome, ep.seed, ep.world_seed, ep.max_steps))
+            infinite_scores.append(float(raw))
+        elif ep.kind == "gym":
+            _, raw = evaluate_gym(
+                (0, genome, ep.seed, ep.world_seed, ep.max_steps, ep.abilities))
+            gym_scores.append(float(raw))
+        else:
+            _, raw = evaluate(
+                (0, genome, ep.world_seed, ep.level_path, ep.max_steps,
+                 ep.abilities))
+            stem = Path(ep.level_path).stem
+            static_scores[f"static:{stem}"] = float(raw)
+
+    out: dict[str, float] = {}
+    if infinite_scores:
+        out["infinite"] = float(sum(infinite_scores) / len(infinite_scores))
+    if gym_scores:
+        out["gym"] = float(sum(gym_scores) / len(gym_scores))
+    out.update(static_scores)
+    return out
+
+
+def cmd_train_generalist(args) -> int:
+    import json
+
+    import numpy as np
+
+    from .ai.episodes import generate_seeds, mixed_episodes
+    from .ai.trainer import train
+
+    infinite_seeds = generate_seeds(args.infinite_seed, config.GENERALIST_INFINITE_SEEDS)
+    gym_seeds = generate_seeds(args.gym_seed, config.GENERALIST_GYM_SEEDS)
+    level_names = list(config.GENERALIST_LEVELS)
+    abilities = tuple(a.strip() for a in args.abilities.split(",") if a.strip())
+
+    episodes = mixed_episodes(
+        infinite_seeds=infinite_seeds, level_names=level_names,
+        gym_seeds=gym_seeds, world_seed=args.world_seed,
+        max_steps=args.max_steps, abilities=abilities)
+
+    init_genome = np.load(args.init) if args.init else None
+    run_dir = _run_dir(world_seed=args.world_seed, num_levels=len(level_names),
+                       generalist=True)
+    print(f"Training {args.pop}x{args.gens} generalist (aggregate={args.aggregate}) "
+          f"infinite_seeds={infinite_seeds} levels={level_names} "
+          f"gym_seeds={gym_seeds} abilities={abilities or '(single jump)'} "
+          f"world={args.world_seed} ga={args.ga_seed}"
+          f"{' warm-start=' + args.init if args.init else ''}\n  -> {run_dir}")
+    with _pool(args.workers) as (_, map_fn):
+        result = train(pop_size=args.pop, generations=args.gens, episodes=episodes,
+                       aggregate=args.aggregate, ga_seed=args.ga_seed,
+                       world_seed=args.world_seed, max_steps=args.max_steps,
+                       init_genome=init_genome, map_fn=map_fn, save_dir=run_dir)
+    final = result.history[-1]
+    print(f"Done. gen {final['gen']}: best={final['best']:.3f} mean={final['mean']:.3f}")
+
+    scores = _per_kind_scores(result.best_genome, episodes)
+    (Path(run_dir) / "per_kind_scores.json").write_text(json.dumps(scores, indent=2))
+    print("Per-kind scores (final best):")
+    for k in sorted(scores):
+        print(f"  {k}: {scores[k]:.1f}")
+    print(f"Best genome + history + per-kind scores written to {run_dir}")
+    return 0
+
+
 # --------------------------------------------------------------------------- #
 # pygame subcommands
 # --------------------------------------------------------------------------- #
@@ -345,6 +426,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_gym.add_argument("--abilities", type=str, default="double_jump",
                        help="comma-separated granted abilities; '' for single jump")
     p_gym.set_defaults(func=cmd_train_gym)
+
+    p_gen = tsub.add_parser(
+        "generalist",
+        help="mixed objective: Infinite Run + static levels + Completion Gym (min)")
+    _add_common_train_args(p_gen, max_steps_default=config.GYM_MAX_STEPS)
+    p_gen.add_argument("--infinite-seed", type=int, default=config.INFINITE_RUN_SEED,
+                       help="base seed for the Infinite Run portion of the mix")
+    p_gen.add_argument("--gym-seed", type=int, default=config.GYM_SEED,
+                       help="base seed for the Completion Gym portion of the mix")
+    p_gen.add_argument("--abilities", type=str, default="double_jump",
+                       help="comma-separated granted abilities; '' for single jump")
+    p_gen.add_argument("--aggregate", choices=["min", "mean_std"], default="min",
+                       help="per-episode score aggregation (default: min, worst-first)")
+    p_gen.add_argument("--init", type=str, default=None,
+                       help="warm-start genome (.npy) seeded at population index 0")
+    p_gen.set_defaults(func=cmd_train_generalist)
 
     return parser
 

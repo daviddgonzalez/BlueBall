@@ -159,3 +159,18 @@ GA_SEED             = 0
 INFINITE_RUN_SEED   = 1234
 GYM_SEED            = 4242           # default base gym chain seed
 GYM_DEFAULT_NUM_SEEDS = 8            # multi-seed by default: gym chains must generalize
+
+# --- Generalist recipe (Track B) ---
+# Mix counts + level set for `train generalist`: one objective spanning Infinite
+# Run, the static campaign levels, and the Completion Gym, aggregated worst-first
+# (min) so the weakest kind drives selection. Seeds are derived from the
+# --infinite-seed / --gym-seed bases via generate_seeds.
+GENERALIST_INFINITE_SEEDS = 4   # # of Infinite Run sampler seeds in the mix
+GENERALIST_GYM_SEEDS      = 4   # # of Completion Gym chain seeds in the mix
+GENERALIST_LEVELS = (
+    "tutorial_hill",
+    "speed_run",
+    "lava_rising",
+    "vertical_climb",
+    "maze",
+)

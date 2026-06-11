@@ -17,7 +17,7 @@
     {
       "id": 2,
       "subject": "Task 2: Warm-start genome in train()",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [0],
       "description": "**Goal:** Optionally seed the initial GA population with a known genome (Track D's mover) so gen 0 already contains a strong individual.\n\n**Files:** ai/trainer.py (train() init_genome kwarg + seeding ~line 325), tests/test_generalist_recipe.py.\n\n**Acceptance Criteria:** init_genome seeds population[0]; init_genome=None byte-identical (seed AFTER random draw); wrong length raises ValueError; gen-0 best >= mover score.\n\n**Verify:** `PYTHONPATH=src python3 -m pytest tests/test_generalist_recipe.py -k warm_start -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/trainer.py\",\"tests/test_generalist_recipe.py\"], \"verifyCommand\": \"PYTHONPATH=src python3 -m pytest tests/test_generalist_recipe.py -k warm_start -q\", \"acceptanceCriteria\": [\"init_genome seeds population[0]\",\"init_genome=None byte-identical\",\"wrong length raises ValueError\",\"gen-0 best >= mover score\"]}\n```"
     },
