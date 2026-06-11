@@ -7,6 +7,9 @@ top-level scripts (main.py / train_main.py / train_infinite.py / train_levels.py
     python main.py                 # play the game (default)
     python main.py play            # play the game (explicit)
     python main.py watch           # watch the GA train, live (pygame scene)
+    python main.py watch-best genomes/<run>      # watch a saved genome play, w/ HUD
+    python main.py watch-best <g.npy> --infinite 7   # ...on an Infinite Run seed
+    python main.py watch-best <g.npy> --gym 4242     # ...on a Completion Gym seed
 
     python main.py train infinite  # headless GA on Infinite Run
     python main.py train levels     # headless GA across the static levels
@@ -214,6 +217,34 @@ def cmd_watch(args) -> int:
     return 0
 
 
+def cmd_watch_best(args) -> int:
+    import pygame
+    from .scenes.playback import PlaybackScene, build_playback_sim
+
+    try:
+        sim = build_playback_sim(
+            args.target, level=args.level, infinite=args.infinite,
+            gym=args.gym, abilities=args.abilities, max_steps=args.max_steps,
+            world_seed=args.world_seed)
+    except (ValueError, FileNotFoundError) as e:
+        raise SystemExit(str(e))
+
+    pygame.init()
+    pygame.font.init()
+    screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
+    pygame.display.set_caption(f"watch-best — {sim.level_name}")
+    clock = pygame.time.Clock()
+    scene = PlaybackScene(screen, sim)
+    while scene is not None:
+        scene = scene.handle_events(pygame.event.get())
+        if scene is None:
+            break
+        scene.update(clock.tick(config.TARGET_FPS) / 1000.0)
+        scene.draw()
+    pygame.quit()
+    return 0
+
+
 def cmd_repro_boost(args) -> int:
     from .debug.boost_repro import play_repro, trace_repro
     return play_repro() if args.play else trace_repro()
@@ -237,6 +268,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("play", help="play the game").set_defaults(func=cmd_play)
     sub.add_parser("watch", help="watch the GA train live").set_defaults(func=cmd_watch)
+
+    p_wb = sub.add_parser("watch-best", help="watch a saved genome play (with a fitness HUD)")
+    p_wb.add_argument("target", help="run-dir (loads its final_best.npy) or a .npy genome file")
+    g_wb = p_wb.add_mutually_exclusive_group()
+    g_wb.add_argument("--level", type=str, default=None,
+                      help="play a static level by name (default: tutorial_hill)")
+    g_wb.add_argument("--infinite", type=int, default=None, metavar="SEED",
+                      help="play an Infinite Run sampler seed")
+    g_wb.add_argument("--gym", type=int, default=None, metavar="SEED",
+                      help="play a Completion Gym chain seed")
+    p_wb.add_argument("--abilities", type=str, default=None,
+                      help="comma-separated granted abilities (default: per-mode; "
+                           "gym grants double_jump, static/infinite grant none)")
+    p_wb.add_argument("--max-steps", type=int, default=None, help="cap the replay length")
+    p_wb.add_argument("--world-seed", type=int, default=config.DEFAULT_SEED)
+    p_wb.set_defaults(func=cmd_watch_best)
 
     p_repro = sub.add_parser("repro-boost", help="reproduce the boost-pad bug")
     p_repro.add_argument("--play", action="store_true",
