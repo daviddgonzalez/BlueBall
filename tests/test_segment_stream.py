@@ -43,6 +43,31 @@ def test_maintain_culls_units_fully_behind_the_player():
     assert all(sh in w.space.shapes for sh in list(w._shape_to_entity))  # no stale links
 
 
+def test_materialize_calls_weld_ground_seams(monkeypatch):
+    """Each _materialize call must invoke weld_ground_seams so chunk joints are
+    smoothed in gym runs, matching the behaviour in loader.py."""
+    call_count = []
+
+    import blueball.levels.seams as seams_mod
+    original = seams_mod.weld_ground_seams
+
+    def _spy(space):
+        call_count.append(1)
+        original(space)
+
+    monkeypatch.setattr(seams_mod, "weld_ground_seams", _spy)
+
+    w = _world()
+    # Construction materializes 1 flat footing + GYM_INITIAL_SEGMENTS segments.
+    s = SegmentStream(w, seed=5, granted_abilities=ALL)
+    count_after_init = len(call_count)
+    assert count_after_init >= 1  # at least the footing call
+
+    # An explicit maintain call triggers at least one more materialise.
+    s.maintain(player_x=s.build_x)
+    assert len(call_count) > count_after_init
+
+
 def test_cull_removes_entities_and_shapes_from_space():
     w = _world()
     s = SegmentStream(w, seed=5, granted_abilities=ALL)

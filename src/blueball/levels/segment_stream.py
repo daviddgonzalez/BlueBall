@@ -50,6 +50,9 @@ class SegmentStream:
 
         width = builder.build(self.world, x_offset=self.build_x)
 
+        from .seams import weld_ground_seams
+        weld_ground_seams(self.world.space)
+
         self.built.append({
             "x_end": self.build_x + width,
             "shapes": set(self.world.space.shapes) - pre_shapes,
