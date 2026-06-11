@@ -7,6 +7,7 @@ from blueball.levels.segments import GoalSegment, KeyDoorGoalSegment
 from blueball.abilities import Ability
 from blueball.levels.segments import (
     BoxLavaSegment, KeyDoorBoxLavaSegment, BoxStepSegment, BoxLeapSegment,
+    BoostGapSegment,
     SEGMENT_TEMPLATES,
     _BOX_LAVA_PIT_TILES, _BOX_LAVA_DEPTH,
 )
@@ -326,3 +327,64 @@ def test_boxleap_composition():
     assert BoxLeapSegment.tier == 3
     assert Ability.DOUBLE_JUMP in BoxLeapSegment.min_abilities
     assert width > 0
+
+
+# ---------------------------------------------------------------------------
+# BoostGapSegment — boost-or-die lava gap (Task 3)
+# ---------------------------------------------------------------------------
+
+# Pit left edge sits at (runway 8 + pad 3 + approach 2) * 32 = 416px; the solver
+# launches just before it. Same value the probe (tune_boost_gap.py) tuned to.
+_BOOSTGAP_LAUNCH_X = (8 + 3 + 2) * 32 - 8  # 408
+
+
+def test_boostgap_composition():
+    """BoostGapSegment must include BoostPad, Lava, Goal; tier 2; DOUBLE_JUMP."""
+    w = fresh_world()
+    width = BoostGapSegment().build(w, x_offset=0.0)
+    names = [type(e).__name__ for e in w.entities]
+    for kind in ("BoostPad", "Lava", "Goal"):
+        assert kind in names, f"missing entity type {kind!r} in {names}"
+    assert BoostGapSegment.tier == 2
+    assert Ability.DOUBLE_JUMP in BoostGapSegment.min_abilities
+    assert width > 0
+
+
+def test_boostgap_is_solvable_with_boost():
+    """With the boost pad present, a max apex-fired double jump (boosted by the
+    world's pad) clears the wide lava gap and reaches GOAL."""
+    w = fresh_world()
+    BoostGapSegment().build(w, x_offset=0.0)
+    agent = DoubleJumpVaultAgent(launch_x=_BOOSTGAP_LAUNCH_X)
+    p = Player(
+        agent=agent,
+        spawn_xy=(40.0, GROUND_Y - 30.0),
+        abilities={Ability.DOUBLE_JUMP},
+    )
+    agent.player = p
+    w.add_entity(p)
+    result = run_segment(w, p, steps=2000)
+    assert result == "GOAL", (
+        f"boosted DoubleJumpVaultAgent did not reach GOAL (got {result})"
+    )
+
+
+def test_boostgap_requires_boost_not_double_jumpable():
+    """Strip the boost pad and the SAME double jump falls short into the lava: it
+    must NOT reach GOAL, proving the boost is mandatory (boost-or-die)."""
+    w = fresh_world()
+    BoostGapSegment().build(w, x_offset=0.0)
+    remove_entity(w, find_entity(w, "BoostPad"))
+    agent = DoubleJumpVaultAgent(launch_x=_BOOSTGAP_LAUNCH_X)
+    p = Player(
+        agent=agent,
+        spawn_xy=(40.0, GROUND_Y - 30.0),
+        abilities={Ability.DOUBLE_JUMP},
+    )
+    agent.player = p
+    w.add_entity(p)
+    result = run_segment(w, p, steps=2000)
+    assert result != "GOAL", (
+        "DoubleJumpVaultAgent cleared the gap WITHOUT the boost pad — the gap "
+        "is not boost-or-die"
+    )

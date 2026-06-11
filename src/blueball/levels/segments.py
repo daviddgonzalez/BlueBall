@@ -21,6 +21,7 @@ from .chunks.door import DoorChunk
 from .chunks.goal import GoalChunk
 from .chunks.box_lava_gap import BoxLavaGap
 from .chunks.boost_pad import BoostPadChunk
+from .chunks.lava_gap import LavaGapChunk
 
 
 class SegmentTemplate:
@@ -214,6 +215,41 @@ class KeyDoorBoxLavaSegment(SegmentTemplate):
         x += self._chunk(Flat(width_tiles=3), world, x)
         x += self._chunk(BoxLavaGap(pit_tiles=_BOX_LAVA_PIT_TILES,
                                     depth=_BOX_LAVA_DEPTH), world, x)
+        x += self._chunk(GoalChunk(width_tiles=2), world, x)
+        return x - x_offset
+
+
+# Probe-chosen gap width (probes/tune_boost_gap.py): the largest lava-gap width
+# inside the boost-or-die corridor [23, 28] that still has a tile of margin on
+# each side. At this width a BOOSTED apex-fired double jump clears the pit but a
+# bare (no-boost) double jump falls short into the lava and dies, so the boost
+# pad is mandatory.
+_BOOST_GAP_TILES = 27
+
+
+class BoostGapSegment(SegmentTemplate):
+    """Tier 2 — a boost-or-die lava gap. A boost pad sits on a LONG runway
+    before a wide, full-height lava pit (any fall is lethal). A BOOSTED double
+    jump is the ONLY way across: a bare double jump falls short into the lava
+    and dies, so the boost is mandatory. The runway is generous (8 tiles before
+    the 3-tile pad) so the player never spawns on top of the pad (per playtest
+    feedback). Requires DOUBLE_JUMP (granted by default).
+
+    Probe-tuned (probes/tune_boost_gap.py): pit_tiles=27 sits inside the
+    boost-or-die corridor [23, 28] with a tile of margin on each side."""
+
+    tier = 2
+    min_abilities = frozenset({Ability.DOUBLE_JUMP})
+
+    @classmethod
+    def random(cls, rng: random.Random) -> "BoostGapSegment":
+        return cls()  # fixed, probe-tuned geometry
+
+    def build(self, world, x_offset: float) -> float:
+        x = x_offset
+        x += self._chunk(Flat(width_tiles=8), world, x)
+        x += self._chunk(BoostPadChunk(width_tiles=3, multiplier=2.0), world, x)
+        x += self._chunk(LavaGapChunk(pit_tiles=_BOOST_GAP_TILES), world, x)
         x += self._chunk(GoalChunk(width_tiles=2), world, x)
         return x - x_offset
 
