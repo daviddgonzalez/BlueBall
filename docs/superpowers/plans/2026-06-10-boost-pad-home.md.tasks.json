@@ -1,0 +1,71 @@
+{
+  "planPath": "docs/superpowers/plans/2026-06-10-boost-pad-home.md",
+  "note": "Task 2 was reshaped into a 3-stage box curriculum mid-execution. See 2026-06-10-boost-pad-home-PROGRESS.md for the full handoff, validated geometry, and gotchas.",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 0: Shared correct-double-jump maneuver harness",
+      "status": "completed",
+      "commit": "45bc32a",
+      "description": "DoubleJumpVaultAgent (apex-fired max double jump = strongest cheese), BoxHopAgent, helpers fresh_world/find_entity/run_segment in tests/segment_maneuvers.py. Reviewed."
+    },
+    {
+      "id": 1,
+      "subject": "Task 1: LavaGapChunk + shared build_lava_pit helper",
+      "status": "completed",
+      "commit": "8081d2e",
+      "description": "build_lava_pit() shared helper + boxless full-height-lava LavaGapChunk (registry 'lava_gap', sampler_include=False) for boost-gap. BoxLavaGap refactored to reuse it, behavior unchanged. Reviewed."
+    },
+    {
+      "id": 2,
+      "subject": "Task 2a: Pre-placed-box option + box-step solver agents (foundation)",
+      "status": "completed",
+      "commit": "23b036d",
+      "description": "BoxLavaGap gained box_frac (None=approach ledge/push; set=pre-placed mid-pit on floor). Added SingleStepAgent + DoubleStepAgent to tests/segment_maneuvers.py. Reviewed."
+    },
+    {
+      "id": 3,
+      "subject": "Task 2b: Stage 1 BoxStepSegment (single-jump onto box)",
+      "status": "in_progress",
+      "commit": "1bbfd01",
+      "blockedBy": [],
+      "description": "IMPLEMENTED + COMMITTED; spec+quality review PENDING (resume here). BoxStepSegment: Flat(2)|Flat(3)|BoxLavaGap(pit=24,depth=72,box=64,box_frac=0.5)|Goal(2). probes/tune_box_step.py prints SAFE set. Tests: solvable-by-SingleStepAgent, vault-proof (box removed), composition. NOT yet in SEGMENT_TEMPLATES (Task 4 wires it)."
+    },
+    {
+      "id": 4,
+      "subject": "Task 2c: Stage 2 BoxLeapSegment (double-jump onto bigger box)",
+      "status": "pending",
+      "blockedBy": [2],
+      "description": "Add BoxLeapSegment: Flat(2)|Flat(3)|BoxLavaGap(pit~38,depth=96,box=96,box_frac~0.52)|Goal(2), tier 3. probes/tune_box_leap.py MUST find a ROBUST cell (stage-2 was marginal at launch_x=230 only in 2a — sweep depth/frac/box). Tests: solvable-by-DoubleStepAgent, vault-proof, not-single-jumpable, composition. Not in SEGMENT_TEMPLATES yet."
+    },
+    {
+      "id": 5,
+      "subject": "Task 2d: Stage 3 retune BoxLavaSegment (push box; drop boost pad)",
+      "status": "pending",
+      "blockedBy": [],
+      "description": "Remove BoostPadChunk from BoxLavaSegment+KeyDoorBoxLavaSegment; replace with Flat(3) spacer to keep pit_left=256. Fix pit=22, depth=72. Delete/replace test_boxlava_random_varies_pit_width. Vault-proof test via box-removed DoubleJumpVaultAgent. Attempt push-based BoxHopAgent solve; CONTINGENCY: if no reliable scripted solve, flag stage 3 expert (commit only vault-proof+composition, no solvable test). Do NOT change box size/mechanic."
+    },
+    {
+      "id": 6,
+      "subject": "Task 3: BoostGapSegment (boost-or-die lava gap)",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "probes/tune_boost_gap.py sweeps gap W. BoostGapSegment (tier 2, DOUBLE_JUMP): Flat(long runway, ~8 tiles, NOT spawn-on-pad per David) | BoostPad(3) | LavaGapChunk(W) | Goal(2). Tests: solvable-with-boost (DoubleJumpVaultAgent), anti-cheese pad-stripped dies, composition. Boost is 30% stronger now so reach is larger."
+    },
+    {
+      "id": 7,
+      "subject": "Task 4: Wire segments into sampler + fix false-confidence vault test",
+      "status": "pending",
+      "blockedBy": [3, 4, 5, 6],
+      "description": "Add BoxStepSegment, BoxLeapSegment, BoostGapSegment to SEGMENT_TEMPLATES (keep curriculum difficulty order via tiers). Update the tier-registration count test to the new template count. Repoint test_boxlava_pit_requires_the_box_not_vaultable at DoubleJumpVaultAgent. Sampler test: BoostGap sampled only with DOUBLE_JUMP. Full pytest green."
+    },
+    {
+      "id": 8,
+      "subject": "Task 5: Weld seams on gym segment materialize (polish)",
+      "status": "pending",
+      "blockedBy": [],
+      "description": "Call weld_ground_seams(world.space) after SegmentStream materializes a segment; test it ran. Cosmetic."
+    }
+  ],
+  "lastUpdated": "2026-06-10T18:30:14Z"
+}
