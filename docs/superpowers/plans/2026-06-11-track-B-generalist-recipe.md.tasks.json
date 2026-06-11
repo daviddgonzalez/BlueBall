@@ -24,7 +24,7 @@
     {
       "id": 3,
       "subject": "Task 3: train generalist CLI + config + per-kind run.json",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [1, 2],
       "description": "**Goal:** Wire everything into `python main.py train generalist` with mix-count config keys, generalist run-dir name, and run.json recording the mixed set + per-episode-kind scores.\n\n**Files:** config.py (GENERALIST_* keys, distinct from Track C NET_VERSION), ai/persistence.py (run_dir_name generalist variant), cli.py (cmd_train_generalist + _per_kind_scores + subparser), tests/test_generalist_recipe.py.\n\n**Acceptance Criteria:** train generalist runs e2e writes final_best.npy + run.json; run.json has mixed set + per_kind_scores; aggregate=min default, mean_std selectable; --init warm-start + --abilities default double_jump; config keys distinct from Track C.\n\n**Verify:** `PYTHONPATH=src python3 main.py train generalist --pop 6 --gens 2 --max-steps 300 --workers 4`\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\",\"src/blueball/ai/persistence.py\",\"src/blueball/cli.py\",\"tests/test_generalist_recipe.py\"], \"verifyCommand\": \"PYTHONPATH=src python3 -m pytest tests/test_generalist_recipe.py -q\", \"acceptanceCriteria\": [\"train generalist runs e2e, writes genome+run.json\",\"run.json has mixed set + per_kind_scores\",\"aggregate=min default, mean_std selectable\",\"--init warm-start + --abilities default double_jump\",\"config keys distinct from Track C\"]}\n```"
     },

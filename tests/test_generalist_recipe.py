@@ -1,4 +1,13 @@
-"""Track B generalist recipe: mixed_episodes constructor + static ability grant."""
+"""Track B generalist recipe: mixed_episodes constructor + static ability grant.
+
+Backward-compat note: Task 0 (`starting_abilities`) INTENTIONALLY grants the
+`maze` level double-jump as a deliberate foundation change, so `maze` is NOT
+asserted to be byte-identical to its pre-Track-B behavior. The backward-compat
+guarantees below are pinned on the parts B's episodes/warm-start/CLI additions
+must NOT perturb: the infinite/gym single-mode trainer, non-maze static
+evaluation (e.g. `tutorial_hill`, which declares no starting_abilities), and
+the invariance of the new optional `init_genome` default (None == omitted).
+"""
 
 from __future__ import annotations
 
@@ -16,6 +25,7 @@ from blueball.ai.episodes import (
 from blueball.ai.genome import random_genome
 from blueball.ai.ftnn import GENOME_SIZE
 from blueball.ai.persistence import run_dir_name
+from blueball.cli import build_parser
 
 
 def test_mixed_episodes_composition():
@@ -189,6 +199,51 @@ def test_warm_start_reproduces_mover_score():
     )
 
     assert res.history[0]["best"] >= mover_score - 1e-6
+
+
+def test_train_generalist_writes_artifacts(tmp_path, monkeypatch):
+    # Point the genomes root at a temp dir. `cli._run_dir` does a fresh local
+    # `from .ai.persistence import GENOMES_ROOT` at call time, so patching the
+    # module attribute is sufficient.
+    import blueball.ai.persistence as persistence
+
+    monkeypatch.setattr(persistence, "GENOMES_ROOT", tmp_path)
+
+    args = build_parser().parse_args(
+        ["train", "generalist", "--pop", "4", "--gens", "1",
+         "--max-steps", "150", "--workers", "1"])
+    rc = args.func(args)
+    assert rc == 0
+
+    run_dirs = list(tmp_path.glob("genL5_*"))
+    assert len(run_dirs) == 1, f"expected one genL5_* run dir, got {run_dirs}"
+    run_dir = run_dirs[0]
+
+    for artifact in ("final_best.npy", "per_kind_scores.json", "run.json"):
+        assert (run_dir / artifact).exists(), f"missing {artifact} in {run_dir}"
+
+
+def test_optional_params_dont_change_single_mode():
+    # The new optional `init_genome` param must default to omitted behavior:
+    # train() with no init_genome == train(init_genome=None) == a repeat call.
+    common = dict(
+        infinite_seed=1234, ga_seed=0, pop_size=4, generations=2, max_steps=200)
+    res_default = trainer.train(**common)
+    res_none = trainer.train(init_genome=None, **common)
+    res_repeat = trainer.train(**common)
+
+    best = res_default.history[-1]["best"]
+    assert res_none.history[-1]["best"] == best
+    assert res_repeat.history[-1]["best"] == best
+
+
+def test_non_maze_static_eval_is_deterministic():
+    # tutorial_hill declares no starting_abilities, so Task 0/1 must not perturb
+    # its static evaluation: two identical runs produce the same best.
+    eps = static_episodes(resolve_level_paths(["tutorial_hill"]), 1, 150)
+    a = trainer.train(episodes=eps, pop_size=4, generations=1, ga_seed=0)
+    b = trainer.train(episodes=eps, pop_size=4, generations=1, ga_seed=0)
+    assert a.history[-1]["best"] == b.history[-1]["best"]
 
 
 def test_warm_start_seed_slot_is_float32():
