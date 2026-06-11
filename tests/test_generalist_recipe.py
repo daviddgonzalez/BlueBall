@@ -13,6 +13,7 @@ from blueball.ai.episodes import (
     static_episodes,
 )
 from blueball.ai.genome import random_genome
+from blueball.ai.ftnn import GENOME_SIZE
 
 
 def test_mixed_episodes_composition():
@@ -77,3 +78,72 @@ def test_static_evaluate_grants_episode_abilities(monkeypatch):
     trainer.evaluate((0, genome, 1, tutorial_path, 60, ("double_jump",)))
 
     assert Ability.DOUBLE_JUMP in captured["abilities"]
+
+
+def test_warm_start_places_genome_first():
+    seed = np.zeros(GENOME_SIZE)
+    seed[0] = 1.0
+
+    captured = {}
+
+    def on_gen(gen, best, population):
+        if gen == 0 and "pop0" not in captured:
+            captured["pop0"] = np.asarray(population[0]).copy()
+
+    trainer.train(
+        pop_size=4,
+        generations=1,
+        infinite_seed=1,
+        ga_seed=0,
+        max_steps=60,
+        init_genome=seed,
+        on_generation=on_gen,
+    )
+
+    assert np.array_equal(captured["pop0"], seed)
+
+
+def test_warm_start_none_is_unchanged():
+    common = dict(
+        pop_size=4,
+        generations=2,
+        infinite_seed=1,
+        ga_seed=0,
+        max_steps=60,
+    )
+    res_default = trainer.train(**common)
+    res_none = trainer.train(init_genome=None, **common)
+
+    assert res_default.history[-1]["best"] == res_none.history[-1]["best"]
+
+
+def test_warm_start_wrong_length_raises():
+    try:
+        trainer.train(
+            pop_size=4,
+            generations=1,
+            infinite_seed=1,
+            ga_seed=0,
+            max_steps=60,
+            init_genome=np.zeros(3),
+        )
+    except ValueError as e:
+        assert "GENOME_SIZE" in str(e)
+    else:
+        raise AssertionError("expected ValueError for wrong-length init_genome")
+
+
+def test_warm_start_reproduces_mover_score():
+    mover = random_genome(np.random.default_rng(7))
+    _, mover_score = trainer.evaluate_infinite((0, mover, 1234, 1, 300))
+
+    res = trainer.train(
+        pop_size=6,
+        generations=1,
+        infinite_seed=1234,
+        ga_seed=0,
+        max_steps=300,
+        init_genome=mover,
+    )
+
+    assert res.history[0]["best"] >= mover_score - 1e-6

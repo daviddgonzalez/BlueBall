@@ -264,6 +264,7 @@ def train(
     max_steps: int = config.MAX_STEPS,
     map_fn: Callable[[Callable, Iterable], Iterable] = map,
     on_generation: Callable[[int, np.ndarray, list[np.ndarray]], None] | None = None,
+    init_genome: np.ndarray | None = None,
     save_dir: Path | str | None = None,
 ) -> TrainingResult:
     """Run a GA training loop. Returns a TrainingResult.
@@ -329,6 +330,16 @@ def train(
 
     ga_rng = np.random.default_rng(ga_seed)
     population: list[np.ndarray] = [random_genome(ga_rng) for _ in range(pop_size)]
+    # Optional warm-start: seed a known-good genome at index 0 *after* the random
+    # draws above, so the ga_rng draw sequence for the random remainder is
+    # unchanged (a None warm-start is byte-identical to no warm-start at all).
+    if init_genome is not None:
+        init = np.asarray(init_genome, dtype=np.float64)
+        if init.shape[0] != GENOME_SIZE:
+            raise ValueError(
+                f"init_genome length {init.shape[0]} != GENOME_SIZE {GENOME_SIZE}"
+            )
+        population[0] = init.copy()
     history: list[dict] = []
     best_genome = population[0].copy()
     best_fitness = -np.inf

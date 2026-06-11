@@ -10,7 +10,7 @@
     {
       "id": 1,
       "subject": "Task 1: mixed_episodes constructor + static ability grant",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [0],
       "description": "**Goal:** One constructor returning the mixed, double-jump-granted, per-episode-normalized episode list; make static evaluate() honor episode-level abilities.\n\n**Files:** ai/episodes.py (mixed_episodes; abilities param on static_episodes), ai/trainer.py (evaluate() unions ep.abilities; evaluate_episodes static dispatch passes ep.abilities), tests/test_generalist_recipe.py.\n\n**Acceptance Criteria:** mixed_episodes returns infinite+static+gym in order; static/gym/infinite carry double_jump; static norm preserved; static evaluate honors ep.abilities; static_episodes backward-compatible.\n\n**Verify:** `PYTHONPATH=src python3 -m pytest tests/test_generalist_recipe.py -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/episodes.py\",\"src/blueball/ai/trainer.py\",\"tests/test_generalist_recipe.py\"], \"verifyCommand\": \"PYTHONPATH=src python3 -m pytest tests/test_generalist_recipe.py -q\", \"acceptanceCriteria\": [\"mixed_episodes composes infinite+static+gym in order\",\"static/gym/infinite carry double_jump\",\"static norm preserved\",\"static evaluate honors ep.abilities\",\"static_episodes backward-compatible\"]}\n```"
     },

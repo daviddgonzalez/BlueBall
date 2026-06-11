@@ -12,7 +12,7 @@
 
 **Key facts discovered (2026-06-11, verified in this worktree):**
 - `train()` (`ai/trainer.py:247`) already takes `episodes: Sequence[EpisodeSpec]`, `aggregate: str` (`"mean_std"`|`"min"`), `map_fn`, `save_dir`. **No GA/aggregation code is needed — B passes `aggregate="min"`.**
-- `EpisodeSpec` (`ai/episodes.py:25`) has `norm: float = 1.0` and `abilities: tuple[str,…] = ()`. `evaluate_episodes` already routes `ep.abilities` to gym and (post Track D, now on master) to infinite, but **NOT to static `evaluate()`** — Task 1 fixes that.
+- `EpisodeSpec` (`ai/episodes.py:25`) has `norm: float = 1.0` and `abilities: tuple[str,…] = ()`. `evaluate_episodes` routes `ep.abilities` to gym; Task 1 adds static `evaluate()`. **INTEGRATION DEPENDENCY:** the infinite dispatch does NOT yet pass `ep.abilities` to `evaluate_infinite` — that's Track D's flag, which is **uncommitted on `feature/movement-floor`** (not on master). `mixed_episodes` sets abilities on infinite specs, but the infinite terrain stays single-jump until D's flag lands on master and B rebases. **Before the definitive generalist run, land D and confirm the infinite dispatch passes `ep.abilities`.**
 - `compute_level_par` (`ai/episodes.py:64`) gives the static normalization divisor; `static_episodes` already sets `norm=compute_level_par(p)`.
 - **`LevelMeta.starting_abilities` is ABSENT from master** — only `maze.json` would declare double-jump, and only after the foundation lands. Task 0 cherry-picks it (4 commits already on `feature/controller-capacity`).
 - `train()` seeds the population at `ai/trainer.py:325`: `population = [random_genome(ga_rng) for _ in range(pop_size)]` — the single insertion point for warm-start.
