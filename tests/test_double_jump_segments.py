@@ -16,6 +16,7 @@ from blueball.entities.player import Player
 from blueball.levels.chunks.flat import GROUND_Y
 from blueball.levels.segments import (
     DoubleHopSegment,
+    DoubleWallSegment,
     DoubleVaultSegment,
     SEGMENT_TEMPLATES,
     SegmentSampler,
@@ -51,14 +52,17 @@ def _solved_launch_xs(segment, abilities):
 # --------------------------------------------------------------------------- #
 def test_double_jump_segments_registered():
     assert DoubleHopSegment in SEGMENT_TEMPLATES
+    assert DoubleWallSegment in SEGMENT_TEMPLATES
     assert DoubleVaultSegment in SEGMENT_TEMPLATES
 
 
 def test_double_jump_segments_require_double_jump():
     assert DoubleHopSegment.min_abilities == DJ
+    assert DoubleWallSegment.min_abilities == DJ
     assert DoubleVaultSegment.min_abilities == DJ
-    # Gentle rung lower-tier than the demanding one (the curriculum ramp).
+    # Gentle rungs lower-tier than the demanding vault (the curriculum ramp).
     assert DoubleHopSegment.tier < DoubleVaultSegment.tier
+    assert DoubleWallSegment.tier < DoubleVaultSegment.tier
 
 
 # --------------------------------------------------------------------------- #
@@ -67,6 +71,13 @@ def test_double_jump_segments_require_double_jump():
 def test_double_hop_builds_a_goal_with_positive_width():
     w = fresh_world()
     width = DoubleHopSegment().build(w, x_offset=0.0)
+    assert width > 0
+    assert "Goal" in _names(w)
+
+
+def test_double_wall_builds_a_goal_with_positive_width():
+    w = fresh_world()
+    width = DoubleWallSegment().build(w, x_offset=0.0)
     assert width > 0
     assert "Goal" in _names(w)
 
@@ -86,6 +97,11 @@ def test_double_hop_solvable_with_double_jump_only():
     assert _solved_launch_xs(DoubleHopSegment(), frozenset()) == []
 
 
+def test_double_wall_solvable_with_double_jump_only():
+    assert len(_solved_launch_xs(DoubleWallSegment(), DJ)) >= 2
+    assert _solved_launch_xs(DoubleWallSegment(), frozenset()) == []
+
+
 def test_double_vault_solvable_with_double_jump_only():
     assert len(_solved_launch_xs(DoubleVaultSegment(), DJ)) >= 2
     assert _solved_launch_xs(DoubleVaultSegment(), frozenset()) == []
@@ -97,10 +113,12 @@ def test_double_vault_solvable_with_double_jump_only():
 def test_sampler_excludes_double_jump_segments_without_ability():
     pool = SegmentSampler(seed=1, granted_abilities=frozenset())._pool
     assert DoubleHopSegment not in pool
+    assert DoubleWallSegment not in pool
     assert DoubleVaultSegment not in pool
 
 
 def test_sampler_includes_double_jump_segments_with_ability():
     pool = SegmentSampler(seed=1, granted_abilities=DJ)._pool
     assert DoubleHopSegment in pool
+    assert DoubleWallSegment in pool
     assert DoubleVaultSegment in pool

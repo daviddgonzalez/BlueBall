@@ -252,7 +252,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_pg = sub.add_parser("play-gym", help="play a single completion-gym segment by hand")
     p_pg.add_argument("segment",
-                      choices=["box-lava", "boost-gap", "double-hop", "double-vault"],
+                      choices=["box-lava", "boost-gap",
+                               "double-hop", "double-wall", "double-vault"],
                       help="which gym segment to play")
     p_pg.add_argument("--pit", type=int, default=None, help="box-lava: pit_tiles")
     p_pg.add_argument("--depth", type=int, default=None, help="box-lava: pit depth (px)")

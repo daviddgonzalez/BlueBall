@@ -23,6 +23,7 @@ from .chunks.box_lava_gap import BoxLavaGap
 from .chunks.boost_pad import BoostPadChunk
 from .chunks.lava_gap import LavaGapChunk
 from .chunks.double_ledge import DoubleLedge
+from .chunks.double_step import DoubleStep
 from .chunks.double_gap import DoubleGap
 
 
@@ -301,6 +302,29 @@ class DoubleHopSegment(SegmentTemplate):
         return x - x_offset
 
 
+class DoubleWallSegment(SegmentTemplate):
+    """Tier 2 — pure-vertical double-jump rung: mount a flush wall (200px) too
+    tall for a single jump (measured single-jump flush mount ceiling ~172px) but
+    inside a double's ~260px. No gap — just 'jump, jump again to get up' — then
+    land on the run-out flat and roll to the goal. Solvable by the max double-jump
+    maneuver, unsolvable without it."""
+
+    tier = 2
+    min_abilities = frozenset({Ability.DOUBLE_JUMP})
+
+    @classmethod
+    def random(cls, rng: random.Random) -> "DoubleWallSegment":
+        return cls()
+
+    def build(self, world, x_offset: float) -> float:
+        x = x_offset
+        x += self._chunk(Flat(width_tiles=6), world, x)
+        x += self._chunk(DoubleStep(height=200), world, x)
+        x += self._chunk(Flat(width_tiles=_DJ_LANDING_TILES), world, x)
+        x += self._chunk(GoalChunk(width_tiles=2), world, x)
+        return x - x_offset
+
+
 class DoubleVaultSegment(SegmentTemplate):
     """Tier 3 — demanding double-jump rung: vault a wide fall-death gap (16 tiles
     / 512px) that's past a single jump's ~420px reach but inside a double's
@@ -332,7 +356,8 @@ SEGMENT_TEMPLATES: list[type[SegmentTemplate]] = [
     BoxStepSegment,         # tier 2 (curriculum stage 1 — single jump onto box)
     BoxLavaSegment,         # tier 2 (curriculum stage 3 — expert box-push)
     BoostGapSegment,        # tier 2 (boost-or-die lava gap)
-    DoubleHopSegment,       # tier 2 (double-jump traversal — gentle hop)
+    DoubleHopSegment,       # tier 2 (double-jump traversal — gap-to-ledge hop)
+    DoubleWallSegment,      # tier 2 (double-jump traversal — flush wall mount)
     BoxLeapSegment,         # tier 3 (curriculum stage 2 — double jump onto box)
     KeyDoorBoxLavaSegment,  # tier 3
     DoubleVaultSegment,     # tier 3 (double-jump traversal — demanding vault)

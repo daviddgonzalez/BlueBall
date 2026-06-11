@@ -115,8 +115,8 @@ def test_tier3_combo_composition():
 
 
 def test_all_segment_templates_registered():
-    # 7 originals + the two double-jump traversal segments (hop, vault).
-    assert len(SEGMENT_TEMPLATES) == 9
+    # 7 originals + the three double-jump traversal segments (hop, wall, vault).
+    assert len(SEGMENT_TEMPLATES) == 10
     assert {t.tier for t in SEGMENT_TEMPLATES} == {0, 1, 2, 3}
 
 

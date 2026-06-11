@@ -72,6 +72,22 @@ def _double_hop_level() -> dict:
     }
 
 
+def _double_wall_level() -> dict:
+    # Mirrors DoubleWallSegment: double-jump up over a flush wall, land, reach goal.
+    return {
+        "name": "Double-Wall",
+        "background": _BG,
+        "ground": _GROUND,
+        "spawn": list(_SPAWN),
+        "chunks": [
+            {"type": "flat", "width_tiles": 6},
+            {"type": "double_step", "height": 200},
+            {"type": "flat", "width_tiles": 14},
+            {"type": "goal", "width_tiles": 2},
+        ],
+    }
+
+
 def _double_vault_level() -> dict:
     # Mirrors DoubleVaultSegment: vault a wide fall-death gap, land, reach goal.
     return {
@@ -92,6 +108,7 @@ _SEGMENTS = {
     "box-lava": _box_lava_level,
     "boost-gap": _boost_gap_level,
     "double-hop": _double_hop_level,
+    "double-wall": _double_wall_level,
     "double-vault": _double_vault_level,
 }
 
