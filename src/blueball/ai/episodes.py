@@ -169,10 +169,14 @@ def mixed_episodes(infinite_seeds: Sequence[int], level_names: Sequence[str],
                    gym_seeds: Sequence[int], world_seed: int, max_steps: int,
                    abilities: Sequence[str] = ()) -> list[EpisodeSpec]:
     """The generalist objective: infinite + static + gym EpisodeSpecs, IN THAT
-    ORDER. `abilities` (e.g. ("double_jump",)) is granted uniformly across all
-    three kinds so the generalist trains double-jump-capable everywhere, not
-    only where a level's JSON declares it. Static episodes keep their per-level
-    par norm; infinite/gym keep norm 1.0."""
+    ORDER. `abilities` (e.g. ("double_jump",)) is set on all three kinds so the
+    generalist trains double-jump-capable, not only where a level's JSON declares
+    it. NOTE: static (via `evaluate` union with the level's starting_abilities)
+    and gym (via `evaluate_gym`) actually CONSUME the granted abilities today;
+    the infinite path carries them as metadata but `evaluate_infinite` does not
+    yet read them, so infinite trains single-jump until Track D's abilities flag
+    lands and the infinite dispatch threads `ep.abilities` through. Static
+    episodes keep their per-level par norm; infinite/gym keep norm 1.0."""
     ab = tuple(str(a) for a in abilities)
     inf = infinite_episodes(infinite_seeds, world_seed, max_steps)
     inf = [replace(ep, abilities=ab) for ep in inf]
