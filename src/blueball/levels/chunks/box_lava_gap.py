@@ -35,6 +35,7 @@ class BoxLavaGap(Chunk):
         depth: int = _PIT_DEPTH,
         box_size: int = _BOX_SIZE,
         box_mass: float = _BOX_MASS,
+        box_frac: float | None = None,  # None = default (approach ledge); float = pre-place mid-pit
     ) -> None:
         self.approach_tiles = approach_tiles
         self.pit_tiles = pit_tiles
@@ -42,6 +43,7 @@ class BoxLavaGap(Chunk):
         self.depth = depth
         self.box_size = box_size
         self.box_mass = box_mass
+        self.box_frac = box_frac
 
     @classmethod
     def random_params(cls, rng) -> dict:
@@ -59,8 +61,15 @@ class BoxLavaGap(Chunk):
         world.add_entity(Lava(
             world, position=(pit_left + px / 2, lava_surface),
             width=px, rise_speed=0.0, height=self.depth))
+        if self.box_frac is None:
+            # Default: box sits on the approach ledge, ready to be pushed into the pit
+            box_pos = (pit_left - self.box_size / 2 - 2, base_y - self.box_size / 2 - 1)
+        else:
+            # Pre-placed: box rests on the pit floor at fraction box_frac across the pit.
+            # Assumes depth >= box_size so the box-top does not poke above the ledge.
+            box_pos = (pit_left + px * self.box_frac, floor_y - self.box_size / 2)
         world.add_entity(PushableBox(
             world,
-            position=(pit_left - self.box_size / 2 - 2, base_y - self.box_size / 2 - 1),
+            position=box_pos,
             size=self.box_size, mass=self.box_mass))
         return total

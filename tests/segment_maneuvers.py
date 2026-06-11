@@ -90,6 +90,98 @@ class DoubleJumpVaultAgent(Agent, _Maneuver):
         return self._maneuver()
 
 
+class SingleStepAgent(Agent):
+    """Curriculum stage-1 solver: run to launch_x, a SINGLE jump ONTO a pre-placed
+    box, then a single jump OFF it to the goal. A single jump (press, hold to
+    apex, release, NO air jump) lands ~411px out — where stage 1 places the box —
+    so no timing finesse is needed. Set self.player (self.box optional)."""
+    def __init__(self, launch_x: float, on_box_run: int = 4):
+        self.launch_x = launch_x
+        self.on_box_run = on_box_run
+        self.player = None
+        self.box = None
+        self._phase = "APPROACH"
+        self._j = None
+        self._run = 0
+
+    def _single_jump(self):
+        p = self.player
+        vy = p.body.velocity.y
+        gr = p.grounded
+        if self._j == "press":
+            self._j = "ascend"
+            return Action.RIGHT_JUMP
+        if self._j == "ascend":
+            if (not gr) and vy >= 0:        # apex -> release, do NOT re-press
+                self._j = "fall"
+                return Action.RIGHT
+            return Action.RIGHT_JUMP        # hold through ascent
+        return Action.RIGHT                 # falling / drifting right
+
+    def act(self, observation):
+        p = self.player
+        px = p.body.position[0]
+        if self._phase == "APPROACH":
+            if px < self.launch_x:
+                return Action.RIGHT
+            self._phase = "JUMP1"
+            self._j = "press"
+        if self._phase == "JUMP1":
+            a = self._single_jump()
+            if self._j == "fall" and p.grounded:   # landed on the box
+                self._phase = "ONBOX"
+                self._run = 0
+            return a
+        if self._phase == "ONBOX":
+            if self._run < self.on_box_run:
+                self._run += 1
+                return Action.RIGHT
+            self._phase = "JUMP2"
+            self._j = "press"
+        if self._phase == "JUMP2":
+            return self._single_jump()
+        return Action.RIGHT
+
+
+class DoubleStepAgent(Agent, _Maneuver):
+    """Curriculum stage-2 solver: run to launch_x, a max DOUBLE jump ONTO a bigger
+    pre-placed box (placed where the natural max double-jump lands), then a max
+    double jump OFF it to the goal. Reuses _Maneuver's corrected apex-fired double
+    jump twice. Set self.player (self.box optional)."""
+    def __init__(self, launch_x: float, on_box_run: int = 6):
+        self.launch_x = launch_x
+        self.on_box_run = on_box_run
+        self.player = None
+        self.box = None
+        self._phase = "APPROACH"
+        self._mj = None
+        self._run = 0
+
+    def act(self, observation):
+        p = self.player
+        px = p.body.position[0]
+        if self._phase == "APPROACH":
+            if px < self.launch_x:
+                return Action.RIGHT
+            self._phase = "JUMP1"
+            self._start_jump()
+        if self._phase == "JUMP1":
+            a = self._maneuver()
+            if self._mj == "done" and p.grounded:   # landed on the box
+                self._phase = "ONBOX"
+                self._run = 0
+            return a
+        if self._phase == "ONBOX":
+            if self._run < self.on_box_run:
+                self._run += 1
+                return Action.RIGHT
+            self._phase = "JUMP2"
+            self._start_jump()
+        if self._phase == "JUMP2":
+            return self._maneuver()
+        return Action.RIGHT
+
+
 class BoxHopAgent(Agent, _Maneuver):
     """Box-lava solver: shove the box into the pit, brake on the near ledge, then
     double-jump near-ledge -> box-top -> far-ledge -> goal. Set player+box."""
