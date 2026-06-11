@@ -802,3 +802,64 @@ def test_goal_vault_elevated_to_y_offset():
     doors = [e for e in w.entities if isinstance(e, Door)]
     for d in doors:
         assert abs(d.position[1] - floor_y) < 1e-6
+
+
+# ---------------------------------------------------------------------------
+# lava_gap chunk
+# ---------------------------------------------------------------------------
+
+def test_lava_gap_builds_pit_with_lava_and_no_box():
+    from blueball.world import World
+    from blueball.collision import register
+    from blueball.levels.chunks.lava_gap import LavaGapChunk
+    w = World(); register(w.space, world_ref=w)
+    width = LavaGapChunk(pit_tiles=10).build(w, x_offset=0.0)
+    names = [type(e).__name__ for e in w.entities]
+    assert "Lava" in names
+    assert "PushableBox" not in names
+    assert width == (2 + 10 + 2) * 32
+
+
+def test_lava_gap_registered():
+    from blueball.levels.chunks.base import CHUNK_REGISTRY
+    assert "lava_gap" in CHUNK_REGISTRY
+
+
+def test_build_lava_pit_returns_geometry():
+    from blueball.world import World
+    from blueball.collision import register
+    from blueball.levels.chunks.lava_gap import build_lava_pit
+    from blueball.levels.chunks.flat import GROUND_Y
+    w = World(); register(w.space, world_ref=w)
+    pit_left, pit_right, floor_y, total = build_lava_pit(
+        w, x_offset=0.0, base_y=GROUND_Y, approach_tiles=2,
+        pit_tiles=8, exit_tiles=2, depth=72)
+    assert pit_right - pit_left == 8 * 32
+    assert floor_y == GROUND_Y + 72
+    assert total == (2 + 8 + 2) * 32
+
+
+# ---------------------------------------------------------------------------
+# box_lava_gap pre-placed box option (Task 2a)
+# ---------------------------------------------------------------------------
+
+def test_box_lava_gap_preplaces_box_mid_pit():
+    """box_frac=0.5 places the box mid-pit, NOT on the approach ledge."""
+    from blueball.entities.pushable_box import PushableBox
+    from blueball.levels.chunks.box_lava_gap import BoxLavaGap
+    from blueball.levels.chunks.base import TILE
+
+    # Pre-placed box: pit_left = approach_tiles * TILE = 3 * 32 = 96
+    # pit spans [96, 96 + 24*32=768+96=864]; at frac=0.5 -> x ≈ 96 + 384 = 480
+    w = World()
+    BoxLavaGap(pit_tiles=24, depth=72, box_frac=0.5).build(w, x_offset=0.0)
+    box = next(e for e in w.entities if isinstance(e, PushableBox))
+    bx = box.body.position[0]
+    assert 400 < bx < 560, f"expected mid-pit x 400..560, got {bx}"
+
+    # Default (box_frac=None) must still place the box on the approach ledge
+    w2 = World()
+    BoxLavaGap().build(w2, x_offset=0.0)
+    box2 = next(e for e in w2.entities if isinstance(e, PushableBox))
+    bx2 = box2.body.position[0]
+    assert bx2 < 200, f"expected approach-ledge x < 200, got {bx2}"

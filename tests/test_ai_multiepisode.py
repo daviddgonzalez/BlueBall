@@ -235,11 +235,11 @@ def test_train_infinite_cli_writes_run(tmp_path):
     import subprocess
     import sys
     repo_root = Path(blueball.__file__).resolve().parents[2]
-    script = repo_root / "train_infinite.py"
+    script = repo_root / "main.py"
     env = os.environ.copy()
     env["PYTHONPATH"] = str(repo_root / "src")
     r = subprocess.run(
-        [sys.executable, str(script), "--pop", "4", "--gens", "2",
+        [sys.executable, str(script), "train", "infinite", "--pop", "4", "--gens", "2",
          "--max-steps", "60", "--num-seeds", "2", "--workers", "1"],
         cwd=tmp_path, capture_output=True, text=True, timeout=300, env=env,
     )
@@ -259,11 +259,11 @@ def test_train_levels_cli_writes_run(tmp_path):
     import subprocess
     import sys
     repo_root = Path(blueball.__file__).resolve().parents[2]
-    script = repo_root / "train_levels.py"
+    script = repo_root / "main.py"
     env = os.environ.copy()
     env["PYTHONPATH"] = str(repo_root / "src")
     r = subprocess.run(
-        [sys.executable, str(script), "--levels", "tutorial_hill",
+        [sys.executable, str(script), "train", "levels", "--levels", "tutorial_hill",
          "--pop", "4", "--gens", "2", "--max-steps", "120", "--workers", "1"],
         cwd=tmp_path, capture_output=True, text=True, timeout=300, env=env,
     )
@@ -283,11 +283,11 @@ def test_train_levels_cli_unknown_level_errors(tmp_path):
     import subprocess
     import sys
     repo_root = Path(blueball.__file__).resolve().parents[2]
-    script = repo_root / "train_levels.py"
+    script = repo_root / "main.py"
     env = os.environ.copy()
     env["PYTHONPATH"] = str(repo_root / "src")
     r = subprocess.run(
-        [sys.executable, str(script), "--levels", "nope",
+        [sys.executable, str(script), "train", "levels", "--levels", "nope",
          "--pop", "2", "--gens", "1"],
         cwd=tmp_path, capture_output=True, text=True, timeout=60, env=env,
     )

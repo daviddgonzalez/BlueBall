@@ -86,6 +86,14 @@ class Player(Entity):
         self.collectibles_collected = 0
         self._boost_multiplier: float = 1.0
         self._aerial_since_pickup: bool = False
+        # True once a DELIBERATE jump fires while boosted. The boost is consumed
+        # only on the landing after such a jump — never on an incidental hop (a
+        # ground-seam trip, a bump, a slope), which would otherwise revoke the
+        # boost before it could do anything.
+        self._jumped_since_boost: bool = False
+        # Seconds of grounded boost left before it expires. A deliberate jump
+        # before it runs out keeps the boost until the player lands instead.
+        self._boost_timer: float = 0.0
         # Set when a boost is granted; consumed on the next _update_boost so the
         # boost can't be cleared on the very frame it was picked up.
         self._boost_just_received: bool = False
@@ -153,8 +161,14 @@ class Player(Entity):
         """
         # Landing on a boost pad refreshes the air jump like any landing.
         self.jump_ctrl.refresh_air_jumps()
-        self._boost_multiplier = max(multiplier, self._boost_multiplier)
+        # Boosts are scaled 30% stronger (BOOST_STRENGTH_SCALE).
+        scaled = multiplier * config.BOOST_STRENGTH_SCALE
+        self._boost_multiplier = max(scaled, self._boost_multiplier)
         self._aerial_since_pickup = not self.grounded
+        # Fresh boost: require a new deliberate jump before it can be cleared,
+        # and restart the grounded countdown.
+        self._jumped_since_boost = False
+        self._boost_timer = config.BOOST_DURATION_S
         # receive_boost runs inside the physics step's collision callback, where
         # the player's contact normals haven't been refreshed yet this frame —
         # so self.grounded above can read stale/empty contacts and report False
@@ -181,25 +195,39 @@ class Player(Entity):
             self.body.velocity = (min(vx, target_vx), vy)
             self.body.angular_velocity = min(ang, target_ang)
 
-    def _update_boost(self, grounded: bool) -> None:
-        """Per-tick: if a boost is active, track aerial state and clear on the
-        first airborne→grounded transition."""
+    def _update_boost(self, grounded: bool, dt: float) -> None:
+        """Per-tick boost lifetime. A fresh boost runs a grounded countdown
+        (BOOST_DURATION_S). If a DELIBERATE jump fires before it expires, the
+        boost is locked in and kept until the player lands. Incidental airborne
+        moments (a ground-seam trip, a bump, a slope) never revoke it."""
         if self._boost_just_received:
             # First tick after a pickup: contacts are now freshly collected, so
             # re-derive the aerial flag from the accurate grounded state and skip
-            # the clear-on-landing test this frame. A boost granted while resting
-            # on the pad therefore persists instead of being revoked instantly.
+            # the clear test this frame. A boost granted while resting on the pad
+            # therefore persists instead of being revoked instantly.
             self._boost_just_received = False
             if self._boost_multiplier > 1.0:
                 self._aerial_since_pickup = not grounded
             return
         if self._boost_multiplier <= 1.0:
             return
-        if not grounded:
-            self._aerial_since_pickup = True
-        elif self._aerial_since_pickup:
-            self._boost_multiplier = 1.0
-            self._aerial_since_pickup = False
+        if self._jumped_since_boost:
+            # Locked in by a deliberate jump: keep it until the landing.
+            if not grounded:
+                self._aerial_since_pickup = True
+            elif self._aerial_since_pickup:
+                self._clear_boost()
+        else:
+            # No jump yet: the grounded countdown decides its fate.
+            self._boost_timer -= dt
+            if self._boost_timer <= 0.0:
+                self._clear_boost()
+
+    def _clear_boost(self) -> None:
+        self._boost_multiplier = 1.0
+        self._aerial_since_pickup = False
+        self._jumped_since_boost = False
+        self._boost_timer = 0.0
 
     @property
     def grounded(self) -> bool:
@@ -247,7 +275,7 @@ class Player(Entity):
             self.die()
             return
         self._refresh_contact_normals()
-        self._update_boost(self.grounded)
+        self._update_boost(self.grounded, dt)
 
         observation = self._observe()
         action = self.agent.act(observation)
@@ -302,6 +330,13 @@ class Player(Entity):
             self.body.apply_impulse_at_world_point(
                 (0, -config.JUMP_IMPULSE), self.body.position
             )
+            # A deliberate jump locks the boost in: it's now kept until the
+            # landing after this jump (not consumed by the grounded countdown,
+            # nor by incidental jumpless hops). Reset the aerial flag so the
+            # clear waits for THIS jump's landing.
+            if self._boost_multiplier > 1.0:
+                self._jumped_since_boost = True
+                self._aerial_since_pickup = False
         if decision.cut and self.body.velocity.y < 0:
             vx, vy = self.body.velocity
             self.body.velocity = (vx, vy * config.JUMP_CUT_FACTOR)

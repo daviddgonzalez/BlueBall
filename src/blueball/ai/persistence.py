@@ -9,8 +9,9 @@ Layout (one folder per run, never overwritten):
         ...
         final_best.npy    # best genome of the whole run
 
-`<key>` is `inf<sampler_seed>` for Infinite Run, the level name for a static
-level, or `<name>curr` for a reverse spawn-curriculum run. Genomes are committed
+`<key>` is `inf<sampler_seed>` for Infinite Run, `gym<sampler_seed>` for a
+Completion Gym run, the level name for a static level, or `<name>curr` for a
+reverse spawn-curriculum run. Genomes are committed
 to the repo (golden agents travel with the code),
 so keep run folders intentional — each `train(save_dir=...)` call makes one.
 """
@@ -29,6 +30,7 @@ def run_dir_name(
     *,
     world_seed: int,
     timestamp: str,
+    gym_seed: int | None = None,
     infinite_seed: int | None = None,
     level_name: str | None = None,
     num_seeds: int = 1,
@@ -42,11 +44,15 @@ def run_dir_name(
     lvls5_w1_<ts>        multi-level static run (level count)
     tutorial_hill_w7_T   single static level by name
     mazecurr_w1_<ts>     reverse spawn-curriculum run for a single level
+    gym4242_w1_<ts>      single-seed completion-gym run
+    gym4242x8_w1_<ts>    multi-seed completion-gym run
     """
     if curriculum:
         key = f"{level_name or 'level'}curr"
     elif num_levels is not None:
         key = f"lvls{num_levels}"
+    elif gym_seed is not None:
+        key = f"gym{gym_seed}" if num_seeds <= 1 else f"gym{gym_seed}x{num_seeds}"
     elif infinite_seed is not None:
         key = f"inf{infinite_seed}" if num_seeds <= 1 else f"inf{infinite_seed}x{num_seeds}"
     else:

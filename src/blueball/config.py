@@ -95,6 +95,12 @@ BOOST_PAD_DEFAULT_MULTIPLIER = 2.0
 # instant kick at pickup time. The kick is applied along the pad's arrow
 # direction. 1.0 = snap to the new cap; lower = gentler launch.
 BOOST_PAD_KICK_FACTOR = 0.3
+# Every pad's multiplier is scaled by this, so all boosts are 30% stronger
+# (raised cap = MAX_LINEAR_SPEED * multiplier * BOOST_STRENGTH_SCALE).
+BOOST_STRENGTH_SCALE = 1.3
+# How long a boost lasts on the ground before it expires. If the player jumps
+# before it runs out, the boost is kept until they land instead.
+BOOST_DURATION_S = 2.0
 
 # Phase 3 chunks
 ICE_FLOOR_FRICTION = 0.05
@@ -130,6 +136,19 @@ GA_FITNESS_STD_PENALTY = 1.0  # lambda: per-episode std penalty (mean - lam*std)
 # traversal (which maxes near level_width) and auto-scales with level length.
 GOAL_MULT              = 2.0
 
+# --- Completion Gym ---
+GYM_SPAWN = (80.0, 540.0)  # ball spawn; lands on the streamer's x=0 flat footing. Intentionally equals trainer.INFINITE_SPAWN — both streamers use the same x=0 footing convention.
+GYM_MAX_STEPS = 6000       # default max-steps for the completion-gym CLI; higher than Infinite Run since puzzles cover less x per step.
+# Flat reward banked per cleared gym segment. ~ GOAL_MULT (2.0) * a typical
+# segment width (~600 px), so reward-per-completion is in the same range as the
+# campaign goal bonus (aids transfer). Tunable.
+GYM_SEGMENT_BONUS = 1200.0
+GYM_RAMP_PER_SEGMENT = 0.15  # target tier climbs by this per segment of depth
+GYM_SIGMA = 1.0              # Gaussian spread mixing adjacent tiers
+GYM_LOAD_AHEAD = 2000.0    # px of segments kept materialized ahead of the ball
+GYM_LOAD_BEHIND = 800.0    # px behind the ball before a unit is culled
+GYM_INITIAL_SEGMENTS = 4   # segments built at construction (after spawn footing)
+
 # Reference seeds for reproducible training runs. Pinning these makes a run
 # fully deterministic: GA_SEED fixes evolution (population init, mutation,
 # crossover, tournament); INFINITE_RUN_SEED fixes the Infinite Run chunk
@@ -138,3 +157,5 @@ GOAL_MULT              = 2.0
 # reference course.
 GA_SEED             = 0
 INFINITE_RUN_SEED   = 1234
+GYM_SEED            = 4242           # default base gym chain seed
+GYM_DEFAULT_NUM_SEEDS = 8            # multi-seed by default: gym chains must generalize

@@ -1,0 +1,60 @@
+{
+  "planPath": "docs/superpowers/plans/2026-06-08-completion-gym.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1: Fitness — per-segment clear reward",
+      "status": "completed",
+      "description": "**Goal:** Add a `segments_cleared` term to fitness so each cleared gym segment banks a goal-sized reward, with non-gym callers numerically unchanged.\n\n**Files:** src/blueball/config.py (GYM_SEGMENT_BONUS=1200.0), src/blueball/ai/fitness.py, tests/test_gym_fitness.py\n\n**Acceptance Criteria:** FitnessInputs has segments_cleared: int = 0 (last, defaulted); fitness() adds config.GYM_SEGMENT_BONUS * segments_cleared; segments_cleared=0 reproduces the prior formula\n\n**Verify:** pytest tests/test_gym_fitness.py -v\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\", \"src/blueball/ai/fitness.py\", \"tests/test_gym_fitness.py\"], \"verifyCommand\": \"pytest tests/test_gym_fitness.py -v\", \"acceptanceCriteria\": [\"FitnessInputs has segments_cleared: int = 0 (last, defaulted)\", \"fitness() adds config.GYM_SEGMENT_BONUS * segments_cleared\", \"segments_cleared=0 reproduces the prior formula\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Segment templates — interface + Tier 0/1",
+      "status": "completed",
+      "description": "**Goal:** Create segments.py with the SegmentTemplate interface and the two no-ability tiers (GoalSegment, KeyDoorGoalSegment), each solvable by rolling right.\n\n**Files:** src/blueball/levels/segments.py (create), tests/test_segments.py\n\n**Acceptance Criteria:** SegmentTemplate.build returns positive width via chunk.build(world, x_offset=...); GoalSegment builds Goal (tier 0); KeyDoorGoalSegment builds Key left of Door + Goal (tier 1); both min_abilities=frozenset() and solvable by a roll-right agent\n\n**Verify:** pytest tests/test_segments.py -v\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/segments.py\", \"tests/test_segments.py\"], \"verifyCommand\": \"pytest tests/test_segments.py -v\", \"acceptanceCriteria\": [\"SegmentTemplate.build returns positive width via chunk.build(world, x_offset=...)\", \"GoalSegment builds Goal (tier 0); KeyDoorGoalSegment builds Key left of Door + Goal (tier 1)\", \"both min_abilities=frozenset() and solvable by a roll-right agent\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Segment templates — Tier 2/3 (box/lava)",
+      "status": "completed",
+      "blockedBy": [2],
+      "description": "**Goal:** Add the box/lava tiers (BoxLavaSegment, KeyDoorBoxLavaSegment) and register all four templates. These require DOUBLE_JUMP; internal solvability rides on the proven box_lava_gap chunk.\n\n**Files:** src/blueball/levels/segments.py, tests/test_segments.py (append)\n\n**Acceptance Criteria:** BoxLavaSegment (tier 2) builds Lava+PushableBox+Goal, min_abilities={DOUBLE_JUMP}, random() varies pit; KeyDoorBoxLavaSegment (tier 3) builds Key+Door+Lava+PushableBox+Goal; SEGMENT_TEMPLATES covers tiers {0,1,2,3}\n\n**Verify:** pytest tests/test_segments.py -v\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/segments.py\", \"tests/test_segments.py\"], \"verifyCommand\": \"pytest tests/test_segments.py -v\", \"acceptanceCriteria\": [\"BoxLavaSegment (tier 2) builds Lava+PushableBox+Goal, min_abilities={DOUBLE_JUMP}, random() varies pit\", \"KeyDoorBoxLavaSegment (tier 3) builds Key+Door+Lava+PushableBox+Goal\", \"SEGMENT_TEMPLATES covers tiers {0,1,2,3}\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: SegmentSampler — depth-ramped emitter",
+      "status": "completed",
+      "blockedBy": [3],
+      "description": "**Goal:** Add SegmentSampler to segments.py — picks templates by a depth-driven tier target (Gaussian-weighted, anti-repeat), filtered to those solvable under the granted abilities. Mirrors ChunkSampler.\n\n**Files:** src/blueball/config.py (GYM_RAMP_PER_SEGMENT=0.15, GYM_SIGMA=1.0), src/blueball/levels/segments.py, tests/test_segment_sampler.py\n\n**Acceptance Criteria:** same seed -> identical template sequence; average tier rises with depth; no abilities -> tier 2/3 never appear; no two consecutive identical templates; empty eligible pool raises ValueError\n\n**Verify:** pytest tests/test_segment_sampler.py -v\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\", \"src/blueball/levels/segments.py\", \"tests/test_segment_sampler.py\"], \"verifyCommand\": \"pytest tests/test_segment_sampler.py -v\", \"acceptanceCriteria\": [\"same seed -> identical template sequence\", \"average tier rises with depth\", \"no abilities -> tier 2/3 never appear\", \"no two consecutive identical templates\", \"empty eligible pool raises ValueError\"]}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: SegmentStream — materialize/cull/boundaries",
+      "status": "completed",
+      "blockedBy": [4],
+      "description": "**Goal:** Add SegmentStream (sibling of TerrainStream) that streams segments from a SegmentSampler, culls those behind, and records every segment's end-x in segment_ends (never culled) so the evaluator can count crossings.\n\n**Files:** src/blueball/config.py (GYM_LOAD_AHEAD=2000.0, GYM_LOAD_BEHIND=800.0, GYM_INITIAL_SEGMENTS=4), src/blueball/levels/segment_stream.py (create), tests/test_segment_stream.py\n\n**Acceptance Criteria:** construction lays spawn-footing flat + GYM_INITIAL_SEGMENTS; segment_ends strictly increasing; maintain builds ahead to load_ahead; maintain culls units fully behind player_x-load_behind, no stale _shape_to_entity, segment_ends history preserved\n\n**Verify:** pytest tests/test_segment_stream.py -v\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\", \"src/blueball/levels/segment_stream.py\", \"tests/test_segment_stream.py\"], \"verifyCommand\": \"pytest tests/test_segment_stream.py -v\", \"acceptanceCriteria\": [\"construction lays spawn-footing flat + GYM_INITIAL_SEGMENTS; segment_ends strictly increasing\", \"maintain builds ahead to load_ahead\", \"maintain culls units fully behind player_x-load_behind; no stale _shape_to_entity; segment_ends history preserved\"]}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: evaluate_gym + episode dispatch",
+      "status": "completed",
+      "blockedBy": [5, 1],
+      "description": "**Goal:** Add the gym evaluator (count-and-continue, per-segment key clear, cumulative-key tracking, never stops on a goal) and wire kind=\"gym\" through EpisodeSpec / evaluate_episodes, plus a gym_episodes constructor.\n\n**Files:** src/blueball/config.py (GYM_SPAWN=(80.0,540.0), GYM_MAX_STEPS=6000), src/blueball/ai/episodes.py, src/blueball/ai/trainer.py, tests/test_gym_eval.py\n\n**Acceptance Criteria:** evaluate_gym returns (idx, finite float) and never breaks on a goal; roll-right single-jump gym crosses >=2 boundaries, keys cleared between segments, cumulative keys accrue; EpisodeSpec(kind=gym) dispatched to evaluate_gym by evaluate_episodes\n\n**Verify:** pytest tests/test_gym_eval.py -v\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\", \"src/blueball/ai/episodes.py\", \"src/blueball/ai/trainer.py\", \"tests/test_gym_eval.py\"], \"verifyCommand\": \"pytest tests/test_gym_eval.py -v\", \"acceptanceCriteria\": [\"evaluate_gym returns (idx, finite float) and never breaks on a goal\", \"roll-right single-jump gym crosses >=2 boundaries; keys cleared between segments; cumulative keys accrue\", \"EpisodeSpec(kind=gym) dispatched to evaluate_gym by evaluate_episodes\"]}\n```"
+    },
+    {
+      "id": 7,
+      "subject": "Task 7: CLI + persistence + reproducibility smoke",
+      "status": "completed",
+      "blockedBy": [6],
+      "description": "**Goal:** Add train_completion_gym.py (mirrors train_infinite.py) with a gym run-folder key, and a smoke test that a tiny gym run trains and is reproducible.\n\n**Files:** src/blueball/config.py (GYM_SEED=4242, GYM_DEFAULT_NUM_SEEDS=8), src/blueball/ai/persistence.py, train_completion_gym.py (create), tests/test_gym_smoke.py\n\n**Acceptance Criteria:** run_dir_name gym key gym7_w1_ and gym7x3_w1_; tiny gym train run finite + reproducible across two same-seed runs; python train_completion_gym.py --help exits 0\n\n**Verify:** pytest tests/test_gym_smoke.py -v && python train_completion_gym.py --help\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\", \"src/blueball/ai/persistence.py\", \"train_completion_gym.py\", \"tests/test_gym_smoke.py\"], \"verifyCommand\": \"pytest tests/test_gym_smoke.py -v && python train_completion_gym.py --help\", \"acceptanceCriteria\": [\"run_dir_name gym key: gym7_w1_ and gym7x3_w1_\", \"tiny gym train run finite + reproducible across two same-seed runs\", \"python train_completion_gym.py --help exits 0\"]}\n```"
+    },
+    {
+      "id": 8,
+      "subject": "Task 8: Vault-proof box-lava width + real evaluate_gym bonus test",
+      "status": "completed",
+      "blockedBy": [3, 6],
+      "description": "**Goal:** Review-driven fix — widen gym box-lava pits from 5-7 (double-jump-vaultable) to ~20-24 (matching campaign maze.json's proven pit_tiles=24) so the box-push is mandatory; add a vault-proof regression test (double-jump agent, box removed, cannot reach goal) and a real-evaluate_gym segment-bonus test (always-RIGHT genome yields fitness > GYM_SEGMENT_BONUS).\n\n**Verify:** pytest tests/test_segments.py tests/test_gym_eval.py -v && pytest -q"
+    }
+  ],
+  "lastUpdated": "2026-06-08"
+}

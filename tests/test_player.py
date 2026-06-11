@@ -121,38 +121,42 @@ def test_player_unlock_repeat_is_safe(monkeypatch, tmp_path):
     assert not save_file.exists()
 
 
+_SCALE = config.BOOST_STRENGTH_SCALE  # boosts are 30% stronger
+
+
 def test_player_receive_boost_raises_multiplier():
     p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
     assert p._boost_multiplier == 1.0
     assert p._aerial_since_pickup is False
     p.receive_boost(2.0)
-    assert p._boost_multiplier == 2.0
+    assert p._boost_multiplier == 2.0 * _SCALE
 
 
 def test_player_receive_boost_takes_max():
     p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
     p.receive_boost(1.5)
-    assert p._boost_multiplier == 1.5
+    assert p._boost_multiplier == 1.5 * _SCALE
     p.receive_boost(1.2)
-    assert p._boost_multiplier == 1.5  # weaker pad is a no-op
+    assert p._boost_multiplier == 1.5 * _SCALE  # weaker pad is a no-op
     p.receive_boost(2.0)
-    assert p._boost_multiplier == 2.0  # stronger pad raises
+    assert p._boost_multiplier == 2.0 * _SCALE  # stronger pad raises
 
 
-def test_player_boost_clears_on_air_to_ground_transition():
+def test_player_boost_survives_incidental_landing_without_a_jump():
     p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
     # Pick up boost while airborne (no contact normals -> not grounded)
     p.receive_boost(2.0)
-    assert p._boost_multiplier == 2.0
-    assert p._aerial_since_pickup is True
-    # Stay airborne for a tick — boost persists
-    p._update_boost(grounded=False)
-    assert p._boost_multiplier == 2.0
-    assert p._aerial_since_pickup is True
-    # First grounded tick after airborne — boost clears
-    p._update_boost(grounded=True)
+    assert p._boost_multiplier == 2.0 * _SCALE
+    # Consume the one-frame pickup defer (still airborne)
+    p._update_boost(grounded=False, dt=0.0)
+    # Land WITHOUT a deliberate jump (an incidental hop) — boost must persist
+    p._update_boost(grounded=True, dt=0.0)
+    assert p._boost_multiplier == 2.0 * _SCALE
+    # Now a deliberate jump, then land — boost clears
+    p._jumped_since_boost = True
+    p._update_boost(grounded=False, dt=0.0)
+    p._update_boost(grounded=True, dt=0.0)
     assert p._boost_multiplier == 1.0
-    assert p._aerial_since_pickup is False
 
 
 def test_player_boost_persists_while_grounded_until_jump_land_cycle():
@@ -165,20 +169,43 @@ def test_player_boost_persists_while_grounded_until_jump_land_cycle():
     assert p.grounded
     # Pick up boost while grounded — should NOT immediately expire
     p.receive_boost(2.0)
-    assert p._boost_multiplier == 2.0
+    assert p._boost_multiplier == 2.0 * _SCALE
     assert p._aerial_since_pickup is False
-    # Several grounded ticks — boost persists (no jump yet)
+    # Several grounded ticks with dt=0 (timer frozen) — boost persists, no jump
     for _ in range(5):
-        p._update_boost(grounded=True)
-    assert p._boost_multiplier == 2.0
-    assert p._aerial_since_pickup is False
-    # Now go airborne, then land — boost clears
-    p._update_boost(grounded=False)
-    assert p._aerial_since_pickup is True
-    assert p._boost_multiplier == 2.0
-    p._update_boost(grounded=True)
+        p._update_boost(grounded=True, dt=0.0)
+    assert p._boost_multiplier == 2.0 * _SCALE
+    # An incidental airborne->land cycle (no jump) — boost still persists
+    p._update_boost(grounded=False, dt=0.0)
+    p._update_boost(grounded=True, dt=0.0)
+    assert p._boost_multiplier == 2.0 * _SCALE
+    # A deliberate jump, then land — boost clears
+    p._jumped_since_boost = True
+    p._update_boost(grounded=False, dt=0.0)
+    p._update_boost(grounded=True, dt=0.0)
     assert p._boost_multiplier == 1.0
     assert p._aerial_since_pickup is False
+
+
+def test_player_boost_expires_on_ground_timer_without_a_jump():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.receive_boost(2.0)
+    p._update_boost(grounded=True, dt=0.0)  # consume the pickup defer
+    # Run the grounded countdown past BOOST_DURATION_S with no jump -> expires.
+    p._update_boost(grounded=True, dt=config.BOOST_DURATION_S + 0.01)
+    assert p._boost_multiplier == 1.0
+
+
+def test_player_boost_kept_if_jump_before_timer_expires():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    p.receive_boost(2.0)
+    p._update_boost(grounded=True, dt=0.0)  # consume the pickup defer
+    # Jump before the timer runs out -> locked in, survives a long airborne phase.
+    p._jumped_since_boost = True
+    p._update_boost(grounded=False, dt=5.0)
+    assert p._boost_multiplier == 2.0 * _SCALE  # still boosted in the air
+    p._update_boost(grounded=True, dt=0.0)      # lands -> now it clears
+    assert p._boost_multiplier == 1.0
 
 
 def test_player_receive_boost_kicks_in_pad_direction_right():
@@ -188,8 +215,8 @@ def test_player_receive_boost_kicks_in_pad_direction_right():
     p.body.velocity = (0.0, 50.0)
     p.body.angular_velocity = 0.0
     p.receive_boost(2.0, direction=1.0)
-    cap = config.MAX_LINEAR_SPEED * 2.0
-    cap_ang = config.MAX_ANGULAR_VEL * 2.0
+    cap = config.MAX_LINEAR_SPEED * 2.0 * config.BOOST_STRENGTH_SCALE
+    cap_ang = config.MAX_ANGULAR_VEL * 2.0 * config.BOOST_STRENGTH_SCALE
     assert p.body.velocity.x == cap * config.BOOST_PAD_KICK_FACTOR
     assert p.body.velocity.x > 0
     assert p.body.velocity.y == 50.0  # vy preserved
@@ -216,7 +243,7 @@ def test_player_receive_boost_launches_stationary_player_along_arrow():
     p.receive_boost(2.0, direction=1.0)
     assert p.body.velocity.x > 0.0  # kicked rightward from standstill
     assert p.body.velocity.y == 50.0
-    assert p._boost_multiplier == 2.0
+    assert p._boost_multiplier == 2.0 * config.BOOST_STRENGTH_SCALE
 
 
 def test_player_receive_boost_does_not_slow_already_fast_player():

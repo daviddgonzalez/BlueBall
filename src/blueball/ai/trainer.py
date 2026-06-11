@@ -27,6 +27,7 @@ substeps regardless of host float environment.
 
 from __future__ import annotations
 
+import bisect
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
@@ -34,10 +35,12 @@ from typing import Callable, Iterable, Sequence
 import numpy as np
 
 from .. import config
+from ..abilities import Ability
 from ..agent import FTNNAgent
 from ..collision import register as register_collisions
 from ..entities.player import Player
 from ..levels.loader import load_level
+from ..levels.segment_stream import SegmentStream
 from ..levels.streaming import TerrainStream
 from ..world import World
 from .episodes import EpisodeSpec, aggregate_fitness
@@ -148,6 +151,76 @@ def evaluate_infinite(args: tuple) -> tuple[int, float]:
     return idx, float(f)
 
 
+def evaluate_gym(args: tuple) -> tuple[int, float]:
+    """One genome -> one fitness on a streamed completion-gym chain. Picklable
+    in/out for multiprocessing.Pool. Args is
+    (idx, genome, seed, world_seed, max_steps, abilities), where `abilities`
+    is a tuple of Ability *name* strings.
+
+    Unlike the goal-terminal evaluators, this NEVER stops on a goal. It counts
+    segment clears by how far the ball's max_x has passed the segment
+    boundaries (a locked door can't be passed without its key, so crossing a
+    boundary == solving that segment), clears keys_held at each crossed
+    boundary (so a reused key_id behind the next door must be re-earned), and
+    tracks cumulative keys across those clears so the key reward survives the
+    clearing.
+    """
+    idx, genome, seed, world_seed, max_steps, abilities = args
+    granted = frozenset(Ability(a) for a in abilities)
+
+    world = World(seed=int(world_seed))
+    register_collisions(world.space, world_ref=world)
+    stream = SegmentStream(world, int(seed), granted)
+
+    spawn_x, spawn_y = config.GYM_SPAWN
+    player = Player(agent=FTNNAgent(genome), spawn_xy=(spawn_x, spawn_y),
+                    abilities=set(granted))
+    world.add_entity(player)
+
+    max_x = spawn_x
+    cleared = 0
+    cumulative_keys = 0
+    prev_keys_popcount = 0
+    steps = 0
+    while steps < max_steps:
+        stream.maintain(player.body.position.x)
+        world.substep()
+        steps += 1
+        if player.body.position.x > max_x:
+            max_x = player.body.position.x
+
+        # Accumulate newly collected keys BEFORE the boundary check below, so
+        # a key earned on the same step it crosses a boundary still counts
+        # toward this segment before keys_held is cleared. (popcount only
+        # rises between clears.)
+        cur = bin(player.keys_held).count("1")
+        if cur > prev_keys_popcount:
+            cumulative_keys += cur - prev_keys_popcount
+        prev_keys_popcount = cur
+
+        # Count boundary crossings; reset the key scope on a clear.
+        new_cleared = bisect.bisect_right(stream.segment_ends, max_x)
+        if new_cleared > cleared:
+            cleared = new_cleared
+            player.keys_held = 0
+            prev_keys_popcount = 0
+
+        if player.dead:
+            break
+
+    f = fitness(FitnessInputs(
+        progress_x=float(max_x - spawn_x),
+        collectibles=int(player.collectibles_collected),
+        reached_goal=False,
+        died=bool(player.dead),
+        steps_taken=steps,
+        keys_collected=int(cumulative_keys),
+        level_width=0.0,
+        segments_cleared=int(cleared),
+    ))
+    return idx, float(f)
+
+
 def evaluate_episodes(args: tuple) -> tuple[int, float]:
     """Score one genome across a list of EpisodeSpecs and aggregate. Picklable
     in/out for multiprocessing.Pool. Args is (idx, genome, episodes, lam, mode).
@@ -161,6 +234,9 @@ def evaluate_episodes(args: tuple) -> tuple[int, float]:
         if ep.kind == "infinite":
             _, raw = evaluate_infinite(
                 (idx, genome, ep.seed, ep.world_seed, ep.max_steps))
+        elif ep.kind == "gym":
+            _, raw = evaluate_gym(
+                (idx, genome, ep.seed, ep.world_seed, ep.max_steps, ep.abilities))
         else:
             _, raw = evaluate(
                 (idx, genome, ep.world_seed, ep.level_path, ep.max_steps))

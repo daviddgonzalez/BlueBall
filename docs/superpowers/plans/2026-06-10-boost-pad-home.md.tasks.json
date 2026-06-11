@@ -1,0 +1,76 @@
+{
+  "planPath": "docs/superpowers/plans/2026-06-10-boost-pad-home.md",
+  "note": "Task 2 was reshaped into a 3-stage box curriculum mid-execution. See 2026-06-10-boost-pad-home-PROGRESS.md for the full handoff, validated geometry, and gotchas.",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 0: Shared correct-double-jump maneuver harness",
+      "status": "completed",
+      "commit": "45bc32a",
+      "description": "DoubleJumpVaultAgent (apex-fired max double jump = strongest cheese), BoxHopAgent, helpers fresh_world/find_entity/run_segment in tests/segment_maneuvers.py. Reviewed."
+    },
+    {
+      "id": 1,
+      "subject": "Task 1: LavaGapChunk + shared build_lava_pit helper",
+      "status": "completed",
+      "commit": "8081d2e",
+      "description": "build_lava_pit() shared helper + boxless full-height-lava LavaGapChunk (registry 'lava_gap', sampler_include=False) for boost-gap. BoxLavaGap refactored to reuse it, behavior unchanged. Reviewed."
+    },
+    {
+      "id": 2,
+      "subject": "Task 2a: Pre-placed-box option + box-step solver agents (foundation)",
+      "status": "completed",
+      "commit": "23b036d",
+      "description": "BoxLavaGap gained box_frac (None=approach ledge/push; set=pre-placed mid-pit on floor). Added SingleStepAgent + DoubleStepAgent to tests/segment_maneuvers.py. Reviewed."
+    },
+    {
+      "id": 3,
+      "subject": "Task 2b: Stage 1 BoxStepSegment (single-jump onto box)",
+      "status": "completed",
+      "commit": "1bbfd01",
+      "blockedBy": [],
+      "description": "DONE — spec ✅ + quality Approved-with-minors. BoxStepSegment: Flat(2)|Flat(3)|BoxLavaGap(pit=24,depth=72,box=64,box_frac=0.5)|Goal(2). probes/tune_box_step.py prints SAFE set (incl pit=24). Tests: solvable-by-SingleStepAgent, vault-proof (box removed), composition. NOT yet in SEGMENT_TEMPLATES (Task 4 wires it). Carried-forward minors (fold into 2c): hoist _remove_entity into segment_maneuvers.py as shared remove_entity; add type hint to BoxStepSegment.random; comment probe sweep magic numbers."
+    },
+    {
+      "id": 4,
+      "subject": "Task 2c: Stage 2 BoxLeapSegment (double-jump onto bigger box)",
+      "status": "completed",
+      "commit": "89f067e",
+      "blockedBy": [2],
+      "description": "DONE — spec ✅ + quality Approved-with-minors. BoxLeapSegment: Flat(2)|Flat(3)|BoxLavaGap(pit=40,depth=96,box=96,box_frac=0.55)|Goal(2), tier 3. ROBUST cell found (24/24 DoubleStepAgent combos solve, 36-cell SAFE basin — no contingency). probes/tune_box_leap.py. Tests: solvable-by-DoubleStepAgent, vault-proof, not-single-jumpable, composition. NOT in SEGMENT_TEMPLATES (Task 4 wires it). Also folded 2b carry-forward: shared remove_entity in segment_maneuvers.py, BoxStepSegment.random type hint, probe comments. Carry-forward minor (fold into Task 4): strengthen test_boxleap_is_solvable_by_double_step to assert >=4 solving combos (currently >=1)."
+    },
+    {
+      "id": 5,
+      "subject": "Task 2d: Stage 3 retune BoxLavaSegment (push box; drop boost pad)",
+      "status": "completed",
+      "commit": "b8bcb1a",
+      "blockedBy": [],
+      "description": "DONE — spec ✅ (deviation verified) + quality Approved-with-minors. Boost pad removed from BoxLavaSegment+KeyDoorBoxLavaSegment, replaced with Flat(3) spacer (pit_left stays 256). box_frac=None (push mechanic intact). DEVIATION: pit_tiles set to 24 NOT 22 — measured that the strong apex-fired DoubleJumpVaultAgent VAULTS pit=22 and 23 (the doc's 'pit=22 vault-proof' was false confidence from the weaker agent); pit=24 is the min genuinely vault-proof width + matches campaign maze.json. depth=72. Deleted test_boxlava_random_varies_pit_width; added fixed-geometry + strong vault-proof tests. STAGE 3 FLAGGED EXPERT: scripted BoxHopAgent push-solve UNSOLVED (~180+1200 configs swept, closest x=955/1024) — contingency fired, only vault-proof+composition+fixed-geometry committed, no solvable-by-agent test. Carry-forward minors (fold into Task 4): drop dead run_segment import in probes/tune_box_lava.py; reword segments.py constant comment 'depth=72 (== box=64...)' -> '(> box=64)'."
+    },
+    {
+      "id": 6,
+      "subject": "Task 3: BoostGapSegment (boost-or-die lava gap)",
+      "status": "completed",
+      "commit": "889ff78",
+      "blockedBy": [1],
+      "description": "DONE — spec ✅ + quality Approved-with-minors. BoostGapSegment (tier 2, DOUBLE_JUMP): Flat(8 runway, not-on-pad per David) | BoostPad(3, mult=2.0) | LavaGapChunk(pit=27) | Goal(2). Boost-or-die corridor [23,28], chose W=27 (margin both sides). launch_x=408. Tests: solvable-with-boost (GOAL), anti-cheese pad-stripped DIES, composition. NOT in SEGMENT_TEMPLATES (Task 4 wires it). Carry-forward minor (fold into Task 4): add 1 sentence to BoostGapSegment docstring re the 2s boost-lock window (BOOST_DURATION_S=2.0) explaining why boost survives into the apex jump."
+    },
+    {
+      "id": 7,
+      "subject": "Task 4: Wire segments into sampler + fix false-confidence vault test",
+      "status": "completed",
+      "commit": "2f88f45",
+      "blockedBy": [3, 4, 5, 6],
+      "description": "DONE — spec ✅ + carry-forward minors all landed. SEGMENT_TEMPLATES now 7: Goal(0), KeyDoorGoal(1), BoxStep(2), BoxLava(2), BoostGap(2), BoxLeap(3), KeyDoorBoxLava(3); tier set {0,1,2,3}. Renamed test_all_four_tiers_registered -> test_all_segment_templates_registered (asserts len==7 AND tier set). DELETED the false-confidence test_boxlava_pit_requires_the_box_not_vaultable + the now-unused _DelayedJumpAgent class (superseded by 2d's strong test_boxlava_stage3_pit_is_vault_proof). Added test_boostgap_sampled_only_with_double_jump. Folded minors: boxleap solvable assert >=4; dropped dead run_segment import in tune_box_lava.py; reworded _BOX_LAVA comment; added 2s boost-lock sentence to BoostGapSegment docstring. Full suite green."
+    },
+    {
+      "id": 8,
+      "subject": "Task 5: Weld seams on gym segment materialize (polish)",
+      "status": "completed",
+      "commit": "3a5eb65",
+      "blockedBy": [],
+      "description": "DONE — spec+quality ✅. weld_ground_seams(self.world.space) called in SegmentStream._materialize after builder.build (mirrors loader.py local-import pattern), so it fires on initial footing + every segment. Test test_materialize_calls_weld_ground_seams spies the weld (non-tautological, deterministic). Cosmetic."
+    }
+  ],
+  "lastUpdated": "2026-06-11T04:48:57Z"
+}

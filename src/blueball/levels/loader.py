@@ -45,6 +45,11 @@ def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
         width = chunk.build(world, x_offset=x)
         x += width
 
+    # Smooth the joints between adjacent ground segments so a fast ball doesn't
+    # catch on the endcaps where two chunks meet (the seam hop).
+    from .seams import weld_ground_seams
+    weld_ground_seams(world.space)
+
     # Optional level-feature: rising lava.
     if "lava" in data:
         lava_cfg = data["lava"]

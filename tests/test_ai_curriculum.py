@@ -237,11 +237,11 @@ def test_train_maze_curriculum_cli_writes_run(tmp_path):
     import json, os, subprocess, sys
     import blueball
     repo_root = Path(blueball.__file__).resolve().parents[2]
-    script = repo_root / "train_maze_curriculum.py"
+    script = repo_root / "main.py"
     env = os.environ.copy()
     env["PYTHONPATH"] = str(repo_root / "src")
     r = subprocess.run(
-        [sys.executable, str(script), "--level", "maze", "--pop", "4",
+        [sys.executable, str(script), "train", "maze", "--level", "maze", "--pop", "4",
          "--gens", "2", "--max-steps", "60", "--workers", "1"],
         cwd=tmp_path, capture_output=True, text=True, timeout=300, env=env,
     )
@@ -259,11 +259,11 @@ def test_train_maze_curriculum_cli_unknown_level_errors(tmp_path):
     import os, subprocess, sys
     import blueball
     repo_root = Path(blueball.__file__).resolve().parents[2]
-    script = repo_root / "train_maze_curriculum.py"
+    script = repo_root / "main.py"
     env = os.environ.copy()
     env["PYTHONPATH"] = str(repo_root / "src")
     r = subprocess.run(
-        [sys.executable, str(script), "--level", "nope", "--pop", "2", "--gens", "1"],
+        [sys.executable, str(script), "train", "maze", "--level", "nope", "--pop", "2", "--gens", "1"],
         cwd=tmp_path, capture_output=True, text=True, timeout=60, env=env,
     )
     assert r.returncode != 0
