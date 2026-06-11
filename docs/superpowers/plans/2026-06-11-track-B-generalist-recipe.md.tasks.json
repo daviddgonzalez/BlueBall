@@ -4,7 +4,7 @@
     {
       "id": 0,
       "subject": "Task 0: Foundation — land LevelMeta.starting_abilities",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Make static/maze training episodes spawn the player WITH double-jump (avoid the single-jump-on-double-jump-level false-verdict bug).\n\n**Files:** cherry-pick c830f92 0d76c7c 9e4080e 75f3778 from feature/controller-capacity; touches levels/loader.py, levels/maze.json, ai/curriculum.py, ai/trainer.py (evaluate), scenes/train.py, scenes/play.py.\n\n**Acceptance Criteria:** LevelMeta.starting_abilities exists; maze declares double_jump; static evaluate grants level starting_abilities; full suite green.\n\n**Verify:** `PYTHONPATH=src python3 -m pytest -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/loader.py\",\"src/blueball/levels/maze.json\",\"src/blueball/ai/curriculum.py\",\"src/blueball/ai/trainer.py\",\"src/blueball/scenes/train.py\",\"src/blueball/scenes/play.py\"], \"verifyCommand\": \"PYTHONPATH=src python3 -m pytest -q\", \"acceptanceCriteria\": [\"LevelMeta.starting_abilities exists; maze declares double_jump\",\"static evaluate grants level starting_abilities\",\"full suite green\"]}\n```"
     },
     {

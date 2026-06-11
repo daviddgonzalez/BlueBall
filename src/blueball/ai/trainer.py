@@ -84,9 +84,13 @@ def _episode_fitness(player, spawn_x: float, max_x: float, steps: int,
 
 def evaluate(args: tuple) -> tuple[int, float]:
     """One genome -> one fitness. Picklable input/output so it works under
-    multiprocessing.Pool. Args is (idx, genome, world_seed, level_path, max_steps).
+    multiprocessing.Pool. Args is
+    (idx, genome, world_seed, level_path, max_steps[, abilities]), where the
+    optional 6th element is a tuple of episode-granted Ability *name* strings
+    unioned with the level's own starting_abilities.
     """
-    idx, genome, world_seed, level_path, max_steps = args
+    idx, genome, world_seed, level_path, max_steps, *rest = args
+    ep_abilities = frozenset(Ability(a) for a in (rest[0] if rest else ()))
 
     world = World(seed=int(world_seed))
     register_collisions(world.space, world_ref=world)
@@ -94,7 +98,7 @@ def evaluate(args: tuple) -> tuple[int, float]:
 
     spawn_x, spawn_y = float(meta.spawn[0]), float(meta.spawn[1])
     player = Player(agent=FTNNAgent(genome), spawn_xy=(spawn_x, spawn_y),
-                    abilities=set(meta.starting_abilities))
+                    abilities=set(ep_abilities | frozenset(meta.starting_abilities)))
     world.add_entity(player)
 
     max_x = spawn_x
@@ -240,7 +244,8 @@ def evaluate_episodes(args: tuple) -> tuple[int, float]:
                 (idx, genome, ep.seed, ep.world_seed, ep.max_steps, ep.abilities))
         else:
             _, raw = evaluate(
-                (idx, genome, ep.world_seed, ep.level_path, ep.max_steps))
+                (idx, genome, ep.world_seed, ep.level_path, ep.max_steps,
+                 ep.abilities))
         scores.append(raw / ep.norm)
     return idx, aggregate_fitness(scores, lam, mode)
 

@@ -10,7 +10,7 @@ pre-multi-episode behavior exactly.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Sequence, Union
 
@@ -149,11 +149,34 @@ def resolve_level_paths(names: Sequence[str]) -> list[str]:
     return paths
 
 
-def static_episodes(level_paths: Sequence[str], world_seed: int, max_steps: int) -> list[EpisodeSpec]:
-    """One static EpisodeSpec per level, each normalized by its level par."""
+def static_episodes(level_paths: Sequence[str], world_seed: int, max_steps: int,
+                    abilities: Sequence[str] = ()) -> list[EpisodeSpec]:
+    """One static EpisodeSpec per level, each normalized by its level par.
+
+    `abilities` (default ()) is a granted ability-name set carried on every
+    episode and unioned with the level's own starting_abilities at eval time;
+    the empty default keeps existing `train levels` byte-identical."""
+    ab = tuple(str(a) for a in abilities)
     return [
         EpisodeSpec(kind="static", seed=0, level_path=str(p),
                     world_seed=int(world_seed), max_steps=int(max_steps),
-                    norm=compute_level_par(p))
+                    norm=compute_level_par(p), abilities=ab)
         for p in level_paths
     ]
+
+
+def mixed_episodes(infinite_seeds: Sequence[int], level_names: Sequence[str],
+                   gym_seeds: Sequence[int], world_seed: int, max_steps: int,
+                   abilities: Sequence[str] = ()) -> list[EpisodeSpec]:
+    """The generalist objective: infinite + static + gym EpisodeSpecs, IN THAT
+    ORDER. `abilities` (e.g. ("double_jump",)) is granted uniformly across all
+    three kinds so the generalist trains double-jump-capable everywhere, not
+    only where a level's JSON declares it. Static episodes keep their per-level
+    par norm; infinite/gym keep norm 1.0."""
+    ab = tuple(str(a) for a in abilities)
+    inf = infinite_episodes(infinite_seeds, world_seed, max_steps)
+    inf = [replace(ep, abilities=ab) for ep in inf]
+    static = static_episodes(resolve_level_paths(level_names), world_seed,
+                             max_steps, abilities=ab)
+    gym = gym_episodes(gym_seeds, world_seed, max_steps, ab)
+    return inf + static + gym
