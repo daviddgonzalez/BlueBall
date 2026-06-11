@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import abc
 
+from ...abilities import Ability
+
 TILE = 32  # world units per chunk tile
 
 # Populated by chunk submodules at import time.
@@ -25,6 +27,12 @@ class Chunk(abc.ABC):
     # at trivial difficulty until concrete subclasses override.
     difficulty: int = 0
     sampler_include: bool = True
+
+    # Ability the player must have been granted for this chunk to be sampler-
+    # eligible. None = always eligible. The ChunkSampler filters out chunks whose
+    # requirement isn't in the run's granted set, so a single-jump run never sees
+    # a double-jump-only chunk (which would be an unclearable wall).
+    requires_ability: "Ability | None" = None
 
     # Ground-height offsets (world y, "up" is negative) of this chunk's left
     # and right ground edges relative to the base_y passed to build(). Both 0

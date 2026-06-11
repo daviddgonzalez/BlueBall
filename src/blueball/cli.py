@@ -254,7 +254,14 @@ def cmd_play_gym(args) -> int:
     from .debug.gym_play import play_segment
     if args.segment == "box-lava":
         return play_segment("box-lava", pit_tiles=args.pit, depth=args.depth)
-    return play_segment("boost-gap", gap_tiles=args.gap)
+    if args.segment == "boost-gap":
+        return play_segment("boost-gap", gap_tiles=args.gap)
+    return play_segment(args.segment)  # double-hop / double-vault: no extra params
+
+
+def cmd_play_doublejump(args) -> int:
+    from .debug.double_jump_play import play_showcase
+    return play_showcase()
 
 
 # --------------------------------------------------------------------------- #
@@ -291,12 +298,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_repro.set_defaults(func=cmd_repro_boost)
 
     p_pg = sub.add_parser("play-gym", help="play a single completion-gym segment by hand")
-    p_pg.add_argument("segment", choices=["box-lava", "boost-gap"],
+    p_pg.add_argument("segment",
+                      choices=["box-lava", "boost-gap",
+                               "double-hop", "double-wall", "double-vault"],
                       help="which gym segment to play")
     p_pg.add_argument("--pit", type=int, default=None, help="box-lava: pit_tiles")
     p_pg.add_argument("--depth", type=int, default=None, help="box-lava: pit depth (px)")
     p_pg.add_argument("--gap", type=int, default=None, help="boost-gap: lava_gap pit_tiles")
     p_pg.set_defaults(func=cmd_play_gym)
+
+    sub.add_parser(
+        "play-doublejump",
+        help="play a hand-built level showcasing the double-jump chunks",
+    ).set_defaults(func=cmd_play_doublejump)
 
     p_train = sub.add_parser("train", help="headless GA training")
     tsub = p_train.add_subparsers(dest="mode", required=True)

@@ -22,6 +22,9 @@ from .chunks.goal import GoalChunk
 from .chunks.box_lava_gap import BoxLavaGap
 from .chunks.boost_pad import BoostPadChunk
 from .chunks.lava_gap import LavaGapChunk
+from .chunks.double_ledge import DoubleLedge
+from .chunks.double_step import DoubleStep
+from .chunks.double_gap import DoubleGap
 
 
 class SegmentTemplate:
@@ -266,6 +269,85 @@ class BoostGapSegment(SegmentTemplate):
         return x - x_offset
 
 
+# Generous landing flat after the double-jump obstacle. Even the strongest
+# (max-distance) double jump overshoots a tightly-placed goal into the void; this
+# catches the landing so the segment is solvable, while a single jump never
+# reaches it (it can't clear the obstacle at all).
+_DJ_LANDING_TILES = 14
+
+
+class DoubleHopSegment(SegmentTemplate):
+    """Tier 2 — gentle double-jump rung: leap a small gap and double-jump up onto
+    a raised ledge. A single jump can't reach the cliff top behind the gap
+    (measured: a 5-tile gap caps the single-jump cliff mount at ~136px, the ledge
+    is 172px), so the second jump is mandatory; then land on the run-out flat and
+    roll to the goal. The vertical 'hop' lesson — the most forgiving of the pair.
+
+    Unlike the box segments, the double jump here is the *traversal* itself, not a
+    box-step. Solvable by the max double-jump maneuver, unsolvable without it."""
+
+    tier = 2
+    min_abilities = frozenset({Ability.DOUBLE_JUMP})
+
+    @classmethod
+    def random(cls, rng: random.Random) -> "DoubleHopSegment":
+        return cls()
+
+    def build(self, world, x_offset: float) -> float:
+        x = x_offset
+        x += self._chunk(Flat(width_tiles=6), world, x)
+        x += self._chunk(DoubleLedge(gap_tiles=5, height=172), world, x)
+        x += self._chunk(Flat(width_tiles=_DJ_LANDING_TILES), world, x)
+        x += self._chunk(GoalChunk(width_tiles=2), world, x)
+        return x - x_offset
+
+
+class DoubleWallSegment(SegmentTemplate):
+    """Tier 2 — pure-vertical double-jump rung: mount a flush wall (200px) too
+    tall for a single jump (measured single-jump flush mount ceiling ~172px) but
+    inside a double's ~260px. No gap — just 'jump, jump again to get up' — then
+    land on the run-out flat and roll to the goal. Solvable by the max double-jump
+    maneuver, unsolvable without it."""
+
+    tier = 2
+    min_abilities = frozenset({Ability.DOUBLE_JUMP})
+
+    @classmethod
+    def random(cls, rng: random.Random) -> "DoubleWallSegment":
+        return cls()
+
+    def build(self, world, x_offset: float) -> float:
+        x = x_offset
+        x += self._chunk(Flat(width_tiles=6), world, x)
+        x += self._chunk(DoubleStep(height=200), world, x)
+        x += self._chunk(Flat(width_tiles=_DJ_LANDING_TILES), world, x)
+        x += self._chunk(GoalChunk(width_tiles=2), world, x)
+        return x - x_offset
+
+
+class DoubleVaultSegment(SegmentTemplate):
+    """Tier 3 — demanding double-jump rung: vault a wide fall-death gap (16 tiles
+    / 512px) that's past a single jump's ~420px reach but inside a double's
+    ~720px, then land on the run-out flat and roll to the goal. The horizontal
+    'vault' lesson — tighter timing than the hop. Solvable by the max double-jump
+    maneuver, unsolvable without it."""
+
+    tier = 3
+    min_abilities = frozenset({Ability.DOUBLE_JUMP})
+
+    @classmethod
+    def random(cls, rng: random.Random) -> "DoubleVaultSegment":
+        return cls()
+
+    def build(self, world, x_offset: float) -> float:
+        x = x_offset
+        x += self._chunk(Flat(width_tiles=6), world, x)
+        x += self._chunk(DoubleGap(width_tiles=16), world, x)
+        x += self._chunk(Flat(width_tiles=_DJ_LANDING_TILES), world, x)
+        x += self._chunk(GoalChunk(width_tiles=2), world, x)
+        return x - x_offset
+
+
 # Registry that the sampler draws from. (List order is cosmetic — the sampler
 # sorts by class name — but kept tier-ordered for readability.)
 SEGMENT_TEMPLATES: list[type[SegmentTemplate]] = [
@@ -274,8 +356,11 @@ SEGMENT_TEMPLATES: list[type[SegmentTemplate]] = [
     BoxStepSegment,         # tier 2 (curriculum stage 1 — single jump onto box)
     BoxLavaSegment,         # tier 2 (curriculum stage 3 — expert box-push)
     BoostGapSegment,        # tier 2 (boost-or-die lava gap)
+    DoubleHopSegment,       # tier 2 (double-jump traversal — gap-to-ledge hop)
+    DoubleWallSegment,      # tier 2 (double-jump traversal — flush wall mount)
     BoxLeapSegment,         # tier 3 (curriculum stage 2 — double jump onto box)
     KeyDoorBoxLavaSegment,  # tier 3
+    DoubleVaultSegment,     # tier 3 (double-jump traversal — demanding vault)
 ]
 
 

@@ -47,6 +47,7 @@ class TerrainStream:
         load_behind: float = LOAD_BEHIND,
         initial_chunks: int = INITIAL_BUILD_CHUNKS,
         max_ground_elev: float = MAX_GROUND_ELEV,
+        abilities=frozenset(),
     ) -> None:
         self.world = world
         self.load_ahead = load_ahead
@@ -54,8 +55,12 @@ class TerrainStream:
         self.max_ground_elev = max_ground_elev
 
         # Infinite Run has no checkpoints — death re-randomizes the whole run,
-        # so a mid-run respawn anchor would be meaningless.
-        self.sampler = ChunkSampler(seed=int(sampler_seed), emit_checkpoints=False)
+        # so a mid-run respawn anchor would be meaningless. `abilities` gates the
+        # double-jump-only chunks: a run granted DOUBLE_JUMP surfaces them, a
+        # plain single-jump run never does.
+        self.sampler = ChunkSampler(
+            seed=int(sampler_seed), emit_checkpoints=False, abilities=abilities
+        )
         self._chunk_iter = iter(self.sampler)
         self.built_chunks: list[dict] = []
         self.build_x: float = 0.0
