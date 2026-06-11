@@ -22,18 +22,6 @@ from tests.segment_maneuvers import (
 )
 
 
-class _DelayedJumpAgent(Agent):
-    """Rolls right to build speed, then spams RIGHT_JUMP — the strongest vault
-    attempt (full jump + air-jump arc launched near the pit edge)."""
-    def __init__(self, delay: int) -> None:
-        self._delay = delay
-        self._t = 0
-
-    def act(self, observation):
-        self._t += 1
-        return Action.RIGHT if self._t <= self._delay else Action.RIGHT_JUMP
-
-
 def _fresh_world():
     w = World(seed=0)
     register_collisions(w.space, world_ref=w)
@@ -126,42 +114,18 @@ def test_tier3_combo_composition():
     assert Ability.DOUBLE_JUMP in KeyDoorBoxLavaSegment.min_abilities
 
 
-def test_all_four_tiers_registered():
+def test_all_segment_templates_registered():
+    assert len(SEGMENT_TEMPLATES) == 7
     assert {t.tier for t in SEGMENT_TEMPLATES} == {0, 1, 2, 3}
-
-
-def test_boxlava_pit_requires_the_box_not_vaultable():
-    # The box must be NECESSARY: with the box removed, a DOUBLE_JUMP agent
-    # cannot clear the pit by jumping. Guards against a narrow (vaultable) pit
-    # that would train a jump instead of the box-push. Tests the low end (20)
-    # of the gym's pit range across many jump-timing phases.
-    for jump_delay in range(0, 64, 4):
-        w = _fresh_world()
-        BoxLavaSegment(pit_tiles=20).build(w, x_offset=0.0)
-        box = next(e for e in w.entities if type(e).__name__ == "PushableBox")
-        remove_entity(w, box)
-        p = Player(agent=_DelayedJumpAgent(jump_delay),
-                   spawn_xy=(40.0, GROUND_Y - 30.0),
-                   abilities={Ability.DOUBLE_JUMP})
-        w.add_entity(p)
-        reached = False
-        for _ in range(1500):
-            w.substep()
-            if p.reached_goal:
-                reached = True
-                break
-            if p.dead:
-                break
-        assert not reached, f"vaulted the box-removed pit at jump_delay={jump_delay}"
 
 
 def test_boxlava_stage3_pit_is_vault_proof():
     """At the tuned stage-3 cell (pit=24, depth=72), the strongest cheese — the
     apex-fired MAX double jump (DoubleJumpVaultAgent) — cannot clear the pit with
     the box removed, swept across launch_x. Proves the box-push is mandatory at
-    the ACTUAL shipped geometry. NB: the weaker _DelayedJumpAgent test above
-    (pit=20) gives false confidence — the max-distance maneuver vaults pit<=23
-    (~990px reach), so 24 is the minimum vault-proof width."""
+    the ACTUAL shipped geometry. NB: a weaker RIGHT_JUMP-spam agent would give
+    false confidence — the max-distance maneuver vaults pit<=23 (~990px reach),
+    so 24 is the minimum vault-proof width."""
     for launch_x in range(220, 261, 8):  # 220, 228, 236, 244, 252, 260
         w = fresh_world()
         BoxLavaSegment(pit_tiles=_BOX_LAVA_PIT_TILES,
@@ -269,7 +233,12 @@ def test_boxleap_is_solvable_by_double_step():
         result = run_segment(w, p)
         if result == "GOAL":
             solved.append((launch_x, on_box_run))
-    assert solved, f"No DoubleStepAgent config reached GOAL; tried {sweep}"
+    # The probe cell solves all 24/24 combos; require a real margin here so the
+    # test guards the robust basin, not a single knife-edge survivor.
+    assert len(solved) >= 4, (
+        f"only {len(solved)}/{len(sweep)} DoubleStepAgent configs reached GOAL "
+        f"(want >=4 for a robust margin); solved={solved}"
+    )
 
 
 def test_boxleap_requires_the_box_not_vaultable():
@@ -388,3 +357,15 @@ def test_boostgap_requires_boost_not_double_jumpable():
         "DoubleJumpVaultAgent cleared the gap WITHOUT the boost pad — the gap "
         "is not boost-or-die"
     )
+
+
+# ---------------------------------------------------------------------------
+# Sampler eligibility (Task 4)
+# ---------------------------------------------------------------------------
+
+def test_boostgap_sampled_only_with_double_jump():
+    from blueball.levels.segments import SegmentSampler, BoostGapSegment
+    dj = SegmentSampler(seed=0, granted_abilities=frozenset({Ability.DOUBLE_JUMP}))
+    assert BoostGapSegment in dj._pool
+    sj = SegmentSampler(seed=0, granted_abilities=frozenset())
+    assert BoostGapSegment not in sj._pool

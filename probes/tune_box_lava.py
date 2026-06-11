@@ -27,7 +27,7 @@ from blueball.levels.chunks.flat import GROUND_Y
 from blueball.abilities import Ability
 from blueball.levels.segments import BoxLavaSegment
 from tests.segment_maneuvers import (
-    BoxHopAgent, fresh_world, find_entity, run_segment,
+    BoxHopAgent, fresh_world, find_entity,
 )
 
 # Far edge of the pit (the goal sits just past it). pit_left is calibrated to 256.

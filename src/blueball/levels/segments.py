@@ -83,7 +83,7 @@ class KeyDoorGoalSegment(SegmentTemplate):
 # 22- or 23-tile pit with the box removed), but NOT a 24-tile / 768px pit. The
 # earlier "pit=22 is vault-proof" claim came from the WEAKER RIGHT_JUMP-spam
 # agent and was false confidence; 24 also matches campaign maze.json's pit_tiles.
-# depth=72 (== box=64 floor clearance) keeps the box-on-floor a clean step.
+# depth=72 (> box=64) keeps the box-top below the ledge for a clean step.
 _BOX_LAVA_PIT_TILES = 24
 _BOX_LAVA_DEPTH = 72
 
@@ -235,6 +235,10 @@ class BoostGapSegment(SegmentTemplate):
     the 3-tile pad) so the player never spawns on top of the pad (per playtest
     feedback). Requires DOUBLE_JUMP (granted by default).
 
+    Once the player crosses the pad the boost stays locked in for ~2s
+    (config.BOOST_DURATION_S = 2.0), so the apex jump fired after the pad is
+    still boosted and clears the gap.
+
     Probe-tuned (probes/tune_boost_gap.py): pit_tiles=27 sits inside the
     boost-or-die corridor [23, 28] with a tile of margin on each side."""
 
@@ -254,12 +258,16 @@ class BoostGapSegment(SegmentTemplate):
         return x - x_offset
 
 
-# Registry that the sampler draws from.
+# Registry that the sampler draws from. (List order is cosmetic — the sampler
+# sorts by class name — but kept tier-ordered for readability.)
 SEGMENT_TEMPLATES: list[type[SegmentTemplate]] = [
-    GoalSegment,
-    KeyDoorGoalSegment,
-    BoxLavaSegment,
-    KeyDoorBoxLavaSegment,
+    GoalSegment,            # tier 0
+    KeyDoorGoalSegment,     # tier 1
+    BoxStepSegment,         # tier 2 (curriculum stage 1 — single jump onto box)
+    BoxLavaSegment,         # tier 2 (curriculum stage 3 — expert box-push)
+    BoostGapSegment,        # tier 2 (boost-or-die lava gap)
+    BoxLeapSegment,         # tier 3 (curriculum stage 2 — double jump onto box)
+    KeyDoorBoxLavaSegment,  # tier 3
 ]
 
 
