@@ -109,6 +109,9 @@ class BoxLavaSegment(SegmentTemplate):
 
     def __init__(self, pit_tiles: int = _BOX_LAVA_PIT_TILES,
                  depth: int = _BOX_LAVA_DEPTH) -> None:
+        # These params exist ONLY so tests/probes can inject geometry; they are
+        # NOT a sampler knob. The sampler always calls .random(), which pins the
+        # fixed vault-proof cell regardless of these defaults.
         self.pit_tiles = pit_tiles
         self.depth = depth
 
@@ -207,6 +210,11 @@ class KeyDoorBoxLavaSegment(SegmentTemplate):
     min_abilities = frozenset({Ability.DOUBLE_JUMP})
 
     def build(self, world, x_offset: float) -> float:
+        # NOTE: the scripted-solver pit_left=256 calibration (shared by
+        # BoxStep/BoxLeap/BoxLavaSegment) does NOT hold here — the leading Key+
+        # Door chunks push the pit wall out to ~x=448. That 256 invariant is
+        # therefore NOT global. This is a composition-only segment with NO
+        # scripted-solver test; don't assume the 256 calibration applies.
         x = x_offset
         x += self._chunk(Flat(width_tiles=2), world, x)
         x += self._chunk(KeyChunk(width_tiles=2, key_id=0, y_offset=40), world, x)

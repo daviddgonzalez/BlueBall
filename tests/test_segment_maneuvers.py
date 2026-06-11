@@ -115,15 +115,27 @@ def test_single_step_agent_solves_preplaced_box():
 
 
 def test_double_step_agent_solves_bigger_preplaced_box():
-    """DoubleStepAgent must reach the goal on a stage-2 pre-placed box pit."""
+    """DoubleStepAgent mounts+clears the SHIPPED stage-2 pre-placed box.
+
+    Builds the cell straight from BoxLeapSegment so the test always tracks the
+    shipped geometry (the robust cell pit=40/depth=96/box=96/frac=0.55), never a
+    hand-typed marginal one. The shipped cell solves 24/24 in the probe, so a
+    small sweep of (launch_x, on_box_run) lands several GOALs comfortably — no
+    brittle wide-sweep fallback needed. We assert at least two distinct configs
+    reach GOAL to keep the margin honest (not a knife-edge)."""
+    from blueball.levels.segments import BoxLeapSegment
+
+    # A handful of combos drawn from the probe's known-good grid
+    # (_SOLVE_LAUNCH_X x _SOLVE_ON_BOX_RUN), all of which solve the shipped cell.
     sweep = [
         (lx, obr)
-        for lx in (235, 245, 254)
+        for lx in (232, 244, 256)
         for obr in (4, 8)
     ]
     solved = []
     for launch_x, on_box_run in sweep:
-        w = _build_step_world(pit_tiles=38, depth=96, box_size=96, box_frac=0.52)
+        w = fresh_world()
+        BoxLeapSegment().build(w, x_offset=0.0)
         p = Player(
             agent=None,
             spawn_xy=(40.0, GROUND_Y - 30.0),
@@ -138,32 +150,7 @@ def test_double_step_agent_solves_bigger_preplaced_box():
         if result == "GOAL":
             solved.append((launch_x, on_box_run))
 
-    # If the narrow sweep fails, widen modestly as specified in the task
-    if not solved:
-        wide_sweep = [
-            (lx, obr, frac)
-            for lx in range(230, 259, 4)
-            for obr in (3, 5, 7, 10)
-            for frac in (0.48, 0.50, 0.52, 0.54, 0.56)
-        ]
-        for launch_x, on_box_run, frac in wide_sweep:
-            w = _build_step_world(pit_tiles=38, depth=96, box_size=96,
-                                  box_frac=frac)
-            p = Player(
-                agent=None,
-                spawn_xy=(40.0, GROUND_Y - 30.0),
-                abilities={Ability.DOUBLE_JUMP},
-            )
-            w.add_entity(p)
-            agent = DoubleStepAgent(launch_x=launch_x, on_box_run=on_box_run)
-            agent.player = p
-            agent.box = find_entity(w, "PushableBox")
-            p.agent = agent
-            result = run_segment(w, p)
-            if result == "GOAL":
-                solved.append((launch_x, on_box_run, frac))
-                break  # one is enough
-
-    assert solved, (
-        f"No DoubleStepAgent config reached GOAL in wide sweep"
+    assert len(solved) >= 2, (
+        f"Expected >=2 DoubleStepAgent configs to reach GOAL on the shipped "
+        f"BoxLeap cell; only {solved} did (tried {sweep})"
     )

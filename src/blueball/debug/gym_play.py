@@ -38,7 +38,7 @@ def _box_lava_level(pit_tiles: int = 18, depth: int = 72) -> dict:
     }
 
 
-def _boost_gap_level(gap_tiles: int = 28) -> dict:
+def _boost_gap_level(gap_tiles: int = 27) -> dict:
     # A long flat run-up BEFORE the pad: the player must NOT spawn on the pad,
     # and needs ~140px to reach full speed so the boosted leap is at full tilt.
     return {
