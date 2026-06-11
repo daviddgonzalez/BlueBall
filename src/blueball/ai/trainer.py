@@ -122,20 +122,28 @@ def evaluate(args: tuple) -> tuple[int, float]:
 def evaluate_infinite(args: tuple) -> tuple[int, float]:
     """One genome -> one fitness on a streamed Infinite Run. Picklable in/out
     for multiprocessing.Pool. Args is (idx, genome, sampler_seed, world_seed,
-    max_steps).
+    max_steps[, abilities]), where the optional `abilities` is a tuple of
+    Ability *name* strings granted to both the terrain sampler and the player.
+
+    The granted set gates the double-jump-only chunks: a run granted
+    DOUBLE_JUMP surfaces (and can clear) them, a plain single-jump run never
+    sees them. Omitting `abilities` (legacy 5-tuple) is single-jump and
+    byte-identical to pre-Track-D behaviour.
 
     Streams chunks from the same `TerrainStream` the live game uses, so the
     agent is graded on exactly the terrain a human would see for that
     sampler_seed. Infinite Run has no goal, so fitness is driven by progress_x.
     """
-    idx, genome, sampler_seed, world_seed, max_steps = args
+    idx, genome, sampler_seed, world_seed, max_steps, *rest = args
+    granted = frozenset(Ability(a) for a in (rest[0] if rest else ()))
 
     world = World(seed=int(world_seed))
     register_collisions(world.space, world_ref=world)
-    terrain = TerrainStream(world, int(sampler_seed))
+    terrain = TerrainStream(world, int(sampler_seed), abilities=granted)
 
     spawn_x, spawn_y = INFINITE_SPAWN
-    player = Player(agent=FTNNAgent(genome), spawn_xy=(spawn_x, spawn_y))
+    player = Player(agent=FTNNAgent(genome), spawn_xy=(spawn_x, spawn_y),
+                    abilities=set(granted))
     world.add_entity(player)
 
     max_x = spawn_x
@@ -238,7 +246,7 @@ def evaluate_episodes(args: tuple) -> tuple[int, float]:
     for ep in episodes:
         if ep.kind == "infinite":
             _, raw = evaluate_infinite(
-                (idx, genome, ep.seed, ep.world_seed, ep.max_steps))
+                (idx, genome, ep.seed, ep.world_seed, ep.max_steps, ep.abilities))
         elif ep.kind == "gym":
             _, raw = evaluate_gym(
                 (idx, genome, ep.seed, ep.world_seed, ep.max_steps, ep.abilities))
