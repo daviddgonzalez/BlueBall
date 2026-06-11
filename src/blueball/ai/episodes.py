@@ -175,12 +175,21 @@ def mixed_episodes(infinite_seeds: Sequence[int], level_names: Sequence[str],
     and gym (via `evaluate_gym`) actually CONSUME the granted abilities today;
     the infinite path carries them as metadata but `evaluate_infinite` does not
     yet read them, so infinite trains single-jump until Track D's abilities flag
-    lands and the infinite dispatch threads `ep.abilities` through. Static
-    episodes keep their per-level par norm; infinite/gym keep norm 1.0."""
+    lands and the infinite dispatch threads `ep.abilities` through.
+
+    Cross-kind normalization: static keeps its per-level par norm; infinite and
+    gym are given `GENERALIST_INFINITE_PAR` / `GENERALIST_GYM_PAR` divisors (NOT
+    1.0) so all three kinds land at ~0-1 ("fraction of a competent run"). Without
+    this, the `min` objective is driven entirely by the worst static level
+    (infinite/gym raw fitness is hundreds-to-thousands, never the min) and `mean`
+    by infinite/gym — neither balances the three kinds. The single-mode
+    `infinite_episodes`/`gym_episodes` constructors keep norm=1.0; the par
+    divisor is applied here (via `replace`) only for the mixed objective."""
     ab = tuple(str(a) for a in abilities)
-    inf = infinite_episodes(infinite_seeds, world_seed, max_steps)
-    inf = [replace(ep, abilities=ab) for ep in inf]
+    inf = [replace(ep, abilities=ab, norm=config.GENERALIST_INFINITE_PAR)
+           for ep in infinite_episodes(infinite_seeds, world_seed, max_steps)]
     static = static_episodes(resolve_level_paths(level_names), world_seed,
                              max_steps, abilities=ab)
-    gym = gym_episodes(gym_seeds, world_seed, max_steps, ab)
+    gym = [replace(ep, abilities=ab, norm=config.GENERALIST_GYM_PAR)
+           for ep in gym_episodes(gym_seeds, world_seed, max_steps, ab)]
     return inf + static + gym

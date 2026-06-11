@@ -50,10 +50,16 @@ def test_mixed_episodes_composition():
     tutorial_path = resolve_level_paths(["tutorial_hill"])[0]
     assert static_eps[0].norm == compute_level_par(tutorial_path)
 
-    # infinite/gym keep norm 1.0; static keeps par norm
-    for e in eps:
-        if e.kind in ("infinite", "gym"):
-            assert e.norm == 1.0
+    # cross-kind normalization: infinite/gym get par divisors (NOT 1.0) so the
+    # min objective balances all three kinds instead of degenerating to the worst
+    # static level. All three kinds' pars are a comparable order of magnitude.
+    from blueball import config
+    inf_eps = [e for e in eps if e.kind == "infinite"]
+    gym_eps = [e for e in eps if e.kind == "gym"]
+    assert all(e.norm == config.GENERALIST_INFINITE_PAR for e in inf_eps)
+    assert all(e.norm == config.GENERALIST_GYM_PAR for e in gym_eps)
+    assert inf_eps[0].norm > 100.0 and gym_eps[0].norm > 100.0
+    assert static_eps[0].norm > 100.0  # par-normalized static is the same scale
 
 
 def test_mixed_episodes_infinite_carries_abilities():

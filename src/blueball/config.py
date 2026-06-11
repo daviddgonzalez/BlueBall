@@ -174,3 +174,12 @@ GENERALIST_LEVELS = (
     "vertical_climb",
     "maze",
 )
+# Cross-kind normalization for the generalist objective. Static episodes are
+# par-normalized to ~1.0 (compute_level_par), but infinite/gym raw fitness is
+# hundreds-to-thousands. Without comparable divisors, `min` aggregation is driven
+# entirely by the worst static level (infinite/gym never picked) and `mean` by
+# infinite/gym (static ignored). These pars map each kind to ~0-1 ("fraction of a
+# competent run") so the weakest CAPABILITY — not the smallest raw units — drives
+# selection. Tunable; start in the right ballpark and iterate on per-kind scores.
+GENERALIST_INFINITE_PAR = 2000.0              # reference distance (px) for a competent mover (~held-out floor target)
+GENERALIST_GYM_PAR = 5.0 * GYM_SEGMENT_BONUS  # reference: ~5 completion segments cleared
