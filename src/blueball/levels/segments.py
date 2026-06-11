@@ -76,33 +76,56 @@ class KeyDoorGoalSegment(SegmentTemplate):
         return x - x_offset
 
 
+# Stage-3 box-lava cell. Pit=24 is the MINIMUM width that is vault-proof against
+# the strongest cheese (the apex-fired max double jump, DoubleJumpVaultAgent):
+# that maneuver flies ~990px and clears pit<=23 (it lands past the far edge of a
+# 22- or 23-tile pit with the box removed), but NOT a 24-tile / 768px pit. The
+# earlier "pit=22 is vault-proof" claim came from the WEAKER RIGHT_JUMP-spam
+# agent and was false confidence; 24 also matches campaign maze.json's pit_tiles.
+# depth=72 (== box=64 floor clearance) keeps the box-on-floor a clean step.
+_BOX_LAVA_PIT_TILES = 24
+_BOX_LAVA_DEPTH = 72
+
+
 class BoxLavaSegment(SegmentTemplate):
-    """Tier 2 — shove the box across the lava pit as a stepping stone, then
-    reach the goal. A boost_pad (width 3, multiplier 1.8) immediately before the
-    pit drives the box far across the low-friction pit floor, splitting the wide
-    24-tile pit into two jumpable gaps (this mirrors campaign maze.json, where a
-    boost_pad precedes a pit_tiles=24 box_lava_gap). The pit is fixed at the
-    campaign-proven, vault-proof width: even with the boost, a DOUBLE_JUMP agent
-    cannot vault the bare pit, so the box-push is mandatory. Requires
-    DOUBLE_JUMP (granted by default)."""
+    """Tier 2 — curriculum stage 3 (EXPERT): PUSH the box yourself off the
+    approach ledge into the lava pit, then box-step across (near ledge -> box
+    top -> far ledge) to the goal. Unlike stages 1-2 the box is NOT pre-placed
+    (box_frac=None = it starts on the approach ledge), so the shove is the whole
+    lesson: the player must drive the box into the pit before any crossing is
+    possible.
+
+    The pit is fixed at the vault-proof cell (pit=24, depth=72, box=64): even the
+    strongest cheese — the apex-fired MAX double jump — cannot vault the
+    box-removed pit, so the box-push is mandatory. This is human-solvable but the
+    shove-then-step maneuver is too precise to script reliably — stage 3 is the
+    EXPERT tier and has NO scripted solvable-by-agent guarantee (only the
+    vault-proof + composition invariants are tested). Requires DOUBLE_JUMP
+    (granted by default)."""
 
     tier = 2
     min_abilities = frozenset({Ability.DOUBLE_JUMP})
 
-    def __init__(self, pit_tiles: int = 24) -> None:
+    def __init__(self, pit_tiles: int = _BOX_LAVA_PIT_TILES,
+                 depth: int = _BOX_LAVA_DEPTH) -> None:
         self.pit_tiles = pit_tiles
+        self.depth = depth
 
     @classmethod
     def random(cls, rng: random.Random) -> "BoxLavaSegment":
-        # Fixed at the campaign-proven, vault-proof width. Randomizing narrower
-        # risks re-introducing a vaultable (box-optional) pit.
-        return cls(pit_tiles=24)
+        # Fixed at the controller-validated vault-proof cell. The box stays on
+        # the approach ledge (box_frac=None) — pushing it in is the lesson.
+        return cls(pit_tiles=_BOX_LAVA_PIT_TILES, depth=_BOX_LAVA_DEPTH)
 
     def build(self, world, x_offset: float) -> float:
         x = x_offset
         x += self._chunk(Flat(width_tiles=2), world, x)
-        x += self._chunk(BoostPadChunk(width_tiles=3, multiplier=1.8), world, x)
-        x += self._chunk(BoxLavaGap(pit_tiles=self.pit_tiles), world, x)
+        # Flat spacer (not a boost pad) keeps pit_left at x=256 — the geometry
+        # the scripted BoxHopAgent is calibrated to (Flat2=64 + Flat3=96 +
+        # BoxLavaGap.approach 3t=96 = 256).
+        x += self._chunk(Flat(width_tiles=3), world, x)
+        x += self._chunk(BoxLavaGap(pit_tiles=self.pit_tiles,
+                                    depth=self.depth), world, x)
         x += self._chunk(GoalChunk(width_tiles=2), world, x)
         return x - x_offset
 
@@ -172,12 +195,12 @@ class BoxLeapSegment(SegmentTemplate):
 
 
 class KeyDoorBoxLavaSegment(SegmentTemplate):
-    """Tier 3 — unlock a door, then cross a box/lava pit, then the goal. A
-    boost_pad (width 3, multiplier 1.8) immediately before the pit drives the
-    box far across the low-friction pit floor, splitting the wide 24-tile pit
-    into two jumpable gaps (mirroring campaign maze.json). The pit uses the
-    vault-proof pit_tiles=24 width so the box-push is mandatory even with the
-    boost and DOUBLE_JUMP granted."""
+    """Tier 3 — unlock a door, then PUSH the box across the lava pit (stage-3
+    box-step: shove it off the approach ledge, then near ledge -> box top -> far
+    ledge), then reach the goal. A Flat(3) spacer sits before the pit (no boost
+    pad). The pit uses the vault-proof cell (pit=24, depth=72) so the box-push is
+    mandatory even with DOUBLE_JUMP granted (the strongest max double jump cannot
+    clear it without the box)."""
 
     tier = 3
     min_abilities = frozenset({Ability.DOUBLE_JUMP})
@@ -188,8 +211,9 @@ class KeyDoorBoxLavaSegment(SegmentTemplate):
         x += self._chunk(KeyChunk(width_tiles=2, key_id=0, y_offset=40), world, x)
         x += self._chunk(DoorChunk(width_tiles=2, key_id=0), world, x)
         x += self._chunk(Flat(width_tiles=2), world, x)
-        x += self._chunk(BoostPadChunk(width_tiles=3, multiplier=1.8), world, x)
-        x += self._chunk(BoxLavaGap(pit_tiles=24), world, x)
+        x += self._chunk(Flat(width_tiles=3), world, x)
+        x += self._chunk(BoxLavaGap(pit_tiles=_BOX_LAVA_PIT_TILES,
+                                    depth=_BOX_LAVA_DEPTH), world, x)
         x += self._chunk(GoalChunk(width_tiles=2), world, x)
         return x - x_offset
 

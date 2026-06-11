@@ -8,6 +8,7 @@ from blueball.abilities import Ability
 from blueball.levels.segments import (
     BoxLavaSegment, KeyDoorBoxLavaSegment, BoxStepSegment, BoxLeapSegment,
     SEGMENT_TEMPLATES,
+    _BOX_LAVA_PIT_TILES, _BOX_LAVA_DEPTH,
 )
 from tests.segment_maneuvers import (
     SingleStepAgent,
@@ -103,11 +104,15 @@ def test_boxlava_segment_composition_and_requirements():
     assert width > 0
 
 
-def test_boxlava_random_varies_pit_width():
+def test_boxlava_random_is_the_tuned_fixed_geometry():
+    # Stage 3 is fixed at the controller-validated vault-proof cell; random()
+    # returns it unconditionally (no width randomization that could re-introduce
+    # a vaultable, box-optional pit).
     import random
-    widths = {BoxLavaSegment.random(random.Random(s)).pit_tiles for s in range(40)}
-    assert len(widths) > 1  # not constant
-    assert all(20 <= w <= 24 for w in widths)
+    for s in range(40):
+        seg = BoxLavaSegment.random(random.Random(s))
+        assert seg.pit_tiles == _BOX_LAVA_PIT_TILES
+        assert seg.depth == _BOX_LAVA_DEPTH
 
 
 def test_tier3_combo_composition():
@@ -147,6 +152,34 @@ def test_boxlava_pit_requires_the_box_not_vaultable():
             if p.dead:
                 break
         assert not reached, f"vaulted the box-removed pit at jump_delay={jump_delay}"
+
+
+def test_boxlava_stage3_pit_is_vault_proof():
+    """At the tuned stage-3 cell (pit=24, depth=72), the strongest cheese — the
+    apex-fired MAX double jump (DoubleJumpVaultAgent) — cannot clear the pit with
+    the box removed, swept across launch_x. Proves the box-push is mandatory at
+    the ACTUAL shipped geometry. NB: the weaker _DelayedJumpAgent test above
+    (pit=20) gives false confidence — the max-distance maneuver vaults pit<=23
+    (~990px reach), so 24 is the minimum vault-proof width."""
+    for launch_x in range(220, 261, 8):  # 220, 228, 236, 244, 252, 260
+        w = fresh_world()
+        BoxLavaSegment(pit_tiles=_BOX_LAVA_PIT_TILES,
+                       depth=_BOX_LAVA_DEPTH).build(w, x_offset=0.0)
+        box = find_entity(w, "PushableBox")
+        remove_entity(w, box)
+        agent = DoubleJumpVaultAgent(launch_x=float(launch_x))
+        p = Player(
+            agent=agent,
+            spawn_xy=(40.0, GROUND_Y - 30.0),
+            abilities={Ability.DOUBLE_JUMP},
+        )
+        agent.player = p
+        w.add_entity(p)
+        result = run_segment(w, p, steps=1500)
+        assert result != "GOAL", (
+            f"DoubleJumpVaultAgent(launch_x={launch_x}) vaulted the "
+            f"box-removed stage-3 pit (pit={_BOX_LAVA_PIT_TILES})"
+        )
 
 
 # ---------------------------------------------------------------------------
