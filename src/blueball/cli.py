@@ -225,7 +225,12 @@ def cmd_train_generalist(args) -> int:
         gym_seeds=gym_seeds, world_seed=args.world_seed,
         max_steps=args.max_steps, abilities=abilities)
 
-    init_genome = np.load(args.init) if args.init else None
+    init_genome = None
+    if args.init:
+        try:
+            init_genome = np.load(args.init)
+        except (FileNotFoundError, OSError) as e:
+            raise SystemExit(f"--init genome not found: {args.init} ({e})")
     run_dir = _run_dir(world_seed=args.world_seed, num_levels=len(level_names),
                        generalist=True)
     print(f"Training {args.pop}x{args.gens} generalist (aggregate={args.aggregate}) "

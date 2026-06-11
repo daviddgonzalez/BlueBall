@@ -165,8 +165,8 @@ GYM_DEFAULT_NUM_SEEDS = 8            # multi-seed by default: gym chains must ge
 # Run, the static campaign levels, and the Completion Gym, aggregated worst-first
 # (min) so the weakest kind drives selection. Seeds are derived from the
 # --infinite-seed / --gym-seed bases via generate_seeds.
-GENERALIST_INFINITE_SEEDS = 4   # # of Infinite Run sampler seeds in the mix
-GENERALIST_GYM_SEEDS      = 4   # # of Completion Gym chain seeds in the mix
+GENERALIST_INFINITE_SEEDS = 4   # count of Infinite Run sampler seeds in the generalist mix
+GENERALIST_GYM_SEEDS      = 4   # count of Completion Gym chain seeds in the generalist mix
 GENERALIST_LEVELS = (
     "tutorial_hill",
     "speed_run",
