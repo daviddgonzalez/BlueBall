@@ -6,7 +6,14 @@ from blueball.levels.chunks.flat import GROUND_Y
 from blueball.levels.segments import GoalSegment, KeyDoorGoalSegment
 from blueball.abilities import Ability
 from blueball.levels.segments import (
-    BoxLavaSegment, KeyDoorBoxLavaSegment, SEGMENT_TEMPLATES,
+    BoxLavaSegment, KeyDoorBoxLavaSegment, BoxStepSegment, SEGMENT_TEMPLATES,
+)
+from tests.segment_maneuvers import (
+    SingleStepAgent,
+    DoubleJumpVaultAgent,
+    fresh_world,
+    find_entity,
+    run_segment,
 )
 
 
@@ -149,3 +156,63 @@ def test_boxlava_pit_requires_the_box_not_vaultable():
             if p.dead:
                 break
         assert not reached, f"vaulted the box-removed pit at jump_delay={jump_delay}"
+
+
+# ---------------------------------------------------------------------------
+# BoxStepSegment — curriculum stage 1 (Task 2b)
+# ---------------------------------------------------------------------------
+
+def test_boxstep_is_solvable_by_single_step():
+    """At least one (launch_x, on_box_run) combo from the sweep must reach GOAL."""
+    sweep = [(lx, obr) for lx in (232, 238, 245) for obr in (3, 6)]
+    solved = []
+    for launch_x, on_box_run in sweep:
+        w = fresh_world()
+        BoxStepSegment().build(w, x_offset=0.0)
+        p = Player(
+            agent=None,
+            spawn_xy=(40.0, GROUND_Y - 30.0),
+            abilities={Ability.DOUBLE_JUMP},
+        )
+        w.add_entity(p)
+        agent = SingleStepAgent(launch_x=launch_x, on_box_run=on_box_run)
+        agent.player = p
+        agent.box = find_entity(w, "PushableBox")
+        p.agent = agent
+        result = run_segment(w, p)
+        if result == "GOAL":
+            solved.append((launch_x, on_box_run))
+    assert solved, f"No SingleStepAgent config reached GOAL; tried {sweep}"
+
+
+def test_boxstep_requires_the_box_not_vaultable():
+    """With the box removed, no DoubleJumpVaultAgent launch_x clears the pit."""
+    for lx in (220, 240, 248, 254, 260):
+        w = fresh_world()
+        BoxStepSegment().build(w, x_offset=0.0)
+        box = find_entity(w, "PushableBox")
+        _remove_entity(w, box)
+        agent = DoubleJumpVaultAgent(launch_x=lx)
+        p = Player(
+            agent=agent,
+            spawn_xy=(40.0, GROUND_Y - 30.0),
+            abilities={Ability.DOUBLE_JUMP},
+        )
+        agent.player = p
+        w.add_entity(p)
+        result = run_segment(w, p, steps=1500)
+        assert result != "GOAL", (
+            f"DoubleJumpVaultAgent(launch_x={lx}) vaulted the box-removed pit"
+        )
+
+
+def test_boxstep_composition():
+    """BoxStepSegment must include Lava, PushableBox, Goal; tier 2; DOUBLE_JUMP."""
+    w = fresh_world()
+    width = BoxStepSegment().build(w, x_offset=0.0)
+    names = [type(e).__name__ for e in w.entities]
+    for kind in ("Lava", "PushableBox", "Goal"):
+        assert kind in names, f"missing entity type {kind!r} in {names}"
+    assert BoxStepSegment.tier == 2
+    assert Ability.DOUBLE_JUMP in BoxStepSegment.min_abilities
+    assert width > 0

@@ -20,6 +20,7 @@ from .chunks.key import KeyChunk
 from .chunks.door import DoorChunk
 from .chunks.goal import GoalChunk
 from .chunks.box_lava_gap import BoxLavaGap
+from .chunks.boost_pad import BoostPadChunk
 
 
 class SegmentTemplate:
@@ -76,33 +77,73 @@ class KeyDoorGoalSegment(SegmentTemplate):
 
 
 class BoxLavaSegment(SegmentTemplate):
-    """Tier 2 — shove the box into the lava pit as a stepping stone, then reach
-    the goal. The pit is wide (20-24 tiles, matching campaign maze.json's
-    pit_tiles=24) so a DOUBLE_JUMP agent cannot vault it without the box — the
-    box-push is mandatory. Requires DOUBLE_JUMP (granted by default)."""
+    """Tier 2 — shove the box across the lava pit as a stepping stone, then
+    reach the goal. A boost_pad (width 3, multiplier 1.8) immediately before the
+    pit drives the box far across the low-friction pit floor, splitting the wide
+    24-tile pit into two jumpable gaps (this mirrors campaign maze.json, where a
+    boost_pad precedes a pit_tiles=24 box_lava_gap). The pit is fixed at the
+    campaign-proven, vault-proof width: even with the boost, a DOUBLE_JUMP agent
+    cannot vault the bare pit, so the box-push is mandatory. Requires
+    DOUBLE_JUMP (granted by default)."""
 
     tier = 2
     min_abilities = frozenset({Ability.DOUBLE_JUMP})
 
-    def __init__(self, pit_tiles: int = 22) -> None:
+    def __init__(self, pit_tiles: int = 24) -> None:
         self.pit_tiles = pit_tiles
 
     @classmethod
     def random(cls, rng: random.Random) -> "BoxLavaSegment":
-        return cls(pit_tiles=rng.randint(20, 24))
+        # Fixed at the campaign-proven, vault-proof width. Randomizing narrower
+        # risks re-introducing a vaultable (box-optional) pit.
+        return cls(pit_tiles=24)
 
     def build(self, world, x_offset: float) -> float:
         x = x_offset
         x += self._chunk(Flat(width_tiles=2), world, x)
+        x += self._chunk(BoostPadChunk(width_tiles=3, multiplier=1.8), world, x)
         x += self._chunk(BoxLavaGap(pit_tiles=self.pit_tiles), world, x)
         x += self._chunk(GoalChunk(width_tiles=2), world, x)
         return x - x_offset
 
 
+_BOX_STEP_PIT_TILES = 24
+_BOX_STEP_DEPTH = 72
+_BOX_STEP_BOX = 64
+
+
+class BoxStepSegment(SegmentTemplate):
+    """Tier 2 — curriculum stage 1: a single jump ONTO a pre-placed box, then a
+    single jump OFF it to the goal. The box is centered in a vault-proof lava pit
+    (a bare DOUBLE_JUMP cannot clear it), so the box is the only way across; but
+    it sits exactly where a natural single jump lands, so the lesson is gentle."""
+
+    tier = 2
+    min_abilities = frozenset({Ability.DOUBLE_JUMP})
+
+    @classmethod
+    def random(cls, rng):
+        return cls()  # fixed, probe-tuned geometry
+
+    def build(self, world, x_offset: float) -> float:
+        x = x_offset
+        x += self._chunk(Flat(width_tiles=2), world, x)
+        x += self._chunk(Flat(width_tiles=3), world, x)
+        x += self._chunk(BoxLavaGap(pit_tiles=_BOX_STEP_PIT_TILES,
+                                    depth=_BOX_STEP_DEPTH,
+                                    box_size=_BOX_STEP_BOX,
+                                    box_frac=0.5), world, x)
+        x += self._chunk(GoalChunk(width_tiles=2), world, x)
+        return x - x_offset
+
+
 class KeyDoorBoxLavaSegment(SegmentTemplate):
-    """Tier 3 — unlock a door, then cross a box/lava pit, then the goal.
-    The pit uses vault-proof pit_tiles=24 (matching campaign maze.json) so the
-    box-push is mandatory even with DOUBLE_JUMP granted."""
+    """Tier 3 — unlock a door, then cross a box/lava pit, then the goal. A
+    boost_pad (width 3, multiplier 1.8) immediately before the pit drives the
+    box far across the low-friction pit floor, splitting the wide 24-tile pit
+    into two jumpable gaps (mirroring campaign maze.json). The pit uses the
+    vault-proof pit_tiles=24 width so the box-push is mandatory even with the
+    boost and DOUBLE_JUMP granted."""
 
     tier = 3
     min_abilities = frozenset({Ability.DOUBLE_JUMP})
@@ -113,6 +154,7 @@ class KeyDoorBoxLavaSegment(SegmentTemplate):
         x += self._chunk(KeyChunk(width_tiles=2, key_id=0, y_offset=40), world, x)
         x += self._chunk(DoorChunk(width_tiles=2, key_id=0), world, x)
         x += self._chunk(Flat(width_tiles=2), world, x)
+        x += self._chunk(BoostPadChunk(width_tiles=3, multiplier=1.8), world, x)
         x += self._chunk(BoxLavaGap(pit_tiles=24), world, x)
         x += self._chunk(GoalChunk(width_tiles=2), world, x)
         return x - x_offset
