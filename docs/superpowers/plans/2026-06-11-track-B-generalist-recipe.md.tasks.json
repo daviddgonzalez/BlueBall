@@ -31,7 +31,7 @@
     {
       "id": 4,
       "subject": "Task 4: Acceptance — backward-compat + warm-start + e2e",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [3],
       "description": "**Goal:** Lock the brief's acceptance criteria with explicit tests and confirm single-mode trainers are untouched.\n\n**Files:** tests/test_generalist_recipe.py.\n\n**Acceptance Criteria:** train infinite/levels/gym byte-identical to a pre-Track-B baseline at fixed tiny config (measure on base, then pin); warm-start gen-0 >= mover's infinite score; generalist e2e writes final_best.npy + per-kind scores; full suite green.\n\n**Verify:** `PYTHONPATH=src python3 -m pytest -q`\n\n```json:metadata\n{\"files\": [\"tests/test_generalist_recipe.py\"], \"verifyCommand\": \"PYTHONPATH=src python3 -m pytest -q\", \"acceptanceCriteria\": [\"train infinite/levels/gym byte-identical pins\",\"warm-start gen-0 >= mover score\",\"generalist e2e writes artifacts\",\"full suite green\"]}\n```"
     }
