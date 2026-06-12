@@ -124,6 +124,9 @@ NUM_RAYS = 8
 # Active render theme. "pixel" ships now; "neon" is a future slot.
 ACTIVE_THEME = "pixel"
 
+# Audio
+AUDIO_ENABLED = True   # master switch for SFX (also gated by BLUEBALL_NO_AUDIO env)
+
 # AI / GA training
 TRAIN_POP_SIZE      = 80      # spec default for real training
 TRAIN_GENERATIONS   = 200     # spec default for real training
