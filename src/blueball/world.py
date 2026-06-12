@@ -28,6 +28,10 @@ class World:
         # their entity in O(1). Populated in add_entity, purged on removal.
         self._shape_to_entity: dict = {}
         self.level_complete = False
+        # SFX names emitted by collision handlers this frame; PlayScene drains
+        # them into the SoundManager. The headless trainer never drains it
+        # (appending a string does not touch physics, so determinism holds).
+        self.sound_events: list[str] = []
 
     def add_entity(self, entity) -> None:
         """Register an entity with the world. Adds the entity's bodies and shapes
@@ -49,6 +53,9 @@ class World:
 
     def complete_level(self) -> None:
         self.level_complete = True
+
+    def emit_sound(self, name: str) -> None:
+        self.sound_events.append(name)
 
     def _run_one_substep(self) -> None:
         """Advance physics + entities by exactly one PHYS_DT substep."""

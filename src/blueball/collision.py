@@ -99,6 +99,7 @@ def register(space: pymunk.Space, world_ref) -> None:
             return False
         player.reached_goal = True
         world_ref.complete_level()
+        world_ref.emit_sound("fanfare")
         return False  # sensor
 
     def on_ability_pickup(arbiter, space_, data):
@@ -118,6 +119,7 @@ def register(space: pymunk.Space, world_ref) -> None:
                 player.receive_boost(
                     entity.multiplier, getattr(entity, "direction", 1.0)
                 )
+                world_ref.emit_sound("whoosh")
         return False  # sensor — no physical response
 
     def _on_stompable(arbiter):
@@ -184,6 +186,7 @@ def register(space: pymunk.Space, world_ref) -> None:
         )
         if player is not None:
             player.receive_spring(spring_entity.impulse)
+            world_ref.emit_sound("spring")
         else:
             # Non-player dynamic body (e.g. pushable box). Set a floor launch
             # speed (same as the player path) so the bounce is consistent
@@ -238,6 +241,7 @@ def register(space: pymunk.Space, world_ref) -> None:
                 continue
             if player is not None:
                 player.collect_key(entity.key_id)
+                world_ref.emit_sound("key")
             entity._collected = True
         return False  # sensor — no physical response
 
