@@ -191,7 +191,7 @@ def _per_kind_scores(genome, episodes) -> dict[str, float]:
     for ep in episodes:
         if ep.kind == "infinite":
             _, raw = evaluate_infinite(
-                (0, genome, ep.seed, ep.world_seed, ep.max_steps))
+                (0, genome, ep.seed, ep.world_seed, ep.max_steps, ep.abilities))
             infinite_scores.append(float(raw))
         elif ep.kind == "gym":
             _, raw = evaluate_gym(

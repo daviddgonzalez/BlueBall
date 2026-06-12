@@ -106,7 +106,7 @@ def test_run_dir_name_generalist():
 def test_per_kind_scores_grouping(monkeypatch):
     # Stub the three evaluators so the test is fast and the grouping is exact.
     def fake_infinite(args):
-        idx, genome, seed, world_seed, max_steps = args
+        idx, genome, seed, world_seed, max_steps, abilities = args
         return idx, float(seed)  # score == seed so we can check the average
 
     def fake_gym(args):

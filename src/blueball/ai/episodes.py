@@ -171,11 +171,11 @@ def mixed_episodes(infinite_seeds: Sequence[int], level_names: Sequence[str],
     """The generalist objective: infinite + static + gym EpisodeSpecs, IN THAT
     ORDER. `abilities` (e.g. ("double_jump",)) is set on all three kinds so the
     generalist trains double-jump-capable, not only where a level's JSON declares
-    it. NOTE: static (via `evaluate` union with the level's starting_abilities)
-    and gym (via `evaluate_gym`) actually CONSUME the granted abilities today;
-    the infinite path carries them as metadata but `evaluate_infinite` does not
-    yet read them, so infinite trains single-jump until Track D's abilities flag
-    lands and the infinite dispatch threads `ep.abilities` through.
+    it. All three kinds now CONSUME the granted abilities: static via `evaluate`
+    (union with the level's starting_abilities), gym via `evaluate_gym`, and
+    infinite via `evaluate_infinite` + the `evaluate_episodes` dispatch (Track D's
+    flag, cherry-picked onto this branch, threads `ep.abilities` through to the
+    chunk sampler so double-jump-required Infinite chunks become eligible).
 
     Cross-kind normalization: static keeps its per-level par norm; infinite and
     gym are given `GENERALIST_INFINITE_PAR` / `GENERALIST_GYM_PAR` divisors (NOT
