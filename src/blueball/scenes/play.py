@@ -25,6 +25,7 @@ from ..levels.streaming import (
     INITIAL_BUILD_CHUNKS as _INITIAL_BUILD_CHUNKS,
     MAX_GROUND_ELEV as _MAX_GROUND_ELEV,
 )
+from ..audio import SoundManager
 from ..render.renderer import Renderer
 from ..world import World
 from .base import Scene
@@ -68,6 +69,7 @@ class PlayScene(Scene):
         self.particles = ParticleSystem(
             int(get_active_theme().params.get("particle_cap", 300))
         )
+        self._sound = SoundManager()
         self._was_grounded = False
         self._prev_collected = 0
         self._last_respawn_xy: tuple[float, float] | None = None
@@ -183,6 +185,7 @@ class PlayScene(Scene):
         # Age existing visual FX every frame (before emitting new ones).
         self.core.update(frame_dt)
         self.particles.update(frame_dt)
+        self._drain_sounds()
         if self._streaming:
             self._run_max_x = max(self._run_max_x, self.player.body.position.x)
             self._score = int(10 * self._run_max_x)
@@ -235,6 +238,11 @@ class PlayScene(Scene):
             target=(self.player.body.position.x, self.player.body.position.y),
             dt=frame_dt,
         )
+
+    def _drain_sounds(self) -> None:
+        for name in self.world.sound_events:
+            self._sound.play(name)
+        self.world.sound_events.clear()
 
     def draw(self) -> None:
         self.renderer.draw_parallax(self.camera)
