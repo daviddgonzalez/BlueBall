@@ -1,0 +1,31 @@
+{
+  "planPath": "docs/superpowers/plans/2026-06-12-race-mode.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1: Ghost core — record + replay (scenes/ghost.py)",
+      "status": "pending",
+      "description": "**Goal:** record_ghost_track (captures a genome's deterministic run as an (N,3) pose array) + GhostRunner (replays in real time).\n\n**Files:** Create src/blueball/scenes/ghost.py; Test tests/test_ghost.py\n\n**Acceptance Criteria:**\n- GhostRunner paces at config.PHYS_DT/row, freezes on last pose (done).\n- empty track -> ValueError.\n- record_ghost_track returns faithful non-empty (N,3) track; len==sim.steps.\n\n**Verify:** `.venv/bin/python -m pytest tests/test_ghost.py -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/scenes/ghost.py\", \"tests/test_ghost.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_ghost.py -q\", \"acceptanceCriteria\": [\"GhostRunner paces at PHYS_DT/row and freezes at end\", \"empty track raises ValueError\", \"record_ghost_track faithful non-empty (N,3), len==sim.steps\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Ghost rendering — draw_ghost_ball (render/renderer.py)",
+      "status": "pending",
+      "description": "**Goal:** Renderer method blitting the ball sprite darkened + translucent at a world position.\n\n**Files:** Modify src/blueball/render/renderer.py (__init__ + draw_ghost_ball); Test tests/test_ghost_render.py\n\n**Acceptance Criteria:**\n- draw_ghost_ball(world_xy, deg) blits headless without error.\n- cached ghost sprite avg alpha < opaque ball sprite.\n\n**Verify:** `.venv/bin/python -m pytest tests/test_ghost_render.py -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/render/renderer.py\", \"tests/test_ghost_render.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_ghost_render.py -q\", \"acceptanceCriteria\": [\"draw_ghost_ball blits headless without error\", \"cached ghost sprite avg alpha < opaque ball\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Race genome assets + config resolver (config.py, assets/race_ghosts/)",
+      "status": "pending",
+      "description": "**Goal:** Bundle best genome per static level as committed assets + config mapping/resolver.\n\n**Files:** Create src/blueball/assets/race_ghosts/{generalist,vertical_climb}.npy; Modify src/blueball/config.py; Test tests/test_race_genomes.py\n\n**Acceptance Criteria:**\n- resolve_race_ghost_genome(level) returns an existing (510,) genome for each of the 5 static levels.\n- unknown level -> None.\n\n**Verify:** `.venv/bin/python -m pytest tests/test_race_genomes.py -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\", \"src/blueball/assets/race_ghosts/generalist.npy\", \"src/blueball/assets/race_ghosts/vertical_climb.npy\", \"tests/test_race_genomes.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_race_genomes.py -q\", \"acceptanceCriteria\": [\"5 static levels resolve to existing (510,) genome\", \"unknown level -> None\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: Race scene flow — ModeSelect + Menu(mode) + PlayScene ghost + cli",
+      "status": "pending",
+      "blockedBy": [1, 2, 3],
+      "description": "**Goal:** Wire landing screen, mode-aware level select, and the in-game ghost into a playable race.\n\n**Files:** Create src/blueball/scenes/mode_select.py; Modify src/blueball/scenes/menu.py, src/blueball/scenes/play.py, src/blueball/cli.py; Test tests/test_race_flow.py\n\n**Acceptance Criteria:**\n- ModeSelect routes to MenuScene(mode); Esc->None.\n- race menu hides Infinite Run; single shows it.\n- race select -> PlayScene with GhostRunner; no genome -> ghost None.\n- PlayScene(ghost) updates+draws headless; ghost=None unchanged.\n\n**Verify:** `.venv/bin/python -m pytest tests/test_race_flow.py -q && .venv/bin/python -m pytest -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/scenes/mode_select.py\", \"src/blueball/scenes/menu.py\", \"src/blueball/scenes/play.py\", \"src/blueball/cli.py\", \"tests/test_race_flow.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_race_flow.py -q && .venv/bin/python -m pytest -q\", \"acceptanceCriteria\": [\"ModeSelect routes to MenuScene(mode); Esc->None\", \"race menu hides Infinite, single shows it\", \"race select -> PlayScene with GhostRunner; no genome -> None\", \"PlayScene(ghost) updates+draws; ghost=None unchanged\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-06-12"
+}
