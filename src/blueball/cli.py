@@ -275,7 +275,7 @@ def cmd_train_generalist(args) -> int:
 def cmd_play(args) -> int:
     import os
     import pygame
-    from .scenes.menu import MenuScene
+    from .scenes.mode_select import ModeSelectScene
 
     pygame.init()
     screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
@@ -285,7 +285,7 @@ def cmd_play(args) -> int:
     # so normal play is unaffected; lets you measure real window-present FPS,
     # which a headless profiler can't (display.flip is a no-op under dummy SDL).
     show_fps = bool(os.environ.get("BLUEBALL_FPS"))
-    scene = MenuScene(screen)
+    scene = ModeSelectScene(screen)
     while scene is not None:
         scene = scene.handle_events(pygame.event.get())
         if scene is None:

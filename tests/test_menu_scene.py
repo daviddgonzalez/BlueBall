@@ -55,7 +55,8 @@ def test_menu_enter_on_infinite_run_returns_streaming_playscene():
     assert len(result._built_chunks) > 0
 
 
-def test_menu_esc_returns_none():
+def test_menu_esc_returns_mode_select():
+    from blueball.scenes.mode_select import ModeSelectScene
     m = MenuScene(pygame.display.get_surface())
     result = m.handle_events([_key_event(pygame.K_ESCAPE)])
-    assert result is None
+    assert isinstance(result, ModeSelectScene)

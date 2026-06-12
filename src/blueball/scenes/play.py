@@ -5,6 +5,7 @@ materializing all of them at level load.
 
 from __future__ import annotations
 
+import math
 import random
 from pathlib import Path
 
@@ -37,6 +38,8 @@ class PlayScene(Scene):
         level_data: dict | None = None,
         sampler_seed: int | None = None,
         extra_abilities: set[Ability] | frozenset[Ability] = frozenset(),
+        ghost=None,
+        mode: str = "single",
     ) -> None:
         if (level_path is None) == (level_data is None):
             raise ValueError("PlayScene requires exactly one of level_path or level_data")
@@ -47,6 +50,8 @@ class PlayScene(Scene):
         # Abilities force-granted on top of whatever the save unlocked. Lets a
         # debug/showcase loop guarantee e.g. double jump without touching the save.
         self._extra_abilities = frozenset(extra_abilities)
+        self._ghost = ghost
+        self._mode = mode
         # Streaming is opted into by providing sampler_seed. Regular hand-built
         # levels still load eagerly via load_level().
         self._streaming: bool = sampler_seed is not None
@@ -156,17 +161,19 @@ class PlayScene(Scene):
     def handle_events(self, events):
         if self._exit_to_menu:
             from .menu import MenuScene
-            return MenuScene(self.screen)
+            return MenuScene(self.screen, mode=self._mode)
         for event in events:
             if event.type == pygame.QUIT:
                 return None
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 from .menu import MenuScene
-                return MenuScene(self.screen)
+                return MenuScene(self.screen, mode=self._mode)
         return self
 
     def update(self, frame_dt: float) -> None:
         self.renderer.begin_frame(self.world)
+        if self._ghost is not None:
+            self._ghost.update(frame_dt)
         if self._streaming:
             self._maintain_streaming(self.player.body.position.x)
         # Sampled BEFORE the step purely to scale a landing's screen shake to the
@@ -235,6 +242,9 @@ class PlayScene(Scene):
         alpha = self.world.alpha
         for entity in self.world.entities:
             entity.draw(self.renderer, alpha)
+        if self._ghost is not None:
+            gx, gy, ga = self._ghost.pose()
+            self.renderer.draw_ghost_ball((gx, gy), deg=-math.degrees(ga))
         self.particles.draw(self.renderer)
         if self._streaming:
             self.renderer.draw_score(self._score, max(self._best_score, self._score))

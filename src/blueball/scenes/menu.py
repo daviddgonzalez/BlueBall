@@ -14,10 +14,11 @@ from .play import PlayScene
 class MenuScene(Scene):
     INFINITE_RUN = "__infinite__"
 
-    def __init__(self, screen: pygame.Surface) -> None:
+    def __init__(self, screen: pygame.Surface, mode: str = "single") -> None:
         self.screen = screen
+        self.mode = mode
         levels_dir = Path(__file__).parent.parent / "levels"
-        self.entries: list[tuple[str, object]] = [
+        all_entries: list[tuple[str, object]] = [
             ("Tutorial Hill", levels_dir / "tutorial_hill.json"),
             ("Vertical Climb", levels_dir / "vertical_climb.json"),
             ("Speed Run", levels_dir / "speed_run.json"),
@@ -25,9 +26,30 @@ class MenuScene(Scene):
             ("Lava Rising", levels_dir / "lava_rising.json"),
             ("Infinite Run", self.INFINITE_RUN),
         ]
+        if mode == "race":
+            self.entries = [(lbl, tgt) for lbl, tgt in all_entries if tgt != self.INFINITE_RUN]
+        else:
+            self.entries = all_entries
         self.cursor: int = 0
         self._font = None
         self._title_font = None
+
+    def _start_race(self, level_path):
+        """Record the level's ghost (if a genome is bundled) and launch the race.
+        Falls back to a ghostless PlayScene when no genome is available."""
+        import numpy as np
+        from .. import config
+        from .ghost import GhostRunner, record_ghost_track
+        from ..abilities import Ability
+        ghost = None
+        genome_path = config.resolve_race_ghost_genome(Path(level_path).stem)
+        if genome_path is not None:
+            track = record_ghost_track(np.load(genome_path), level_path,
+                                       abilities=config.RACE_GHOST_ABILITIES)
+            ghost = GhostRunner(track)
+        return PlayScene(self.screen, level_path=level_path, ghost=ghost,
+                         mode="race",
+                         extra_abilities={Ability(a) for a in config.RACE_GHOST_ABILITIES})
 
     def handle_events(self, events):
         for event in events:
@@ -35,7 +57,8 @@ class MenuScene(Scene):
                 return None
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    return None
+                    from .mode_select import ModeSelectScene
+                    return ModeSelectScene(self.screen)
                 if event.key in (pygame.K_UP, pygame.K_w):
                     self.cursor = max(0, self.cursor - 1)
                 elif event.key in (pygame.K_DOWN, pygame.K_s):
@@ -55,8 +78,11 @@ class MenuScene(Scene):
                             "spawn": [80, 540],
                             "chunks": [],
                         }
-                        return PlayScene(self.screen, level_data=level_data, sampler_seed=seed)
-                    return PlayScene(self.screen, level_path=target)
+                        return PlayScene(self.screen, level_data=level_data, sampler_seed=seed,
+                                         mode=self.mode)
+                    if self.mode == "race":
+                        return self._start_race(target)
+                    return PlayScene(self.screen, level_path=target, mode="single")
         return self
 
     def update(self, frame_dt: float) -> None:
