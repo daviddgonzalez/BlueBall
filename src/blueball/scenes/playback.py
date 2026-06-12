@@ -190,7 +190,11 @@ class PlaybackSim:
 
         self.seed = seed
         self.level_name = f"Infinite Run (seed={seed})"
-        self._stream = TerrainStream(self.world, seed)
+        # Grant abilities to the terrain sampler too (not just the player), so the
+        # ability-gated double-jump chunks surface in the replay exactly as in
+        # evaluate_infinite. Mirrors the gym path's SegmentStream(..., granted).
+        self._stream = TerrainStream(self.world, seed,
+                                     abilities=frozenset(self.abilities))
         self.spawn_x, spawn_y = float(INFINITE_SPAWN[0]), float(INFINITE_SPAWN[1])
         self._spawn_player(genome, (self.spawn_x, spawn_y))
 

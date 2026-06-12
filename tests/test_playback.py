@@ -100,6 +100,37 @@ def test_infinite_fitness_matches_headless_evaluate_infinite():
     assert sim.fitness == pytest.approx(headless_fit)
 
 
+def test_infinite_fitness_matches_headless_evaluate_infinite_with_abilities():
+    """Regression: infinite playback WITH double_jump must match evaluate_infinite's
+    abilities run. The ability-gated double-jump chunks must appear in the REPLAY
+    terrain too — previously only the player got the grant, so the sampler omitted
+    them and the replay ran easier terrain (overstating distance/fitness)."""
+    from blueball.ai.trainer import evaluate_infinite
+
+    genome = random_genome(np.random.default_rng(3))
+    seed, max_steps = 5, 1500
+    abilities = ("double_jump",)
+
+    _, headless_fit = evaluate_infinite(
+        (0, genome, seed, WORLD_SEED, max_steps, abilities))
+
+    sim = PlaybackSim(genome, mode="infinite", seed=seed, world_seed=WORLD_SEED,
+                      max_steps=max_steps, abilities=abilities)
+    _drive(sim)
+    assert sim.fitness == pytest.approx(headless_fit)
+
+
+def test_infinite_playback_grants_abilities_to_terrain_sampler():
+    """Root-cause guard: the terrain sampler (not just the player) must receive the
+    granted abilities, so ability-gated chunks surface — matching evaluate_infinite."""
+    from blueball.abilities import Ability
+
+    genome = random_genome(np.random.default_rng(3))
+    sim = PlaybackSim(genome, mode="infinite", seed=5, world_seed=WORLD_SEED,
+                      max_steps=120, abilities=("double_jump",))
+    assert Ability.DOUBLE_JUMP in sim._stream.sampler.abilities
+
+
 def test_gym_fitness_matches_headless_evaluate_gym():
     """Completion-Gym playback (with double_jump, as the gym is trained) must
     equal the trainer's evaluate_gym — including its segment-clear counting."""
