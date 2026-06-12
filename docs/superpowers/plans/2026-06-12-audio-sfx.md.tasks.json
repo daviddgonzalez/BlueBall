@@ -1,0 +1,32 @@
+{
+  "planPath": "docs/superpowers/plans/2026-06-12-audio-sfx.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1: Synthesize the 4 SFX WAVs (sfx_gen.py + assets)",
+      "status": "pending",
+      "description": "**Goal:** generate_sfx(out_dir) writes 4 original WAVs + committed assets/sfx/*.wav.\n\n**Files:** Create src/blueball/sfx_gen.py + assets/sfx/{whoosh,spring,key,fanfare}.wav; Test tests/test_sfx_gen.py\n\n**Acceptance Criteria:**\n- generate_sfx writes 4 valid mono 16-bit WAVs >0 frames.\n- 4 committed assets exist under assets/sfx/.\n\n**Verify:** `.venv/bin/python -m pytest tests/test_sfx_gen.py -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/sfx_gen.py\", \"src/blueball/assets/sfx/whoosh.wav\", \"src/blueball/assets/sfx/spring.wav\", \"src/blueball/assets/sfx/key.wav\", \"src/blueball/assets/sfx/fanfare.wav\", \"tests/test_sfx_gen.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_sfx_gen.py -q\", \"acceptanceCriteria\": [\"generate_sfx writes 4 valid WAVs >0 frames\", \"4 committed assets exist\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: SoundManager + config flag (audio.py)",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "**Goal:** SoundManager loads + plays SFX, silent no-op when audio unavailable.\n\n**Files:** Create src/blueball/audio.py; Modify src/blueball/config.py (AUDIO_ENABLED=True); Test tests/test_audio.py\n\n**Acceptance Criteria:**\n- SoundManager constructs + play never raises headless.\n- BLUEBALL_NO_AUDIO=1 -> enabled False, play no-op.\n\n**Verify:** `.venv/bin/python -m pytest tests/test_audio.py -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/audio.py\", \"src/blueball/config.py\", \"tests/test_audio.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_audio.py -q\", \"acceptanceCriteria\": [\"SoundManager constructs + play never raises\", \"BLUEBALL_NO_AUDIO disables\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: World sound-event queue + collision emits (world.py, collision.py)",
+      "status": "pending",
+      "description": "**Goal:** World.sound_events queue filled by collision begin-handlers (boost/spring/key/goal).\n\n**Files:** Modify src/blueball/world.py, src/blueball/collision.py; Test tests/test_sound_events.py\n\n**Acceptance Criteria:**\n- fresh World sound_events==[]; emit_sound appends.\n- player overlapping Goal/Key/Spring/BoostPad then stepping queues fanfare/key/spring/whoosh.\n\n**Verify:** `.venv/bin/python -m pytest tests/test_sound_events.py -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/world.py\", \"src/blueball/collision.py\", \"tests/test_sound_events.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_sound_events.py -q\", \"acceptanceCriteria\": [\"emit_sound appends; fresh empty\", \"Goal/Key/Spring/BoostPad contact queues right name\", \"trainer determinism tests pass\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: PlayScene drains the queue (scenes/play.py)",
+      "status": "pending",
+      "blockedBy": [2, 3],
+      "description": "**Goal:** PlayScene owns a SoundManager and plays every queued sound each frame.\n\n**Files:** Modify src/blueball/scenes/play.py; Test tests/test_play_audio.py\n\n**Acceptance Criteria:**\n- after update with a queued sound, SoundManager received it and world.sound_events emptied.\n\n**Verify:** `.venv/bin/python -m pytest tests/test_play_audio.py -q && .venv/bin/python -m pytest -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/scenes/play.py\", \"tests/test_play_audio.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_play_audio.py -q && .venv/bin/python -m pytest -q\", \"acceptanceCriteria\": [\"update drains queued sound to SoundManager + empties queue\", \"full suite green\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-06-12"
+}
