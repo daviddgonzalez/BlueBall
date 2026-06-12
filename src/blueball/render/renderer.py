@@ -34,6 +34,7 @@ class Renderer:
         # Active-theme memo (see _theme); re-resolved when ACTIVE_THEME changes.
         self._theme_name: str | None = None
         self._cached_theme = None
+        self._ghost_ball = None  # cached darkened/translucent ball sprite (Race ghost)
         # Static-segment world-endpoint cache (see _static_segments). Rebuilt
         # only when the space identity or its shape count changes.
         self._seg_space: weakref.ref | None = None
@@ -151,6 +152,26 @@ class Renderer:
         """Time-based scale factor oscillating around 1.0 for idle-pulse visuals."""
         t = pygame.time.get_ticks() / 1000.0
         return 1.0 + magnitude * math.sin(t * 2 * math.pi * config.COLLECTIBLE_PULSE_HZ)
+
+    def draw_ghost_ball(self, world_xy, deg: float = 0.0, *,
+                        opacity: float = 0.5, darken: float = 0.55) -> None:
+        """Blit the ball sprite darkened (RGB×darken) and translucent
+        (alpha×opacity) at world_xy — the Race-mode AI ghost. The tinted surface
+        is built once and cached (the first call's darken/opacity win)."""
+        if self._ghost_ball is None:
+            theme = self._theme()
+            base = theme.sprites["ball"].frame(0, theme.palette).copy()
+            d = max(0, min(255, int(255 * darken)))
+            a = max(0, min(255, int(255 * opacity)))
+            # BLEND_RGBA_MULT scales every channel incl. alpha: darkens AND fades.
+            base.fill((d, d, d, a), special_flags=pygame.BLEND_RGBA_MULT)
+            self._ghost_ball = base
+        surf = self._ghost_ball
+        if deg:
+            surf = pygame.transform.rotate(surf, deg)
+        px, py = self.camera.world_to_screen(world_xy)
+        ox, oy = self.core.shake_offset if self.core else (0.0, 0.0)
+        self.screen.blit(surf, surf.get_rect(center=(round(px + ox), round(py + oy))))
 
     def draw_ball(self, body: pymunk.Body, alpha: float) -> None:
         wx, wy = self._interp_body_pos(body, alpha)
