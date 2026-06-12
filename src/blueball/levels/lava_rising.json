@@ -3,6 +3,11 @@
   "background": "#1f2540",
   "ground": "#444a5c",
   "spawn": [80, 540],
+  "curriculum_spawns": [
+    {"x": 2740, "y": 50,  "keys": [0, 1], "label": "near_goal"},
+    {"x": 1744, "y": 220, "keys": [0],    "label": "before_key1"},
+    {"x": 720,  "y": 220, "keys": [],     "label": "before_key0"}
+  ],
   "lava": {"start_y": 1100, "rise_speed": 22, "width_overflow": 400},
   "chunks": [
     {"type": "flat", "width_tiles": 2},

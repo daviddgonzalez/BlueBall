@@ -4,6 +4,12 @@
   "ground": "#3a3a52",
   "spawn": [80, 540],
   "starting_abilities": ["double_jump"],
+  "curriculum_spawns": [
+    {"x": 1800, "y": -1970, "keys": [], "label": "near_goal"},
+    {"x": 1800, "y": -1200, "keys": [], "label": "stage_3"},
+    {"x": 1800, "y": -510,  "keys": [], "label": "stage_2"},
+    {"x": 1800, "y": 180,   "keys": [], "label": "stage_1"}
+  ],
   "lava": {"start_y": 1210, "rise_speed": 26, "width_overflow": 400},
   "cannons": [
     {"x": 1632, "y_offset": 520, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 240, "pulse_period_s": 0.5, "max_travel": 300, "phase_s": 0.0},
