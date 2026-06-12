@@ -150,3 +150,33 @@ def test_unknown_starting_ability_raises(tmp_path):
     path.write_text(json.dumps(level))
     with pytest.raises(ValueError):
         load_level(path, World())
+
+
+def test_curriculum_spawns_parsed(tmp_path):
+    import json
+    from blueball.levels.loader import load_level
+    from blueball.world import World
+    level = {
+        "name": "T", "background": "#000000", "ground": "#000000",
+        "spawn": [0, 0],
+        "curriculum_spawns": [{"x": 100, "y": 50, "keys": [0], "label": "a"}],
+        "chunks": [{"type": "flat", "width_tiles": 2}],
+    }
+    path = tmp_path / "l.json"
+    path.write_text(json.dumps(level))
+    meta = load_level(path, World())
+    assert meta.curriculum_spawns == ({"x": 100, "y": 50, "keys": [0], "label": "a"},)
+
+
+def test_curriculum_spawns_absent_is_empty(tmp_path):
+    import json
+    from blueball.levels.loader import load_level
+    from blueball.world import World
+    level = {
+        "name": "T", "background": "#000000", "ground": "#000000",
+        "spawn": [0, 0], "chunks": [{"type": "flat", "width_tiles": 2}],
+    }
+    path = tmp_path / "l.json"
+    path.write_text(json.dumps(level))
+    meta = load_level(path, World())
+    assert meta.curriculum_spawns == ()

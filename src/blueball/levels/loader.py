@@ -22,6 +22,8 @@ class LevelMeta:
     ground: tuple[int, int, int]
     total_width: float
     starting_abilities: frozenset[Ability] = frozenset()
+    # Optional terrain-aware reverse-curriculum spawn waypoints; absent → empty.
+    curriculum_spawns: tuple[dict, ...] = ()
 
 
 def _hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
@@ -92,6 +94,8 @@ def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
     starting_abilities = frozenset(
         Ability(a) for a in data.get("starting_abilities", [])
     )
+    # Optional terrain-aware reverse-curriculum spawn override; absent → empty.
+    curriculum_spawns = tuple(data.get("curriculum_spawns", []))
     spawn = tuple(data["spawn"])
     return LevelMeta(
         name=data["name"],
@@ -100,4 +104,5 @@ def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
         ground=_hex_to_rgb(data["ground"]),
         total_width=x,
         starting_abilities=starting_abilities,
+        curriculum_spawns=curriculum_spawns,
     )
