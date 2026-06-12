@@ -41,6 +41,42 @@ def test_aggregate_min_single_score_is_identity():
     assert aggregate_fitness([0.7], lam=1.0, mode="min") == 0.7
 
 
+def test_select_objective_scores_drops_exempt_so_min_is_next_lowest():
+    # Specialist-exempt episodes (maze/vertical_climb in the generalist) must not
+    # participate in the objective: with the lowest score exempted, the surviving
+    # scores are everything else — so a downstream `min` lands on the NEXT lowest.
+    from blueball.ai.episodes import select_objective_scores
+    kept = select_objective_scores([0.1, 0.5, 0.9], [True, False, False])
+    assert kept == [0.5, 0.9]
+
+
+def test_select_objective_scores_all_exempt_falls_back_to_all():
+    # Guard: never hand an empty list to the aggregator. If every episode is
+    # exempt, fall back to all scores.
+    from blueball.ai.episodes import select_objective_scores
+    assert select_objective_scores([0.1, 0.2], [True, True]) == [0.1, 0.2]
+
+
+def test_evaluate_episodes_min_ignores_exempt_worst_episode():
+    # End-to-end wiring: two identical infinite episodes (same seed → same raw
+    # fitness). One is marked exempt with a huge norm so its score ≈ 0 (the
+    # would-be min). The min objective must ignore it and return the non-exempt
+    # episode's score.
+    from blueball.ai.episodes import EpisodeSpec
+    from blueball.ai.genome import random_genome
+    from blueball.ai.trainer import evaluate_episodes
+
+    genome = random_genome(np.random.default_rng(0))
+    keep = EpisodeSpec(kind="infinite", seed=1234, level_path=None,
+                       world_seed=1, max_steps=300, norm=1.0)
+    drop = EpisodeSpec(kind="infinite", seed=1234, level_path=None,
+                       world_seed=1, max_steps=300, norm=1e9, min_exempt=True)
+
+    _, agg = evaluate_episodes((0, genome, (keep, drop), 0.0, "min"))
+    _, keep_only = evaluate_episodes((0, genome, (keep,), 0.0, "min"))
+    assert agg == keep_only
+
+
 def test_aggregate_min_empty_raises():
     from blueball.ai.episodes import aggregate_fitness
     with pytest.raises(ValueError):

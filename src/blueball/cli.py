@@ -239,11 +239,16 @@ def cmd_train_generalist(args) -> int:
             raise SystemExit(f"--init genome not found: {args.init} ({e})")
     run_dir = _run_dir(world_seed=args.world_seed, num_levels=len(level_names),
                        generalist=True)
+    exempt_in_mix = [n for n in level_names
+                     if n in config.GENERALIST_MIN_EXEMPT_LEVELS]
     print(f"Training {args.pop}x{args.gens} generalist (aggregate={args.aggregate}) "
           f"infinite_seeds={infinite_seeds} levels={level_names} "
           f"gym_seeds={gym_seeds} abilities={abilities or '(single jump)'} "
           f"world={args.world_seed} ga={args.ga_seed}"
           f"{' warm-start=' + args.init if args.init else ''}\n  -> {run_dir}")
+    if args.aggregate == "min" and exempt_in_mix:
+        print(f"  min objective EXEMPTS specialist levels {exempt_in_mix} "
+              f"(scored + reported, but not selected on)")
     with _pool(args.workers) as (_, map_fn):
         result = train(pop_size=args.pop, generations=args.gens, episodes=episodes,
                        aggregate=args.aggregate, ga_seed=args.ga_seed,
@@ -255,8 +260,11 @@ def cmd_train_generalist(args) -> int:
     scores = _per_kind_scores(result.best_genome, episodes)
     (Path(run_dir) / "per_kind_scores.json").write_text(json.dumps(scores, indent=2))
     print("Per-kind scores (final best):")
+    exempt = set(config.GENERALIST_MIN_EXEMPT_LEVELS)
     for k in sorted(scores):
-        print(f"  {k}: {scores[k]:.1f}")
+        stem = k.split(":", 1)[1] if k.startswith("static:") else None
+        tag = "   (exempt from min — specialist)" if stem in exempt else ""
+        print(f"  {k}: {scores[k]:.1f}{tag}")
     print(f"Best genome + history + per-kind scores written to {run_dir}")
     return 0
 

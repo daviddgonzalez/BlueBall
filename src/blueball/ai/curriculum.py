@@ -36,6 +36,12 @@ _GOAL_NAME = "Goal"
 # easy iteration; selection is comparative so the exact value isn't load-bearing.
 SPAWN_MARGIN = 96.0
 
+# Dense climb shaping (a +climb_height fitness term) engages only when the level
+# is a genuine vertical climb — its goal sits at least this many px ABOVE the
+# spawn. Keeps horizontal specialists (e.g. maze, goal ~level with spawn) byte-
+# identical: their incidental jumps onto high platforms inject no spurious bonus.
+CLIMB_SHAPING_MIN_RISE = 360.0
+
 
 @dataclass(frozen=True)
 class CurriculumStage:
@@ -147,10 +153,20 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
     meta = load_level(level_path, world)
 
     spawn_x = float(spawn_xy[0])
+    spawn_y = float(spawn_xy[1])
     player = make_curriculum_player(world, genome, spawn_xy, granted_keys,
                                     meta.starting_abilities)
 
+    # Engage dense climb shaping only for true vertical levels (goal well above
+    # the spawn). Horizontal levels get no height term, staying byte-identical.
+    goal_y = next((float(e.position[1]) for e in world.entities
+                   if type(e).__name__ == _GOAL_NAME), None)
+    climb_shaping = goal_y is not None and (spawn_y - goal_y) >= CLIMB_SHAPING_MIN_RISE
+
     max_x = spawn_x
+    # Highest point reached (screen-up is -y). Tracks net upward progress so the
+    # vertical climb is densely rewarded — robust to falling back, mirroring max_x.
+    min_y = spawn_y
     steps = 0
     while steps < max_steps:
         # Use substep() — exactly one PHYS_DT step with no accumulator residual,
@@ -159,6 +175,8 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
         steps += 1
         if player.body.position.x > max_x:
             max_x = player.body.position.x
+        if player.body.position.y < min_y:
+            min_y = player.body.position.y
         if player.dead or player.reached_goal:
             break
 
@@ -174,6 +192,7 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
         steps_taken=steps,
         keys_collected=collected,
         level_width=float(meta.total_width),
+        climb_height=float(max(0.0, spawn_y - min_y)) if climb_shaping else 0.0,
     ))
     return idx, float(f), bool(player.reached_goal)
 

@@ -33,6 +33,8 @@ class EpisodeSpec:
     max_steps: int
     norm: float = 1.0         # divisor applied to this episode's raw fitness
     abilities: tuple[str, ...] = ()  # gym: granted ability names; () elsewhere
+    min_exempt: bool = False  # exclude from the worst-case `min` objective
+                              # (specialist levels — see select_objective_scores)
 
 
 def aggregate_fitness(scores: Sequence[float], lam: float, mode: str = "mean_std") -> float:
@@ -54,6 +56,19 @@ def aggregate_fitness(scores: Sequence[float], lam: float, mode: str = "mean_std
     if mode == "mean_std":
         return float(arr.mean() - lam * arr.std())
     raise ValueError(f"unknown aggregate mode {mode!r}")
+
+
+def select_objective_scores(scores: Sequence[float],
+                            exempt: Sequence[bool]) -> list[float]:
+    """The per-episode scores that count toward the aggregate objective.
+
+    Drops `min_exempt` episodes (specialist levels the generalist evaluates and
+    reports but should NOT select on), so a `min` objective lands on the next
+    lowest non-exempt score rather than the exempt one. Falls back to all scores
+    if every episode is exempt, so the aggregator is never handed an empty list.
+    """
+    kept = [s for s, ex in zip(scores, exempt) if not ex]
+    return kept if kept else list(scores)
 
 
 _GOAL_NAME = "Goal"
@@ -188,8 +203,11 @@ def mixed_episodes(infinite_seeds: Sequence[int], level_names: Sequence[str],
     ab = tuple(str(a) for a in abilities)
     inf = [replace(ep, abilities=ab, norm=config.GENERALIST_INFINITE_PAR)
            for ep in infinite_episodes(infinite_seeds, world_seed, max_steps)]
-    static = static_episodes(resolve_level_paths(level_names), world_seed,
-                             max_steps, abilities=ab)
+    # Specialist levels are evaluated/reported but exempt from the `min` objective.
+    exempt = set(config.GENERALIST_MIN_EXEMPT_LEVELS)
+    static = [replace(ep, min_exempt=Path(ep.level_path).stem in exempt)
+              for ep in static_episodes(resolve_level_paths(level_names),
+                                        world_seed, max_steps, abilities=ab)]
     gym = [replace(ep, abilities=ab, norm=config.GENERALIST_GYM_PAR)
            for ep in gym_episodes(gym_seeds, world_seed, max_steps, ab)]
     return inf + static + gym

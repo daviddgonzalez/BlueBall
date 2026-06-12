@@ -183,3 +183,9 @@ GENERALIST_LEVELS = (
 # selection. Tunable; start in the right ballpark and iterate on per-kind scores.
 GENERALIST_INFINITE_PAR = 2000.0              # reference distance (px) for a competent mover (~held-out floor target)
 GENERALIST_GYM_PAR = 5.0 * GYM_SEGMENT_BONUS  # reference: ~5 completion segments cleared
+# Levels trained as standalone specialists (see `train maze --level ...`). The
+# generalist still EVALUATES and REPORTS them (per_kind_scores), but its
+# worst-case `min` objective EXEMPTS them: a hard specialist level must not
+# dominate the generalist's selection — `min` lands on the next-lowest non-exempt
+# episode instead. Empty tuple = no exemption (every episode counts).
+GENERALIST_MIN_EXEMPT_LEVELS = ("maze", "vertical_climb")

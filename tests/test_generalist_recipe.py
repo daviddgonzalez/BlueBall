@@ -62,6 +62,34 @@ def test_mixed_episodes_composition():
     assert static_eps[0].norm > 100.0  # par-normalized static is the same scale
 
 
+def test_mixed_episodes_marks_specialist_levels_min_exempt():
+    # maze + vertical_climb are trained as standalone specialists, so the
+    # generalist's `min` objective must exempt them (they don't dominate the
+    # worst-case). Every other episode stays non-exempt.
+    from pathlib import Path
+    from blueball import config
+
+    eps = mixed_episodes(
+        infinite_seeds=[1],
+        level_names=list(config.GENERALIST_LEVELS),
+        gym_seeds=[4242],
+        world_seed=1,
+        max_steps=100,
+        abilities=("double_jump",),
+    )
+    exempt_stems = {
+        Path(e.level_path).stem
+        for e in eps if e.kind == "static" and e.min_exempt
+    }
+    assert exempt_stems == set(config.GENERALIST_MIN_EXEMPT_LEVELS)
+
+    # Nothing outside the exempt set is flagged (infinite, gym, other statics).
+    for e in eps:
+        is_exempt_level = (e.kind == "static"
+                           and Path(e.level_path).stem in config.GENERALIST_MIN_EXEMPT_LEVELS)
+        assert e.min_exempt == is_exempt_level
+
+
 def test_mixed_episodes_infinite_carries_abilities():
     eps = mixed_episodes(
         infinite_seeds=[1],

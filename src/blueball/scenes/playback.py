@@ -182,6 +182,11 @@ class PlaybackSim:
         self.level_width = float(meta.total_width)
         self.level_name = meta.name
         self.spawn_x, spawn_y = float(meta.spawn[0]), float(meta.spawn[1])
+        # Union the level's own declared starting_abilities (maze + vertical_climb
+        # grant double_jump), mirroring trainer.evaluate's `ep_abilities |
+        # meta.starting_abilities`, so the replay and HUD fitness stay faithful —
+        # a double-jump genome replays with the jumps it was trained to make.
+        self.abilities |= _abilities_set(meta.starting_abilities)
         self._spawn_player(genome, (self.spawn_x, spawn_y))
 
     def _setup_infinite(self, genome: np.ndarray, seed: int) -> None:

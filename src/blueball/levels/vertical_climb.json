@@ -3,6 +3,7 @@
   "background": "#1a1a2e",
   "ground": "#3a3a52",
   "spawn": [80, 540],
+  "starting_abilities": ["double_jump"],
   "lava": {"start_y": 1210, "rise_speed": 26, "width_overflow": 400},
   "cannons": [
     {"x": 1632, "y_offset": 520, "dir": "right", "interval_min_s": 0.3, "interval_max_s": 2.0, "speed": 240, "pulse_period_s": 0.5, "max_travel": 300, "phase_s": 0.0},

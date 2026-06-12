@@ -85,6 +85,31 @@ def test_static_fitness_matches_headless_evaluate():
     assert sim.fitness == pytest.approx(headless_fit)
 
 
+def test_static_playback_grants_level_starting_abilities():
+    """A static replay must include the level's own declared starting_abilities
+    (maze + vertical_climb declare double_jump), exactly as trainer.evaluate
+    unions them. Without this the HUD/replay diverge for every double-jump genome
+    on those levels — the ball can't make jumps it was trained to make."""
+    from blueball.abilities import Ability
+
+    genome = random_genome(np.random.default_rng(0))
+    sim = PlaybackSim(genome, mode="static", level_path=_level_path("maze"),
+                      world_seed=WORLD_SEED, max_steps=120)
+    assert Ability.DOUBLE_JUMP in sim.player.abilities
+
+
+def test_static_playback_unions_explicit_and_level_abilities():
+    """An explicit --abilities is added ON TOP of the level's declared abilities
+    (union, never replace) — mirroring evaluate's `ep_abilities | starting`."""
+    from blueball.abilities import Ability
+
+    genome = random_genome(np.random.default_rng(0))
+    sim = PlaybackSim(genome, mode="static", level_path=_level_path("maze"),
+                      world_seed=WORLD_SEED, max_steps=120,
+                      abilities=())  # no explicit abilities → still gets level's
+    assert Ability.DOUBLE_JUMP in sim.player.abilities
+
+
 def test_infinite_fitness_matches_headless_evaluate_infinite():
     """Infinite Run playback must equal the trainer's streamed evaluate_infinite."""
     from blueball.ai.trainer import evaluate_infinite

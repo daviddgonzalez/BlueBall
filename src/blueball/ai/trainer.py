@@ -43,7 +43,7 @@ from ..levels.loader import load_level
 from ..levels.segment_stream import SegmentStream
 from ..levels.streaming import TerrainStream
 from ..world import World
-from .episodes import EpisodeSpec, aggregate_fitness
+from .episodes import EpisodeSpec, aggregate_fitness, select_objective_scores
 from .fitness import FitnessInputs, fitness
 from .ftnn import GENOME_SIZE
 from .ga import breed
@@ -243,6 +243,7 @@ def evaluate_episodes(args: tuple) -> tuple[int, float]:
     if not episodes:
         raise ValueError("evaluate_episodes requires at least one episode")
     scores = []
+    exempt = []
     for ep in episodes:
         if ep.kind == "infinite":
             _, raw = evaluate_infinite(
@@ -255,7 +256,11 @@ def evaluate_episodes(args: tuple) -> tuple[int, float]:
                 (idx, genome, ep.world_seed, ep.level_path, ep.max_steps,
                  ep.abilities))
         scores.append(raw / ep.norm)
-    return idx, aggregate_fitness(scores, lam, mode)
+        exempt.append(ep.min_exempt)
+    # Specialist-exempt episodes (e.g. maze/vertical_climb in the generalist) are
+    # scored but excluded from the objective, so `min` targets the worst level we
+    # actually want the generalist to carry.
+    return idx, aggregate_fitness(select_objective_scores(scores, exempt), lam, mode)
 
 
 def train(

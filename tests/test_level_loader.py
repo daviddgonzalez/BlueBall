@@ -52,6 +52,20 @@ def test_load_vertical_climb_smoke():
     w = World()
     meta = load_level(path, w)
     assert meta.name == "Vertical Climb"
+
+
+def test_vertical_climb_declares_double_jump():
+    # The vertical-climb specialist (and the generalist) need double-jump to
+    # clear the stepped column; the curriculum trainer grants only what the
+    # level declares, so it must be in the JSON (like maze.json).
+    from pathlib import Path
+    from blueball.abilities import Ability
+    from blueball.levels.loader import load_level
+    from blueball.world import World
+    path = Path(__file__).parent.parent / "src" / "blueball" / "levels" / "vertical_climb.json"
+    w = World()
+    meta = load_level(path, w)
+    assert Ability.DOUBLE_JUMP in meta.starting_abilities
     assert meta.total_width > 0
 
 

@@ -21,11 +21,14 @@ class FitnessInputs:
     keys_collected: int  # popcount of player.keys_held
     level_width: float   # level total width; 0.0 for goalless (infinite) modes
     segments_cleared: int = 0  # gym: count of solved segments; 0 elsewhere
+    climb_height: float = 0.0  # net upward progress (px); only the vertical
+                               # curriculum populates it — 0.0 everywhere else
 
 
 def fitness(inputs: FitnessInputs) -> float:
     return (
         inputs.progress_x
+        + inputs.climb_height
         + 100.0 * inputs.keys_collected
         +  50.0 * inputs.collectibles
         + config.GOAL_MULT * inputs.level_width * (1.0 if inputs.reached_goal else 0.0)
