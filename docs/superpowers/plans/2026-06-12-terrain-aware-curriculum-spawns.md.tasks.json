@@ -4,20 +4,20 @@
     {
       "id": 1,
       "subject": "Task 1: Loader parses curriculum_spawns into LevelMeta",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** The level loader exposes an optional `curriculum_spawns` field; absent → empty tuple (every existing level unchanged).\n\n**Files:**\n- Modify: `src/blueball/levels/loader.py`\n- Test: `tests/test_level_loader.py`\n\n**Acceptance Criteria:**\n- LevelMeta has `curriculum_spawns: tuple[dict, ...] = ()`.\n- JSON with the field round-trips to a tuple of dicts.\n- Absent field yields `()`.\n\n**Verify:** `.venv/bin/python -m pytest tests/test_level_loader.py -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/loader.py\", \"tests/test_level_loader.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_level_loader.py -q\", \"acceptanceCriteria\": [\"LevelMeta has curriculum_spawns tuple field default ()\", \"JSON with field round-trips to tuple of dicts\", \"absent field yields ()\"]}\n```"
     },
     {
       "id": 2,
       "subject": "Task 2: build_spawn_curriculum declarative-waypoint branch",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [1],
       "description": "**Goal:** When a level declares `curriculum_spawns`, build stages from them (+ appended true start); otherwise the entity-derived path runs byte-identical.\n\n**Files:**\n- Modify: `src/blueball/ai/curriculum.py`\n- Test: `tests/test_ai_curriculum.py`\n\n**Acceptance Criteria:**\n- Declared waypoints → stages in order with correct spawn_xy + granted_keys bitmask + appended start stage (meta.spawn, keys 0).\n- maze (no field) → 4 entity-derived stages unchanged.\n\n**Verify:** `.venv/bin/python -m pytest tests/test_ai_curriculum.py -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/curriculum.py\", \"tests/test_ai_curriculum.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_ai_curriculum.py -q\", \"acceptanceCriteria\": [\"declared waypoints -> stages in order + correct granted_keys bitmask + appended start\", \"maze (no field) -> 4 entity-derived stages unchanged\"]}\n```"
     },
     {
       "id": 3,
       "subject": "Task 3: Author lava_rising + vertical_climb waypoints (+ validity/integration tests)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [2],
       "description": "**Goal:** Both vertical levels declare `curriculum_spawns` that land on real platforms (not the void), and the easiest lava_rising stage no longer plunges into the lava.\n\n**Files:**\n- Modify: `src/blueball/levels/lava_rising.json`, `src/blueball/levels/vertical_climb.json`\n- Test: `tests/test_curriculum_waypoints.py` (new)\n\n**Acceptance Criteria:**\n- lava_rising 3 waypoints near_goal-first, prior keys granted, ground within 120px.\n- vertical_climb 4 waypoints keys[], ground within 120px.\n- easiest lava_rising stage alive after 90 steps within 250px of spawn-y (fails before JSON change, passes after).\n\n**Verify:** `.venv/bin/python -m pytest tests/test_curriculum_waypoints.py -q && .venv/bin/python -m pytest -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/lava_rising.json\", \"src/blueball/levels/vertical_climb.json\", \"tests/test_curriculum_waypoints.py\"], \"verifyCommand\": \".venv/bin/python -m pytest tests/test_curriculum_waypoints.py -q && .venv/bin/python -m pytest -q\", \"acceptanceCriteria\": [\"lava_rising 3 waypoints near_goal-first prior keys granted ground within 120px\", \"vertical_climb 4 waypoints keys[] ground within 120px\", \"easiest lava_rising stage alive after 90 steps within 250px of spawn-y\"]}\n```"
     }
