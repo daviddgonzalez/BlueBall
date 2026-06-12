@@ -159,3 +159,27 @@ GA_SEED             = 0
 INFINITE_RUN_SEED   = 1234
 GYM_SEED            = 4242           # default base gym chain seed
 GYM_DEFAULT_NUM_SEEDS = 8            # multi-seed by default: gym chains must generalize
+
+# --- Generalist recipe (Track B) ---
+# Mix counts + level set for `train generalist`: one objective spanning Infinite
+# Run, the static campaign levels, and the Completion Gym, aggregated worst-first
+# (min) so the weakest kind drives selection. Seeds are derived from the
+# --infinite-seed / --gym-seed bases via generate_seeds.
+GENERALIST_INFINITE_SEEDS = 4   # count of Infinite Run sampler seeds in the generalist mix
+GENERALIST_GYM_SEEDS      = 4   # count of Completion Gym chain seeds in the generalist mix
+GENERALIST_LEVELS = (
+    "tutorial_hill",
+    "speed_run",
+    "lava_rising",
+    "vertical_climb",
+    "maze",
+)
+# Cross-kind normalization for the generalist objective. Static episodes are
+# par-normalized to ~1.0 (compute_level_par), but infinite/gym raw fitness is
+# hundreds-to-thousands. Without comparable divisors, `min` aggregation is driven
+# entirely by the worst static level (infinite/gym never picked) and `mean` by
+# infinite/gym (static ignored). These pars map each kind to ~0-1 ("fraction of a
+# competent run") so the weakest CAPABILITY — not the smallest raw units — drives
+# selection. Tunable; start in the right ballpark and iterate on per-kind scores.
+GENERALIST_INFINITE_PAR = 2000.0              # reference distance (px) for a competent mover (~held-out floor target)
+GENERALIST_GYM_PAR = 5.0 * GYM_SEGMENT_BONUS  # reference: ~5 completion segments cleared

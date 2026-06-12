@@ -10,7 +10,7 @@ pre-multi-episode behavior exactly.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Sequence, Union
 
@@ -149,11 +149,47 @@ def resolve_level_paths(names: Sequence[str]) -> list[str]:
     return paths
 
 
-def static_episodes(level_paths: Sequence[str], world_seed: int, max_steps: int) -> list[EpisodeSpec]:
-    """One static EpisodeSpec per level, each normalized by its level par."""
+def static_episodes(level_paths: Sequence[str], world_seed: int, max_steps: int,
+                    abilities: Sequence[str] = ()) -> list[EpisodeSpec]:
+    """One static EpisodeSpec per level, each normalized by its level par.
+
+    `abilities` (default ()) is a granted ability-name set carried on every
+    episode and unioned with the level's own starting_abilities at eval time;
+    the empty default keeps existing `train levels` byte-identical."""
+    ab = tuple(str(a) for a in abilities)
     return [
         EpisodeSpec(kind="static", seed=0, level_path=str(p),
                     world_seed=int(world_seed), max_steps=int(max_steps),
-                    norm=compute_level_par(p))
+                    norm=compute_level_par(p), abilities=ab)
         for p in level_paths
     ]
+
+
+def mixed_episodes(infinite_seeds: Sequence[int], level_names: Sequence[str],
+                   gym_seeds: Sequence[int], world_seed: int, max_steps: int,
+                   abilities: Sequence[str] = ()) -> list[EpisodeSpec]:
+    """The generalist objective: infinite + static + gym EpisodeSpecs, IN THAT
+    ORDER. `abilities` (e.g. ("double_jump",)) is set on all three kinds so the
+    generalist trains double-jump-capable, not only where a level's JSON declares
+    it. All three kinds now CONSUME the granted abilities: static via `evaluate`
+    (union with the level's starting_abilities), gym via `evaluate_gym`, and
+    infinite via `evaluate_infinite` + the `evaluate_episodes` dispatch (Track D's
+    flag, cherry-picked onto this branch, threads `ep.abilities` through to the
+    chunk sampler so double-jump-required Infinite chunks become eligible).
+
+    Cross-kind normalization: static keeps its per-level par norm; infinite and
+    gym are given `GENERALIST_INFINITE_PAR` / `GENERALIST_GYM_PAR` divisors (NOT
+    1.0) so all three kinds land at ~0-1 ("fraction of a competent run"). Without
+    this, the `min` objective is driven entirely by the worst static level
+    (infinite/gym raw fitness is hundreds-to-thousands, never the min) and `mean`
+    by infinite/gym — neither balances the three kinds. The single-mode
+    `infinite_episodes`/`gym_episodes` constructors keep norm=1.0; the par
+    divisor is applied here (via `replace`) only for the mixed objective."""
+    ab = tuple(str(a) for a in abilities)
+    inf = [replace(ep, abilities=ab, norm=config.GENERALIST_INFINITE_PAR)
+           for ep in infinite_episodes(infinite_seeds, world_seed, max_steps)]
+    static = static_episodes(resolve_level_paths(level_names), world_seed,
+                             max_steps, abilities=ab)
+    gym = [replace(ep, abilities=ab, norm=config.GENERALIST_GYM_PAR)
+           for ep in gym_episodes(gym_seeds, world_seed, max_steps, ab)]
+    return inf + static + gym

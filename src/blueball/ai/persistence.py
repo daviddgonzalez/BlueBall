@@ -36,6 +36,7 @@ def run_dir_name(
     num_seeds: int = 1,
     num_levels: int | None = None,
     curriculum: bool = False,
+    generalist: bool = False,
 ) -> str:
     """Build the per-run folder name from seeds/levels + a timestamp string.
 
@@ -46,8 +47,11 @@ def run_dir_name(
     mazecurr_w1_<ts>     reverse spawn-curriculum run for a single level
     gym4242_w1_<ts>      single-seed completion-gym run
     gym4242x8_w1_<ts>    multi-seed completion-gym run
+    genL5_w1_<ts>        generalist run (mixed objective over `num_levels` levels)
     """
-    if curriculum:
+    if generalist:
+        key = f"genL{num_levels if num_levels is not None else 0}"
+    elif curriculum:
         key = f"{level_name or 'level'}curr"
     elif num_levels is not None:
         key = f"lvls{num_levels}"

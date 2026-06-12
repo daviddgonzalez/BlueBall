@@ -1,0 +1,40 @@
+{
+  "planPath": "docs/superpowers/plans/2026-06-11-track-B-generalist-recipe.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 0: Foundation — land LevelMeta.starting_abilities",
+      "status": "completed",
+      "description": "**Goal:** Make static/maze training episodes spawn the player WITH double-jump (avoid the single-jump-on-double-jump-level false-verdict bug).\n\n**Files:** cherry-pick c830f92 0d76c7c 9e4080e 75f3778 from feature/controller-capacity; touches levels/loader.py, levels/maze.json, ai/curriculum.py, ai/trainer.py (evaluate), scenes/train.py, scenes/play.py.\n\n**Acceptance Criteria:** LevelMeta.starting_abilities exists; maze declares double_jump; static evaluate grants level starting_abilities; full suite green.\n\n**Verify:** `PYTHONPATH=src python3 -m pytest -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/loader.py\",\"src/blueball/levels/maze.json\",\"src/blueball/ai/curriculum.py\",\"src/blueball/ai/trainer.py\",\"src/blueball/scenes/train.py\",\"src/blueball/scenes/play.py\"], \"verifyCommand\": \"PYTHONPATH=src python3 -m pytest -q\", \"acceptanceCriteria\": [\"LevelMeta.starting_abilities exists; maze declares double_jump\",\"static evaluate grants level starting_abilities\",\"full suite green\"]}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 1: mixed_episodes constructor + static ability grant",
+      "status": "completed",
+      "blockedBy": [0],
+      "description": "**Goal:** One constructor returning the mixed, double-jump-granted, per-episode-normalized episode list; make static evaluate() honor episode-level abilities.\n\n**Files:** ai/episodes.py (mixed_episodes; abilities param on static_episodes), ai/trainer.py (evaluate() unions ep.abilities; evaluate_episodes static dispatch passes ep.abilities), tests/test_generalist_recipe.py.\n\n**Acceptance Criteria:** mixed_episodes returns infinite+static+gym in order; static/gym/infinite carry double_jump; static norm preserved; static evaluate honors ep.abilities; static_episodes backward-compatible.\n\n**Verify:** `PYTHONPATH=src python3 -m pytest tests/test_generalist_recipe.py -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/episodes.py\",\"src/blueball/ai/trainer.py\",\"tests/test_generalist_recipe.py\"], \"verifyCommand\": \"PYTHONPATH=src python3 -m pytest tests/test_generalist_recipe.py -q\", \"acceptanceCriteria\": [\"mixed_episodes composes infinite+static+gym in order\",\"static/gym/infinite carry double_jump\",\"static norm preserved\",\"static evaluate honors ep.abilities\",\"static_episodes backward-compatible\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Warm-start genome in train()",
+      "status": "completed",
+      "blockedBy": [0],
+      "description": "**Goal:** Optionally seed the initial GA population with a known genome (Track D's mover) so gen 0 already contains a strong individual.\n\n**Files:** ai/trainer.py (train() init_genome kwarg + seeding ~line 325), tests/test_generalist_recipe.py.\n\n**Acceptance Criteria:** init_genome seeds population[0]; init_genome=None byte-identical (seed AFTER random draw); wrong length raises ValueError; gen-0 best >= mover score.\n\n**Verify:** `PYTHONPATH=src python3 -m pytest tests/test_generalist_recipe.py -k warm_start -q`\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/trainer.py\",\"tests/test_generalist_recipe.py\"], \"verifyCommand\": \"PYTHONPATH=src python3 -m pytest tests/test_generalist_recipe.py -k warm_start -q\", \"acceptanceCriteria\": [\"init_genome seeds population[0]\",\"init_genome=None byte-identical\",\"wrong length raises ValueError\",\"gen-0 best >= mover score\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: train generalist CLI + config + per-kind run.json",
+      "status": "completed",
+      "blockedBy": [1, 2],
+      "description": "**Goal:** Wire everything into `python main.py train generalist` with mix-count config keys, generalist run-dir name, and run.json recording the mixed set + per-episode-kind scores.\n\n**Files:** config.py (GENERALIST_* keys, distinct from Track C NET_VERSION), ai/persistence.py (run_dir_name generalist variant), cli.py (cmd_train_generalist + _per_kind_scores + subparser), tests/test_generalist_recipe.py.\n\n**Acceptance Criteria:** train generalist runs e2e writes final_best.npy + run.json; run.json has mixed set + per_kind_scores; aggregate=min default, mean_std selectable; --init warm-start + --abilities default double_jump; config keys distinct from Track C.\n\n**Verify:** `PYTHONPATH=src python3 main.py train generalist --pop 6 --gens 2 --max-steps 300 --workers 4`\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\",\"src/blueball/ai/persistence.py\",\"src/blueball/cli.py\",\"tests/test_generalist_recipe.py\"], \"verifyCommand\": \"PYTHONPATH=src python3 -m pytest tests/test_generalist_recipe.py -q\", \"acceptanceCriteria\": [\"train generalist runs e2e, writes genome+run.json\",\"run.json has mixed set + per_kind_scores\",\"aggregate=min default, mean_std selectable\",\"--init warm-start + --abilities default double_jump\",\"config keys distinct from Track C\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: Acceptance — backward-compat + warm-start + e2e",
+      "status": "completed",
+      "blockedBy": [3],
+      "description": "**Goal:** Lock the brief's acceptance criteria with explicit tests and confirm single-mode trainers are untouched.\n\n**Files:** tests/test_generalist_recipe.py.\n\n**Acceptance Criteria:** train infinite/levels/gym byte-identical to a pre-Track-B baseline at fixed tiny config (measure on base, then pin); warm-start gen-0 >= mover's infinite score; generalist e2e writes final_best.npy + per-kind scores; full suite green.\n\n**Verify:** `PYTHONPATH=src python3 -m pytest -q`\n\n```json:metadata\n{\"files\": [\"tests/test_generalist_recipe.py\"], \"verifyCommand\": \"PYTHONPATH=src python3 -m pytest -q\", \"acceptanceCriteria\": [\"train infinite/levels/gym byte-identical pins\",\"warm-start gen-0 >= mover score\",\"generalist e2e writes artifacts\",\"full suite green\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-06-11"
+}

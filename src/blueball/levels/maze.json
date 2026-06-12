@@ -3,6 +3,7 @@
   "background": "#27435a",
   "ground": "#5a6878",
   "spawn": [80, 540],
+  "starting_abilities": ["double_jump"],
   "chunks": [
     {"type": "flat", "width_tiles": 3},
     {"type": "spike_wall", "width_tiles": 4, "spikes": 4, "orientation": "down", "ceiling_y_offset": 96},

@@ -84,16 +84,21 @@ def _episode_fitness(player, spawn_x: float, max_x: float, steps: int,
 
 def evaluate(args: tuple) -> tuple[int, float]:
     """One genome -> one fitness. Picklable input/output so it works under
-    multiprocessing.Pool. Args is (idx, genome, world_seed, level_path, max_steps).
+    multiprocessing.Pool. Args is
+    (idx, genome, world_seed, level_path, max_steps[, abilities]), where the
+    optional 6th element is a tuple of episode-granted Ability *name* strings
+    unioned with the level's own starting_abilities.
     """
-    idx, genome, world_seed, level_path, max_steps = args
+    idx, genome, world_seed, level_path, max_steps, *rest = args
+    ep_abilities = frozenset(Ability(a) for a in (rest[0] if rest else ()))
 
     world = World(seed=int(world_seed))
     register_collisions(world.space, world_ref=world)
     meta = load_level(level_path, world)
 
     spawn_x, spawn_y = float(meta.spawn[0]), float(meta.spawn[1])
-    player = Player(agent=FTNNAgent(genome), spawn_xy=(spawn_x, spawn_y))
+    player = Player(agent=FTNNAgent(genome), spawn_xy=(spawn_x, spawn_y),
+                    abilities=set(ep_abilities | frozenset(meta.starting_abilities)))
     world.add_entity(player)
 
     max_x = spawn_x
@@ -247,7 +252,8 @@ def evaluate_episodes(args: tuple) -> tuple[int, float]:
                 (idx, genome, ep.seed, ep.world_seed, ep.max_steps, ep.abilities))
         else:
             _, raw = evaluate(
-                (idx, genome, ep.world_seed, ep.level_path, ep.max_steps))
+                (idx, genome, ep.world_seed, ep.level_path, ep.max_steps,
+                 ep.abilities))
         scores.append(raw / ep.norm)
     return idx, aggregate_fitness(scores, lam, mode)
 
@@ -266,6 +272,7 @@ def train(
     max_steps: int = config.MAX_STEPS,
     map_fn: Callable[[Callable, Iterable], Iterable] = map,
     on_generation: Callable[[int, np.ndarray, list[np.ndarray]], None] | None = None,
+    init_genome: np.ndarray | None = None,
     save_dir: Path | str | None = None,
 ) -> TrainingResult:
     """Run a GA training loop. Returns a TrainingResult.
@@ -294,6 +301,10 @@ def train(
     tournament). `world_seed` controls physics. For Infinite Run, `infinite_seed`
     fixes the chunk layout. Two runs with the same seeds produce byte-identical
     `best_genome`.
+
+    If `init_genome` is given, it seeds population index 0 (a known-good warm
+    start) after the random draws, leaving the rest of the population's RNG
+    sequence unchanged.
 
     If `save_dir` is given, the running best genome is snapshotted there after
     every generation (best_gen<NNN>.npy) and the final best + a run.json
@@ -331,6 +342,16 @@ def train(
 
     ga_rng = np.random.default_rng(ga_seed)
     population: list[np.ndarray] = [random_genome(ga_rng) for _ in range(pop_size)]
+    # Optional warm-start: seed a known-good genome at index 0 *after* the random
+    # draws above, so the ga_rng draw sequence for the random remainder is
+    # unchanged (a None warm-start is byte-identical to no warm-start at all).
+    if init_genome is not None:
+        init = np.asarray(init_genome, dtype=np.float32)
+        if init.shape[0] != GENOME_SIZE:
+            raise ValueError(
+                f"init_genome length {init.shape[0]} != GENOME_SIZE {GENOME_SIZE}"
+            )
+        population[0] = init.copy()
     history: list[dict] = []
     best_genome = population[0].copy()
     best_fitness = -np.inf

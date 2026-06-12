@@ -780,3 +780,59 @@ def test_pool_evaluate_infinite_reorders_results():
     for s, p in zip(serial, parallel):
         assert s[0] == p[0]
         assert s[1] == p[1]
+
+
+def test_evaluate_grants_level_starting_abilities_on_maze(monkeypatch):
+    """trainer.evaluate spawns the player with the level's declared starting
+    abilities — maze grants double jump."""
+    import blueball.ai.trainer as trainer
+    from blueball.ai.genome import random_genome
+    from blueball.abilities import Ability
+    from pathlib import Path
+    import blueball
+    maze = Path(blueball.__file__).parent / "levels" / "maze.json"
+    captured = {}
+    RealPlayer = trainer.Player
+
+    def spy(*args, **kwargs):
+        captured["abilities"] = kwargs.get("abilities")
+        return RealPlayer(*args, **kwargs)
+
+    monkeypatch.setattr(trainer, "Player", spy)
+    g = random_genome(np.random.default_rng(0))
+    trainer.evaluate((0, g, 1, maze, 5))
+    assert Ability.DOUBLE_JUMP in captured["abilities"]
+
+
+def test_evaluate_no_abilities_on_level_without_starting_abilities(monkeypatch):
+    """tutorial_hill declares no starting_abilities, so the evaluate player is
+    ability-less — back-compat."""
+    from blueball import config
+    import blueball.ai.trainer as trainer
+    from blueball.ai.genome import random_genome
+    captured = {}
+    RealPlayer = trainer.Player
+
+    def spy(*args, **kwargs):
+        captured["abilities"] = kwargs.get("abilities")
+        return RealPlayer(*args, **kwargs)
+
+    monkeypatch.setattr(trainer, "Player", spy)
+    g = random_genome(np.random.default_rng(0))
+    trainer.evaluate((0, g, config.DEFAULT_SEED, _level_path(), 5))
+    assert captured["abilities"] == set()
+
+
+def test_train_scene_players_get_level_abilities_on_maze(headless_pygame):
+    """The cosmetic display players match what's trained: on maze they carry
+    the level's double jump."""
+    from blueball.scenes.train import TrainScene
+    from blueball.abilities import Ability
+    from pathlib import Path
+    import blueball
+    maze = Path(blueball.__file__).parent / "levels" / "maze.json"
+    scene = TrainScene(headless_pygame, level_path=maze, pop_size=4,
+                       n_visible=2, generations=2, max_steps=20, pool=_SyncPool())
+    assert len(scene._players) == 2
+    for p in scene._players:
+        assert Ability.DOUBLE_JUMP in p.abilities

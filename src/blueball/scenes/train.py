@@ -132,7 +132,8 @@ class TrainScene(Scene):
 
         self._players: list[Player] = []
         for i in range(self.n_visible):
-            p = Player(agent=FTNNAgent(self.population[i]), spawn_xy=self._spawn_xy)
+            p = Player(agent=FTNNAgent(self.population[i]), spawn_xy=self._spawn_xy,
+                       abilities=set(self.level_meta.starting_abilities))
             self.world.add_entity(p)
             self._players.append(p)
         self.camera.position = self._spawn_xy
