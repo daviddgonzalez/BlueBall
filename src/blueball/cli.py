@@ -71,15 +71,21 @@ def _run_dir(**kwargs) -> Path:
 # train subcommands
 # --------------------------------------------------------------------------- #
 def cmd_train_infinite(args) -> int:
+    from dataclasses import replace
+
     from .ai.episodes import generate_seeds, infinite_episodes
     from .ai.trainer import train
 
     seeds = ([int(s) for s in args.seeds.split(",")] if args.seeds
              else generate_seeds(args.infinite_seed, args.num_seeds))
+    abilities = tuple(a.strip() for a in args.abilities.split(",") if a.strip())
     episodes = infinite_episodes(seeds, world_seed=args.world_seed, max_steps=args.max_steps)
+    if abilities:
+        episodes = [replace(ep, abilities=abilities) for ep in episodes]
     run_dir = _run_dir(infinite_seed=seeds[0], world_seed=args.world_seed, num_seeds=len(seeds))
     print(f"Training {args.pop}x{args.gens} on Infinite Run seeds={seeds} "
-          f"world={args.world_seed} ga={args.ga_seed}\n  -> {run_dir}")
+          f"abilities={abilities or '(single jump)'} world={args.world_seed} "
+          f"ga={args.ga_seed}\n  -> {run_dir}")
     with _pool(args.workers) as (_, map_fn):
         result = train(pop_size=args.pop, generations=args.gens, episodes=episodes,
                        ga_seed=args.ga_seed, world_seed=args.world_seed,
@@ -322,6 +328,9 @@ def build_parser() -> argparse.ArgumentParser:
                        help="train across N seeds derived from --infinite-seed")
     p_inf.add_argument("--seeds", type=str, default=None,
                        help="explicit comma-separated sampler seeds (overrides --num-seeds)")
+    p_inf.add_argument("--abilities", type=str, default="double_jump",
+                       help="comma-separated granted abilities (gates double-jump "
+                            "chunks); '' for single jump")
     p_inf.set_defaults(func=cmd_train_infinite)
 
     p_lvl = tsub.add_parser("levels", help="static hand-built levels")
