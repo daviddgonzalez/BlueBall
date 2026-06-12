@@ -268,3 +268,33 @@ def test_train_maze_curriculum_cli_unknown_level_errors(tmp_path):
     )
     assert r.returncode != 0
     assert "Available" in (r.stderr + r.stdout)
+
+
+def test_build_spawn_curriculum_uses_declared_waypoints():
+    from blueball.ai.curriculum import build_spawn_curriculum
+    level = {
+        "name": "V", "background": "#000000", "ground": "#000000",
+        "spawn": [80, 540],
+        "curriculum_spawns": [
+            {"x": 2740, "y": 50, "keys": [0, 1], "label": "near_goal"},
+            {"x": 720, "y": 220, "keys": [], "label": "before_key0"},
+        ],
+        "chunks": [{"type": "flat", "width_tiles": 2}, {"type": "goal"}],
+    }
+    stages = build_spawn_curriculum(level)
+    assert [s.label for s in stages] == ["near_goal", "before_key0", "start"]
+    assert stages[0].spawn_xy == (2740.0, 50.0)
+    assert stages[0].granted_keys == 0b11
+    assert stages[1].spawn_xy == (720.0, 220.0)
+    assert stages[1].granted_keys == 0
+    assert stages[-1].label == "start"
+    assert stages[-1].spawn_xy == (80.0, 540.0)
+    assert stages[-1].granted_keys == 0
+
+
+def test_build_spawn_curriculum_maze_unchanged_without_waypoints():
+    from blueball.ai.curriculum import build_spawn_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    stages = build_spawn_curriculum(resolve_level_paths(["maze"])[0])
+    assert [s.label for s in stages] == [
+        "near_goal", "before_key1", "before_key0", "start"]

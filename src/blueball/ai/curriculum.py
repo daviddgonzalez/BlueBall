@@ -65,6 +65,26 @@ def granted_keys_before(keys: list[tuple[int, float]], spawn_x: float) -> int:
     return mask
 
 
+def _stages_from_waypoints(waypoints, start_xy) -> list[CurriculumStage]:
+    """Build curriculum stages from declared waypoints (easiest -> hardest),
+    then append the true start (no granted keys) as the final/hardest stage so
+    the saved genome is always ultimately graded from the real spawn."""
+    stages: list[CurriculumStage] = []
+    for i, wp in enumerate(waypoints):
+        mask = 0
+        for k in wp.get("keys", []):
+            mask |= (1 << int(k))
+        stages.append(CurriculumStage(
+            spawn_xy=(float(wp["x"]), float(wp["y"])),
+            granted_keys=mask,
+            label=str(wp.get("label", f"stage{i}")),
+        ))
+    stages.append(CurriculumStage(
+        spawn_xy=(float(start_xy[0]), float(start_xy[1])),
+        granted_keys=0, label="start"))
+    return stages
+
+
 def build_spawn_curriculum(level: Union[str, Path, dict]) -> list[CurriculumStage]:
     """Derive the ordered (easiest -> hardest) reverse-curriculum stages from a
     level's real entity positions. Spawn x recedes start-ward across the list:
@@ -80,6 +100,11 @@ def build_spawn_curriculum(level: Union[str, Path, dict]) -> list[CurriculumStag
     world = World(seed=0)
     register_collisions(world.space, world_ref=world)
     meta = load_level(level, world)
+
+    # Terrain-aware override: a level may declare explicit spawn waypoints
+    # (vertical levels, where the start-y entity-derived spawns land in a void).
+    if meta.curriculum_spawns:
+        return _stages_from_waypoints(meta.curriculum_spawns, meta.spawn)
 
     keys: list[tuple[int, float]] = []
     goal_x: float | None = None
