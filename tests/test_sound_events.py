@@ -1,7 +1,9 @@
 import pytest
 
 from blueball.abilities import Ability
-from blueball.agent import HumanAgent
+import numpy as np
+from blueball.agent import FTNNAgent
+from blueball.ai.genome import random_genome
 from blueball.ai.episodes import resolve_level_paths
 from blueball.collision import register as register_collisions
 from blueball.entities.player import Player
@@ -21,8 +23,8 @@ def _emit_for(level_name, entity_type, sound):
     w = World()
     register_collisions(w.space, world_ref=w)
     meta = load_level(path, w)
-    player = Player(agent=HumanAgent(), spawn_xy=tuple(meta.spawn),
-                    abilities={Ability.DOUBLE_JUMP})
+    player = Player(agent=FTNNAgent(random_genome(np.random.default_rng(0))),
+                    spawn_xy=tuple(meta.spawn), abilities={Ability.DOUBLE_JUMP})
     w.add_entity(player)
     ent = next(e for e in w.entities if type(e).__name__ == entity_type)
     epos = ent.position if hasattr(ent, "position") else (ent.body.position.x, ent.body.position.y)
