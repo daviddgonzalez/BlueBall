@@ -1,5 +1,7 @@
 """Tunable constants for Blue Ball. Edit values here to retune feel."""
 
+from pathlib import Path
+
 # Display
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
@@ -189,3 +191,29 @@ GENERALIST_GYM_PAR = 5.0 * GYM_SEGMENT_BONUS  # reference: ~5 completion segment
 # dominate the generalist's selection — `min` lands on the next-lowest non-exempt
 # episode instead. Empty tuple = no exemption (every episode counts).
 GENERALIST_MIN_EXEMPT_LEVELS = ("maze", "vertical_climb")
+
+# --- Race mode (AI ghost) ---------------------------------------------------
+# Abilities granted to BOTH the ghost recording and the human in race mode, so
+# both play with the same moveset (all bundled race genomes are double-jump).
+RACE_GHOST_ABILITIES = ("double_jump",)
+
+_RACE_GHOST_DIR = Path(__file__).resolve().parent / "assets" / "race_ghosts"
+# Best available genome per static level (committed game assets, not the
+# gitignored training genomes/). Multiple levels may share one file.
+RACE_GHOST_GENOMES = {
+    "tutorial_hill": "generalist.npy",
+    "speed_run": "generalist.npy",
+    "maze": "generalist.npy",
+    "lava_rising": "generalist.npy",
+    "vertical_climb": "vertical_climb.npy",
+}
+
+
+def resolve_race_ghost_genome(level_name):
+    """Absolute path to the race-ghost genome for `level_name`, or None if the
+    level is unmapped or its asset file is missing (race falls back to no ghost)."""
+    fname = RACE_GHOST_GENOMES.get(level_name)
+    if fname is None:
+        return None
+    path = _RACE_GHOST_DIR / fname
+    return path if path.exists() else None
