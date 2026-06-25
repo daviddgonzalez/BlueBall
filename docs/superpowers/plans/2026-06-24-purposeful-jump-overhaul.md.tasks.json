@@ -1,0 +1,61 @@
+{
+  "planPath": "docs/superpowers/plans/2026-06-24-purposeful-jump-overhaul.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 0: Expose jump-state query on JumpController",
+      "status": "completed",
+      "description": "**Goal:** Add read-only accessors so callers can ask 'is an air-jump available?' and 'would a jump fire right now?' without mutating controller state.\n\n**Files:**\n- Modify: src/blueball/input_feel.py\n- Test: tests/test_input_feel.py\n\n```json:metadata\n{\"files\": [\"src/blueball/input_feel.py\", \"tests/test_input_feel.py\"], \"verifyCommand\": \"python -m pytest tests/test_input_feel.py -q\", \"acceptanceCriteria\": [\"air_jumps_remaining property returns stock\", \"can_fire returns correct bool without mutating state\"]}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 1: Add jump-state inputs to observation (35->37)",
+      "status": "pending",
+      "blockedBy": [0],
+      "description": "**Goal:** Extend Observation with two jump-state fields and pack them into the FTNN input vector, growing INPUT_SIZE 35->37 and GENOME_SIZE 510->534.\n\n**Files:**\n- Modify: src/blueball/agent.py, src/blueball/ai/observation.py, src/blueball/ai/ftnn.py\n- Test: tests/test_observation.py\n\n```json:metadata\n{\"files\": [\"src/blueball/agent.py\", \"src/blueball/ai/observation.py\", \"src/blueball/ai/ftnn.py\", \"tests/test_observation.py\"], \"verifyCommand\": \"python -m pytest tests/test_observation.py -q\", \"acceptanceCriteria\": [\"Observation has two defaulted jump-state fields\", \"INPUT_SIZE==37 and GENOME_SIZE==534\", \"inputs packed at idx 35/36\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Populate jump-state in Player._observe",
+      "status": "pending",
+      "blockedBy": [0, 1],
+      "description": "**Goal:** Have Player._observe fill the two new observation fields from its JumpController.\n\n**Files:**\n- Modify: src/blueball/entities/player.py\n- Test: tests/test_player.py\n\n```json:metadata\n{\"files\": [\"src/blueball/entities/player.py\", \"tests/test_player.py\"], \"verifyCommand\": \"python -m pytest tests/test_player.py -q\", \"acceptanceCriteria\": [\"double-jump player reports air_jumps_remaining 1.0\", \"no-ability player reports 0.0\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Gap-probe + per-episode counters on Player",
+      "status": "pending",
+      "blockedBy": [2],
+      "description": "**Goal:** Add a forward-down ledge probe and per-episode counters (purposeful_jumps, jumps_fired, airborne_steps).\n\n**Files:**\n- Modify: src/blueball/config.py, src/blueball/entities/player.py\n- Test: tests/test_player.py\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\", \"src/blueball/entities/player.py\", \"tests/test_player.py\"], \"verifyCommand\": \"python -m pytest tests/test_player.py -q\", \"acceptanceCriteria\": [\"counters init to 0\", \"_ledge_ahead correct over gap/floor/no-dir\", \"ground jump over gap counts purposeful, flat does not\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: Fitness — efficiency term + gap bonus",
+      "status": "pending",
+      "blockedBy": [],
+      "description": "**Goal:** Add purposeful_jumps to FitnessInputs and two additive terms: gap bonus (all modes) and efficiency ratio (level_width>0 only).\n\n**Files:**\n- Modify: src/blueball/config.py, src/blueball/ai/fitness.py\n- Test: tests/test_fitness.py; update tests/test_climb_fitness.py, tests/test_ai_curriculum.py\n\n```json:metadata\n{\"files\": [\"src/blueball/config.py\", \"src/blueball/ai/fitness.py\", \"tests/test_fitness.py\", \"tests/test_climb_fitness.py\", \"tests/test_ai_curriculum.py\"], \"verifyCommand\": \"python -m pytest tests/test_fitness.py tests/test_gym_fitness.py tests/test_climb_fitness.py -q\", \"acceptanceCriteria\": [\"gap bonus added all modes\", \"efficiency gated on level_width>0\", \"fewer steps higher fitness when level_width>0\"]}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Wire purposeful_jumps through evaluators + playback",
+      "status": "pending",
+      "blockedBy": [3, 4],
+      "description": "**Goal:** Pass player.purposeful_jumps into every FitnessInputs construction (trainer x2, curriculum, playback).\n\n**Files:**\n- Modify: src/blueball/ai/trainer.py, src/blueball/ai/curriculum.py, src/blueball/scenes/playback.py\n- Test: tests/test_fitness_wiring.py\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/trainer.py\", \"src/blueball/ai/curriculum.py\", \"src/blueball/scenes/playback.py\", \"tests/test_fitness_wiring.py\"], \"verifyCommand\": \"python -m pytest tests/test_fitness_wiring.py -q\", \"acceptanceCriteria\": [\"all four sites set purposeful_jumps\", \"stub player +2 raises fitness by 2*JUMP_GAP_BONUS\"]}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: Bounce metrics in the watch HUD",
+      "status": "pending",
+      "blockedBy": [3],
+      "description": "**Goal:** Surface jumps-per-100px and airtime-% in the playback HUD so the A/B is measured.\n\n**Files:**\n- Create: src/blueball/ai/metrics.py\n- Modify: src/blueball/scenes/playback.py\n- Test: tests/test_metrics.py\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/metrics.py\", \"src/blueball/scenes/playback.py\", \"tests/test_metrics.py\"], \"verifyCommand\": \"python -m pytest tests/test_metrics.py -q\", \"acceptanceCriteria\": [\"behavior_metrics returns rates safe at zero denominators\", \"HUD shows jumps/100px and airtime%\"]}\n```"
+    },
+    {
+      "id": 7,
+      "subject": "Task 7: A/B runbook + baseline capture",
+      "status": "pending",
+      "blockedBy": [5, 6],
+      "description": "**Goal:** Document control-vs-treatment procedure and capture baseline numbers.\n\n**Files:**\n- Create: docs/superpowers/runbooks/2026-06-24-purposeful-jump-ab.md\n\n```json:metadata\n{\"files\": [\"docs/superpowers/runbooks/2026-06-24-purposeful-jump-ab.md\"], \"verifyCommand\": \"test -f docs/superpowers/runbooks/2026-06-24-purposeful-jump-ab.md && echo OK\", \"acceptanceCriteria\": [\"runbook has control+treatment commands with matched seeds\", \"runbook has success criteria + results table\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-06-24"
+}
