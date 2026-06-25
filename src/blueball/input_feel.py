@@ -43,6 +43,18 @@ class JumpController:
     def _max_air_jumps(self) -> int:
         return 1 if Ability.DOUBLE_JUMP in self.abilities else 0
 
+    @property
+    def air_jumps_remaining(self) -> int:
+        """Current air-jump stock (read-only view of internal counter)."""
+        return self._air_jumps_remaining
+
+    def can_fire(self, grounded: bool) -> bool:
+        """True iff a jump would be initiable this tick: on the ground, inside
+        the coyote window, or with an air-jump still in stock. Pure read — does
+        not consume timers or counters. Used to feed the observation; it is NOT
+        the firing authority (that stays in `tick`)."""
+        return bool(grounded) or self._coyote_remaining > 0.0 or self._air_jumps_remaining > 0
+
     def on_ability_added(self, ability: Ability) -> None:
         """Called when the Player gains a new ability mid-run. Refresh derived
         state so newly-acquired abilities are usable in the current air phase.

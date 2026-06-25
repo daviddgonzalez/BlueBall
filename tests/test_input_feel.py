@@ -201,3 +201,43 @@ def test_on_ability_added_relies_on_unlock_idempotency():
     # Player.unlock is responsible for not double-calling.
     jc.on_ability_added(Ability.DOUBLE_JUMP)
     assert jc._air_jumps_remaining == 1
+
+
+def test_can_fire_when_grounded():
+    jc = JumpController(abilities=set())
+    assert jc.can_fire(grounded=True) is True
+
+
+def test_can_fire_false_airborne_no_doublejump():
+    jc = JumpController(abilities=set())
+    jc._air_jumps_remaining = 0
+    jc._coyote_remaining = 0.0
+    assert jc.can_fire(grounded=False) is False
+
+
+def test_can_fire_true_with_air_jump():
+    jc = JumpController(abilities={Ability.DOUBLE_JUMP})
+    jc._coyote_remaining = 0.0
+    assert jc._air_jumps_remaining == 1
+    assert jc.can_fire(grounded=False) is True
+
+
+def test_can_fire_true_inside_coyote_window():
+    jc = JumpController(abilities=set())
+    jc._air_jumps_remaining = 0
+    jc._coyote_remaining = 0.05
+    assert jc.can_fire(grounded=False) is True
+
+
+def test_can_fire_does_not_mutate():
+    jc = JumpController(abilities={Ability.DOUBLE_JUMP})
+    before = jc._air_jumps_remaining
+    jc.can_fire(grounded=False)
+    assert jc._air_jumps_remaining == before
+
+
+def test_air_jumps_remaining_property():
+    jc = JumpController(abilities={Ability.DOUBLE_JUMP})
+    assert jc.air_jumps_remaining == 1
+    jc._air_jumps_remaining = 0
+    assert jc.air_jumps_remaining == 0
