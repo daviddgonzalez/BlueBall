@@ -16,11 +16,11 @@ import pytest
 def test_ftnn_topology_constants():
     from blueball.ai.ftnn import FTNN_INPUTS, FTNN_HIDDEN, FTNN_OUTPUTS, GENOME_SIZE
     from blueball.ai.observation import INPUT_SIZE
-    assert FTNN_INPUTS == INPUT_SIZE == 35
+    assert FTNN_INPUTS == INPUT_SIZE == 37
     assert FTNN_HIDDEN == 12
     assert FTNN_OUTPUTS == 6
-    # 35*12 + 12 + 12*6 + 6 = 510
-    assert GENOME_SIZE == 510
+    # 37*12 + 12 + 12*6 + 6 = 534
+    assert GENOME_SIZE == 534
 
 
 def test_ftnn_forward_pass_shape_and_dtype():
@@ -41,7 +41,7 @@ def test_ftnn_zero_genome_zero_input_yields_zero_output():
 
 def test_ftnn_rejects_wrong_genome_shape():
     from blueball.ai.ftnn import FTNN
-    with pytest.raises(ValueError, match="510"):
+    with pytest.raises(ValueError, match="534"):
         FTNN(np.zeros(100, dtype=np.float32))
 
 

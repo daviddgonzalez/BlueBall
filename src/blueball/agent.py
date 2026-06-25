@@ -68,6 +68,8 @@ class Observation:
     nearest_hazard: Optional[tuple[float, float]]
     abilities: int                # bitfield, ability enum ordinal
     keys_held: int                # bitfield
+    air_jumps_remaining: float = 0.0  # normalized [0,1]; 1.0 = an air-jump is in stock
+    can_jump_now: bool = False        # True iff a jump would be initiable this tick
 
 
 class Agent(abc.ABC):

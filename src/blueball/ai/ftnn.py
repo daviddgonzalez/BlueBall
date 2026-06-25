@@ -6,9 +6,9 @@ the trainer's `FTNNAgent.act()` picks `argmax` to choose an action.
 
 `FTNN_INPUTS` is imported from `ai/observation.py` (its `INPUT_SIZE`) so the
 network's input layer can never drift from the adapter that feeds it. With the
-current enriched-Observation layout that is 35 inputs:
-    [W1 (35*12=420) | b1 (12) | W2 (12*6=72) | b2 (6)]
-    GENOME_SIZE = 420 + 12 + 72 + 6 = 510
+current enriched-Observation layout that is 37 inputs:
+    [W1 (37*12=444) | b1 (12) | W2 (12*6=72) | b2 (6)]
+    GENOME_SIZE = 444 + 12 + 72 + 6 = 534
 """
 
 from __future__ import annotations

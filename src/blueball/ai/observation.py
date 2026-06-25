@@ -5,7 +5,7 @@ deltas + ability/key bitfields) into a flat float32 input vector. `INPUT_SIZE`
 is the single source of truth for the layout; `ai/ftnn.py` imports it as
 `FTNN_INPUTS`, so the two cannot drift.
 
-Layout (INPUT_SIZE = 35 with N_ABILITIES=1, KEY_BITS=8):
+Layout (INPUT_SIZE = 37 with N_ABILITIES=1, KEY_BITS=8):
     0 – 7    rays                  ray distances in [0, 1] (1.0 = miss)
     8 – 15   ray_semantic          per ray: +1 reward (PICKUP/GOAL),
                                     -1 danger (HAZARD/ENEMY), 0 otherwise
@@ -21,6 +21,8 @@ Layout (INPUT_SIZE = 35 with N_ABILITIES=1, KEY_BITS=8):
     25       nearest_hazard present (1.0 / 0.0)
     26 ..    abilities bits — one float per Ability enum member (bit i = i-th member)
     ..       keys_held bits — KEY_BITS floats (bit i = key id i)
+    35       air_jumps_remaining, clamped to [0, 1] (0 = none in stock)
+    36       can_jump_now (0.0 / 1.0)
 
 Encoding choices here (semantic ray channel, normalization scales, key-bit
 width) are deliberately simple v1 defaults and are expected to be revisited —
@@ -64,7 +66,10 @@ _HAZARD_OFFSET = _PICKUP_OFFSET + 3          # 23  (dx, dy, present)
 _ABILITIES_OFFSET = _HAZARD_OFFSET + 3       # 26
 _KEYS_OFFSET = _ABILITIES_OFFSET + N_ABILITIES
 
-INPUT_SIZE = _KEYS_OFFSET + KEY_BITS
+_AIRJUMP_OFFSET = _KEYS_OFFSET + KEY_BITS    # 35
+_CANJUMP_OFFSET = _AIRJUMP_OFFSET + 1        # 36
+
+INPUT_SIZE = _CANJUMP_OFFSET + 1             # 37
 
 
 def _clamp_unit(value: float) -> float:
@@ -121,5 +126,8 @@ def observation_to_inputs(obs: Observation) -> np.ndarray:
     for i in range(KEY_BITS):
         if obs.keys_held & (1 << i):
             x[_KEYS_OFFSET + i] = 1.0
+
+    x[_AIRJUMP_OFFSET] = _clamp_unit(obs.air_jumps_remaining)
+    x[_CANJUMP_OFFSET] = 1.0 if obs.can_jump_now else 0.0
 
     return x

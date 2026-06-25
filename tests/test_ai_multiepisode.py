@@ -249,7 +249,7 @@ def test_train_multi_episode_smoke():
     assert len(result.history) == 3
     for h in result.history:
         assert np.isfinite(h["best"]) and np.isfinite(h["mean"]) and np.isfinite(h["min"])
-    assert result.best_genome.shape == (510,)
+    assert result.best_genome.shape == (534,)
     assert result.best_genome.dtype == np.float32
 
 
