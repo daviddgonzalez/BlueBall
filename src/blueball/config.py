@@ -146,6 +146,15 @@ GA_FITNESS_STD_PENALTY = 1.0  # lambda: per-episode std penalty (mean - lam*std)
 # adds GOAL_MULT * level_width to fitness, so completion dominates a no-goal
 # traversal (which maxes near level_width) and auto-scales with level length.
 GOAL_MULT              = 2.0
+# Efficiency reward: forward progress per step, added ONLY in goal-terminal
+# modes (level_width > 0), where reaching the goal ends the episode early so
+# steps_taken is informative. Penalizes bounce-spam (airtime is dead
+# acceleration time; AIR_CONTROL=0) without a knife-edge per-step penalty.
+# Off for goalless Infinite/gym (progress/steps is degenerate there). Tunable.
+SPEED_W                = 50.0
+# Bonus per "purposeful" jump: a ground takeoff at a real ledge/gap. Un-farmable
+# on flat ground. Tunable; set to 0.0 to rely on the efficiency term alone.
+JUMP_GAP_BONUS         = 5.0
 
 # --- Completion Gym ---
 GYM_SPAWN = (80.0, 540.0)  # ball spawn; lands on the streamer's x=0 flat footing. Intentionally equals trainer.INFINITE_SPAWN — both streamers use the same x=0 footing convention.

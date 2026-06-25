@@ -316,7 +316,8 @@ def test_fitness_shape_matches_spec_formula():
         died=False, steps_taken=1000, keys_collected=0, level_width=500.0,
     ))
     # 500 + 50*3 + GOAL_MULT(2.0)*500*1 - 0.01*1000 - 0 + 100*0 = 1640
-    assert f == pytest.approx(1640.0)
+    # + efficiency: SPEED_W(50.0)*500/max(1000,1) = 25.0 -> total = 1665.0
+    assert f == pytest.approx(1665.0)
 
 
 def test_fitness_penalizes_death_and_charges_step_cost():
@@ -353,15 +354,19 @@ def test_fitness_completion_dominates_traversal():
     assert finished - unfinished == pytest.approx(config.GOAL_MULT * W)
 
 
-def test_fitness_no_goal_is_independent_of_width():
-    """Infinite-Run invariant: with reached_goal=False the width term is 0, so
-    fitness does not depend on level_width."""
+def test_fitness_no_goal_width_difference_is_efficiency_only():
+    """The GOAL_MULT term is gated on reached_goal=True, so changing level_width
+    with reached_goal=False cannot trigger the goal bonus. The ONLY difference
+    between level_width=0 and level_width>0 is the efficiency term
+    (SPEED_W * progress_x / steps_taken), which activates when level_width > 0."""
+    from blueball import config
     from blueball.ai.fitness import fitness, FitnessInputs
     base = dict(progress_x=300.0, collectibles=1, reached_goal=False,
                 died=False, steps_taken=10, keys_collected=1)
     a = fitness(FitnessInputs(level_width=0.0, **base))
     b = fitness(FitnessInputs(level_width=9999.0, **base))
-    assert a == b
+    # b > a by exactly the efficiency term; no goal bonus fires in either case
+    assert b - a == pytest.approx(config.SPEED_W * 300.0 / 10)
 
 
 # ----- Task 5: FTNNAgent -----
