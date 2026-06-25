@@ -364,11 +364,16 @@ class PlaybackScene(Scene):
         keeps it crisp), mirroring Renderer.draw_score's approach."""
         import pygame
         from ..render.theme import get_active_theme
+        from ..ai.metrics import behavior_metrics
         if self._hud_font is None:
             self._hud_font = pygame.font.SysFont(None, 16)
         sim = self.sim
         pal = get_active_theme().palette
         surf = self.renderer.screen
+        m = behavior_metrics(
+            sim.player.jumps_fired, sim.player.airborne_steps,
+            sim.steps, sim.max_x - sim.spawn_x,
+        )
         lines = [
             sim.level_name,
             f"fitness: {sim.fitness:.1f}",
@@ -376,6 +381,7 @@ class PlaybackScene(Scene):
             f"step: {sim.steps}/{sim.max_steps}",
             f"dead: {int(sim.player.dead)}   goal: {int(sim.reached_goal)}"
             + (f"   cleared: {sim.segments_cleared}" if sim.mode == "gym" else ""),
+            f"jumps/100px: {m['jumps_per_100px']:.2f}   air%: {m['airtime_pct']:.0f}",
         ]
         y = 4
         for i, text in enumerate(lines):
