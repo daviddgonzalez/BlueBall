@@ -127,7 +127,7 @@ def observation_to_inputs(obs: Observation) -> np.ndarray:
         if obs.keys_held & (1 << i):
             x[_KEYS_OFFSET + i] = 1.0
 
-    x[_AIRJUMP_OFFSET] = _clamp_unit(obs.air_jumps_remaining)
+    x[_AIRJUMP_OFFSET] = max(0.0, min(1.0, obs.air_jumps_remaining))
     x[_CANJUMP_OFFSET] = 1.0 if obs.can_jump_now else 0.0
 
     return x

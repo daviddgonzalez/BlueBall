@@ -29,14 +29,41 @@ _B2_SIZE = FTNN_OUTPUTS
 GENOME_SIZE = _W1_SIZE + _B1_SIZE + _W2_SIZE + _B2_SIZE
 
 
+# Legacy genome support: genomes trained before the jump-state inputs existed
+# used a 35-input observation (GENOME_SIZE 510). They load into the current
+# 37-input net by inserting zero weights for the two new input rows of W1, so
+# the new inputs contribute nothing and behavior is identical to the legacy
+# net. New training always produces current-size genomes; this only affects
+# LOADING old genomes/assets.
+_LEGACY_INPUTS = 35
+_LEGACY_W1_SIZE = _LEGACY_INPUTS * FTNN_HIDDEN                       # 420
+LEGACY_GENOME_SIZE = _LEGACY_W1_SIZE + _B1_SIZE + _W2_SIZE + _B2_SIZE  # 510
+
+
+def migrate_genome(genome: np.ndarray) -> np.ndarray:
+    """Return a current-size genome. Current-size input is returned unchanged;
+    a legacy (35-input) genome is expanded by zero-padding the new W1 input
+    rows. Any other shape is an error."""
+    if genome.shape == (GENOME_SIZE,):
+        return genome
+    if genome.shape == (LEGACY_GENOME_SIZE,):
+        pad = np.zeros((FTNN_INPUTS - _LEGACY_INPUTS) * FTNN_HIDDEN, dtype=np.float32)
+        return np.concatenate([
+            genome[:_LEGACY_W1_SIZE].astype(np.float32),
+            pad,
+            genome[_LEGACY_W1_SIZE:].astype(np.float32),
+        ])
+    raise ValueError(
+        f"genome of shape {genome.shape} is neither current ({GENOME_SIZE},) "
+        f"nor legacy ({LEGACY_GENOME_SIZE},)"
+    )
+
+
 class FTNN:
     """An INPUT_SIZE → 12 tanh → 6 fully-connected network. Pure numpy."""
 
     def __init__(self, genome: np.ndarray) -> None:
-        if genome.shape != (GENOME_SIZE,):
-            raise ValueError(
-                f"FTNN requires a genome of shape ({GENOME_SIZE},), got {genome.shape}"
-            )
+        genome = migrate_genome(genome)
         if genome.dtype != np.float32:
             genome = genome.astype(np.float32)
         else:
