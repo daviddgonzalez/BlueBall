@@ -460,3 +460,90 @@ def test_observe_reports_no_air_jump_without_ability():
     obs = p._observe()
     assert obs.air_jumps_remaining == 0.0
     assert obs.can_jump_now is False
+
+
+def _make_world_with_gap(gap_start=200.0, gap_end=400.0):
+    """Floor at y=600 from -2000..gap_start and gap_end..2000, gap in between."""
+    w = World()
+    static = w.space.static_body
+    left = pymunk.Segment(static, (-2000, 600), (gap_start, 600), 5)
+    right = pymunk.Segment(static, (gap_end, 600), (2000, 600), 5)
+    for seg in (left, right):
+        seg.friction = 1.0
+        w.space.add(seg)
+    return w
+
+
+def test_player_counters_start_zero():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    assert p.purposeful_jumps == 0
+    assert p.jumps_fired == 0
+    assert p.airborne_steps == 0
+
+
+def test_ledge_ahead_true_over_gap():
+    w = _make_world_with_gap()
+    x = 200.0 - config.GAP_PROBE_AHEAD_PX + 10.0  # pos+AHEAD lands inside gap
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(x, 580))
+    w.add_entity(p)
+    assert p._ledge_ahead(direction=1) is True
+
+
+def test_ledge_ahead_false_over_floor():
+    w = _make_world_with_gap()
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(0.0, 580))
+    w.add_entity(p)
+    assert p._ledge_ahead(direction=1) is False
+
+
+def test_ledge_ahead_false_without_direction():
+    w = _make_world_with_gap()
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(0.0, 580))
+    w.add_entity(p)
+    assert p._ledge_ahead(direction=0) is False
+
+
+def test_ground_jump_over_gap_counts_purposeful():
+    # World.step(1/60) runs 2 substeps (PHYS_HZ=120), so act() is called twice
+    # per frame. 40 IDLE acts ≈ 20 frames is enough settle time (ball lands at
+    # ~frame 17), ensuring the RIGHT_JUMP fires while grounded.
+    w = _make_world_with_gap()
+    x = 200.0 - config.GAP_PROBE_AHEAD_PX + 10.0
+    p = Player(agent=_ScriptedAgent([Action.IDLE] * 40 + [Action.RIGHT_JUMP]),
+               spawn_xy=(x, 560))
+    w.add_entity(p)
+    for _ in range(30):
+        w.step(1 / 60)
+    assert p.jumps_fired >= 1
+    assert p.purposeful_jumps >= 1
+
+
+def test_ground_jump_on_flat_not_purposeful():
+    # 40 IDLE acts (~20 frames at 2 substeps/frame) lets the ball settle before
+    # the jump, so RIGHT_JUMP fires while grounded.
+    w = _make_world_with_floor()
+    p = Player(agent=_ScriptedAgent([Action.IDLE] * 40 + [Action.RIGHT_JUMP]),
+               spawn_xy=(0.0, 560))
+    w.add_entity(p)
+    for _ in range(30):
+        w.step(1 / 60)
+    assert p.jumps_fired >= 1
+    assert p.purposeful_jumps == 0
+
+
+def test_plain_jump_uses_velocity_fallback_for_probe_dir():
+    """A direction-less Action.JUMP relies on the vx>0/<0 probe-direction
+    fallback: moving right toward a ledge and jumping (no RIGHT key held) still
+    counts as purposeful. Exercises the `else: probe_dir = sign(vx)` branch."""
+    w = _make_world_with_gap()
+    # Build rightward velocity over the left floor, then plain JUMP near the edge.
+    # At the jump tick the ball is grounded at x~161 moving right, so the probe
+    # start (x + GAP_PROBE_AHEAD_PX) lands inside the 200..400 gap.
+    x = 152.0 - 30.0
+    actions = [Action.IDLE] * 40 + [Action.RIGHT] * 45 + [Action.JUMP] * 5
+    p = Player(agent=_ScriptedAgent(actions), spawn_xy=(x, 560))
+    w.add_entity(p)
+    for _ in range(60):
+        w.step(1 / 60)
+    assert p.jumps_fired >= 1
+    assert p.purposeful_jumps >= 1  # counted via vx>0 fallback, not RIGHT_JUMP

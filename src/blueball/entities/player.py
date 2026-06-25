@@ -81,6 +81,10 @@ class Player(Entity):
         # later unlocks land in the controller without a re-push.
         self.abilities: set[Ability] = abilities if abilities is not None else set()
         self.jump_ctrl = JumpController(abilities=self.abilities)
+        # Per-episode behavior counters (read by the GA evaluators / fitness).
+        self.purposeful_jumps = 0   # ground takeoffs taken at a real ledge/gap
+        self.jumps_fired = 0        # total jumps that fired
+        self.airborne_steps = 0     # update() ticks spent not grounded
         self.dead = False
         self.reached_goal = False
         self.collectibles_collected = 0
@@ -289,6 +293,14 @@ class Player(Entity):
         grounded = self.grounded
         air_factor = 1.0 if grounded else config.AIR_CONTROL
         vx = self.body.velocity.x
+        if not grounded:
+            self.airborne_steps += 1
+        if action in _MOVE_RIGHT:
+            probe_dir = 1
+        elif action in _MOVE_LEFT:
+            probe_dir = -1
+        else:
+            probe_dir = 1 if vx > 0 else (-1 if vx < 0 else 0)
         if action in _MOVE_LEFT:
             self.body.torque -= config.MOVE_TORQUE * air_factor
             opposing = vx > 0
@@ -337,6 +349,9 @@ class Player(Entity):
             if self._boost_multiplier > 1.0:
                 self._jumped_since_boost = True
                 self._aerial_since_pickup = False
+            self.jumps_fired += 1
+            if grounded and self._ledge_ahead(probe_dir):
+                self.purposeful_jumps += 1
         if decision.cut and self.body.velocity.y < 0:
             vx, vy = self.body.velocity
             self.body.velocity = (vx, vy * config.JUMP_CUT_FACTOR)
@@ -383,6 +398,22 @@ class Player(Entity):
                 best_delta = (dx, dy)
 
         return best_delta
+
+    def _ledge_ahead(self, direction: int) -> bool:
+        """True if a short forward-down probe finds NO ground ahead — i.e. the
+        player is at a ledge/gap edge in the travel `direction` (+1 right, -1
+        left). False on flat ground, when `direction == 0`, or off-world. A
+        direction-less jump taken while stationary (vx == 0) yields
+        `direction == 0` and is intentionally NOT counted purposeful
+        (conservative / un-farmable)."""
+        world = getattr(self, "_world", None)
+        if world is None or direction == 0:
+            return False
+        pos = self.body.position
+        start = pos + pymunk.Vec2d(direction * config.GAP_PROBE_AHEAD_PX, 0.0)
+        end = start + pymunk.Vec2d(0.0, config.GAP_PROBE_DEPTH_PX)  # y-down: +y is down
+        hit = world.space.segment_query_first(start, end, 0.5, self._ray_filter)
+        return hit is None
 
     def _observe(self) -> Observation:
         """Build an Observation from 8 raycasts + nearest-entity scans.

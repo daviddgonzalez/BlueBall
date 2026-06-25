@@ -55,6 +55,12 @@ AIR_MOVE_FORCE_ACCEL = 218.4
 # Jump
 JUMP_IMPULSE = 315.0
 JUMP_CUT_FACTOR = 0.4
+# Gap-gated "purposeful jump" probe. At a ground takeoff we cast a short
+# downward ray this far ahead (in the travel direction); if it finds no ground
+# within the depth, the jump was taken at a ledge/gap and earns JUMP_GAP_BONUS.
+# Un-farmable on flat ground (probe hits ground -> no credit). Tunable.
+GAP_PROBE_AHEAD_PX = 48.0
+GAP_PROBE_DEPTH_PX = 120.0
 
 # Player dies if they fall this far below the screen
 FALL_DEATH_Y = 1200
