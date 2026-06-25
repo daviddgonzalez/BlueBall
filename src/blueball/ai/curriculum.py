@@ -218,6 +218,7 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
         keys_collected=collected,
         level_width=float(meta.total_width),
         climb_height=float(max(0.0, spawn_y - min_y)) if climb_shaping else 0.0,
+        purposeful_jumps=int(player.purposeful_jumps),
     ))
     return idx, float(f), bool(player.reached_goal)
 

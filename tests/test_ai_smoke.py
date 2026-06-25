@@ -425,6 +425,7 @@ def test_episode_fitness_uses_furthest_x_and_counts_keys():
             self.keys_held = keys_held
             self.dead = dead
             self.collectibles_collected = collectibles
+            self.purposeful_jumps = 0
 
     player = _StubPlayer(keys_held=(1 << 0) | (1 << 2))  # 2 keys
     f = _episode_fitness(player, spawn_x=80.0, max_x=300.0, steps=0,

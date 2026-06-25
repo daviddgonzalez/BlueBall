@@ -79,6 +79,7 @@ def _episode_fitness(player, spawn_x: float, max_x: float, steps: int,
         steps_taken=steps,
         keys_collected=bin(player.keys_held).count("1"),
         level_width=float(level_width),
+        purposeful_jumps=int(player.purposeful_jumps),
     ))
 
 
@@ -230,6 +231,7 @@ def evaluate_gym(args: tuple) -> tuple[int, float]:
         keys_collected=int(cumulative_keys),
         level_width=0.0,
         segments_cleared=int(cleared),
+        purposeful_jumps=int(player.purposeful_jumps),
     ))
     return idx, float(f)
 

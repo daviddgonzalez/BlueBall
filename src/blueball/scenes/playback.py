@@ -286,6 +286,7 @@ class PlaybackSim:
             keys_collected=int(keys_collected),
             level_width=float(self.level_width),
             segments_cleared=int(segments_cleared),
+            purposeful_jumps=int(self.player.purposeful_jumps),
         ))
 
 
