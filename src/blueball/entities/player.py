@@ -420,6 +420,7 @@ class Player(Entity):
             nearest_pickup = None
             nearest_hazard = None
 
+        grounded = self.grounded
         return Observation(
             rays=rays,
             ray_hit_types=hit_types,
@@ -427,9 +428,11 @@ class Player(Entity):
                 [self.body.velocity.x, self.body.velocity.y], dtype=np.float32
             ),
             ang_vel=self.body.angular_velocity,
-            grounded=self.grounded,
+            grounded=grounded,
             nearest_pickup=nearest_pickup,
             nearest_hazard=nearest_hazard,
             abilities=_abilities_to_bitfield(self.abilities),
             keys_held=self.keys_held,
+            air_jumps_remaining=float(min(1, self.jump_ctrl.air_jumps_remaining)),
+            can_jump_now=self.jump_ctrl.can_fire(grounded),
         )

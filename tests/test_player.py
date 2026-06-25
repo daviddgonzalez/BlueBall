@@ -445,3 +445,18 @@ def test_observation_has_enriched_fields():
     assert HitType.ENEMY == 5
     assert HitType.BLOCK == 6
     assert HitType.DOOR == 7
+
+
+def test_observe_reports_air_jump_with_double_jump():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100),
+               abilities={Ability.DOUBLE_JUMP})
+    obs = p._observe()
+    assert obs.air_jumps_remaining == 1.0
+    assert obs.can_jump_now is True
+
+
+def test_observe_reports_no_air_jump_without_ability():
+    p = Player(agent=_ScriptedAgent([Action.IDLE]), spawn_xy=(100, 100))
+    obs = p._observe()
+    assert obs.air_jumps_remaining == 0.0
+    assert obs.can_jump_now is False
