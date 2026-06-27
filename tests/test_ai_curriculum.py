@@ -88,10 +88,37 @@ def test_evaluate_curriculum_returns_idx_fitness_reached():
     g = random_genome(np.random.default_rng(0))
     start = build_spawn_curriculum(path)[-1]  # the "start" stage
     idx, fit, reached = evaluate_curriculum(
-        (7, g, 1, path, 120, start.spawn_xy, start.granted_keys))
+        (7, g, 1, path, 120, start.spawn_xy, start.granted_keys, start.checkpoint_x))
     assert idx == 7
     assert isinstance(fit, float) and np.isfinite(fit)
     assert isinstance(reached, bool)
+
+
+def test_evaluate_curriculum_checkpoint_crossing_reports_reached():
+    """A checkpoint at/behind the spawn is crossed on frame 1 -> the episode
+    terminates early and reports reached=True (the advancement signal)."""
+    from blueball.ai.curriculum import evaluate_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    from blueball.ai.genome import random_genome
+    path = resolve_level_paths(["maze"])[0]
+    g = random_genome(np.random.default_rng(0))
+    spawn = (80.0, 540.0)
+    # checkpoint just behind spawn => crossed immediately, deterministically
+    _, fit, reached = evaluate_curriculum((0, g, 1, path, 500, spawn, 0, spawn[0] - 1.0))
+    assert reached is True
+    assert isinstance(fit, float) and np.isfinite(fit)
+
+
+def test_evaluate_curriculum_none_checkpoint_unchanged():
+    """checkpoint_x=None: behaves as before — a random genome from the maze start
+    cannot reach the far goal in 120 steps, so reached is False."""
+    from blueball.ai.curriculum import evaluate_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    from blueball.ai.genome import random_genome
+    path = resolve_level_paths(["maze"])[0]
+    g = random_genome(np.random.default_rng(0))
+    _, _, reached = evaluate_curriculum((0, g, 1, path, 120, (80.0, 540.0), 0, None))
+    assert reached is False
 
 
 def test_curriculum_stage_spawns_are_frame1_safe():
@@ -124,8 +151,8 @@ def test_evaluate_curriculum_granted_keys_dont_inflate_fitness():
     path = resolve_level_paths(["maze"])[0]
     g = random_genome(np.random.default_rng(0))
     start = build_spawn_curriculum(path)[-1]  # true start; real keys are far ahead
-    _, fit_no_grant, _ = evaluate_curriculum((0, g, 1, path, 120, start.spawn_xy, 0))
-    _, fit_granted, _ = evaluate_curriculum((0, g, 1, path, 120, start.spawn_xy, 0xFF))
+    _, fit_no_grant, _ = evaluate_curriculum((0, g, 1, path, 120, start.spawn_xy, 0, None))
+    _, fit_granted, _ = evaluate_curriculum((0, g, 1, path, 120, start.spawn_xy, 0xFF, None))
     assert fit_no_grant == pytest.approx(fit_granted)
 
 

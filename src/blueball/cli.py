@@ -144,7 +144,7 @@ def cmd_train_maze(args) -> int:
     start = stages[-1]
     _, fit, reached = evaluate_curriculum(
         (0, result.best_genome, args.world_seed, level_path, args.max_steps,
-         start.spawn_xy, start.granted_keys))
+         start.spawn_xy, start.granted_keys, start.checkpoint_x))
     final = result.history[-1]
     print(f"Done. gen {final['gen']}: final stage '{final['stage_label']}'")
     print(f"Verdict @ true start: reached_goal={reached} fitness={fit:.1f}")

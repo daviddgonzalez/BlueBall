@@ -52,7 +52,7 @@ def test_evaluate_curriculum_rewards_climb_height_on_vertical_climb():
 
     _, f_flat = evaluate((0, genome, world_seed, str(path), max_steps, abilities))
     _, f_curric, _ = evaluate_curriculum(
-        (0, genome, world_seed, str(path), max_steps, spawn, 0))
+        (0, genome, world_seed, str(path), max_steps, spawn, 0, None))
 
     # The rising ball earns climb_height; the flat evaluator does not.
     assert f_curric > f_flat
@@ -82,7 +82,7 @@ def test_evaluate_curriculum_no_climb_reward_on_horizontal_level():
 
     _, f_flat = evaluate((0, genome, world_seed, str(path), max_steps, abilities))
     _, f_curric, _ = evaluate_curriculum(
-        (0, genome, world_seed, str(path), max_steps, spawn, 0))
+        (0, genome, world_seed, str(path), max_steps, spawn, 0, None))
 
     # No climb shaping on a horizontal level → identical to the flat evaluator.
     assert f_curric == f_flat

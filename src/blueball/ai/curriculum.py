@@ -45,11 +45,15 @@ CLIMB_SHAPING_MIN_RISE = 360.0
 
 @dataclass(frozen=True)
 class CurriculumStage:
-    """One staged spawn. `granted_keys` is OR'd into player.keys_held at spawn."""
+    """One staged spawn. `granted_keys` is OR'd into player.keys_held at spawn.
+    `checkpoint_x` (forward curriculum) is a finish line: when set, the episode
+    ends and counts as reached the frame the ball's x crosses it. None => the
+    stage runs to the real goal (reverse curriculum / final forward stage)."""
 
     spawn_xy: tuple[float, float]
     granted_keys: int
-    label: str   # "near_goal" | "before_key<id>" | "start"
+    label: str   # "near_goal" | "before_key<id>" | "start" | "to_cp<i>" | "to_goal"
+    checkpoint_x: float | None = None
 
 
 def granted_keys_before(keys: list[tuple[int, float]], spawn_x: float) -> int:
@@ -166,12 +170,13 @@ def make_curriculum_player(world, genome, spawn_xy, granted_keys: int,
 def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
     """One genome -> (idx, fitness, reached_goal) on a curriculum stage. Picklable
     in/out for multiprocessing.Pool. Args is
-    (idx, genome, world_seed, level_path, max_steps, spawn_xy, granted_keys).
+    (idx, genome, world_seed, level_path, max_steps, spawn_xy, granted_keys,
+    checkpoint_x).
 
     Mirrors trainer.evaluate's drift-free substep loop, but spawns at the stage
     override with granted keys and additionally returns whether the goal was
     reached (the success signal the adaptive curriculum loop consumes)."""
-    idx, genome, world_seed, level_path, max_steps, spawn_xy, granted_keys = args
+    idx, genome, world_seed, level_path, max_steps, spawn_xy, granted_keys, checkpoint_x = args
 
     world = World(seed=int(world_seed))
     register_collisions(world.space, world_ref=world)
@@ -193,6 +198,7 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
     # vertical climb is densely rewarded — robust to falling back, mirroring max_x.
     min_y = spawn_y
     steps = 0
+    reached_checkpoint = False
     while steps < max_steps:
         # Use substep() — exactly one PHYS_DT step with no accumulator residual,
         # so long headless runs are bit-identical across machines (see trainer).
@@ -202,8 +208,16 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
             max_x = player.body.position.x
         if player.body.position.y < min_y:
             min_y = player.body.position.y
+        if checkpoint_x is not None and player.body.position.x >= checkpoint_x:
+            reached_checkpoint = True
+            break
         if player.dead or player.reached_goal:
             break
+
+    # Crossing the forward finish line counts as "reached" for both the fitness
+    # terminal bonus and the stage-advancement signal — mirroring how a reverse
+    # near-goal stage is credited for reaching its (then-fixed) goal.
+    reached = bool(player.reached_goal) or reached_checkpoint
 
     # Granted keys are training scaffolding, not achievements: count only the
     # keys actually collected this episode (bits set that were NOT granted), so
@@ -212,7 +226,7 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
     f = fitness(FitnessInputs(
         progress_x=float(max_x - spawn_x),
         collectibles=int(player.collectibles_collected),
-        reached_goal=bool(player.reached_goal),
+        reached_goal=reached,
         died=bool(player.dead),
         steps_taken=steps,
         keys_collected=collected,
@@ -220,7 +234,7 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
         climb_height=float(max(0.0, spawn_y - min_y)) if climb_shaping else 0.0,
         purposeful_jumps=int(player.purposeful_jumps),
     ))
-    return idx, float(f), bool(player.reached_goal)
+    return idx, float(f), bool(reached)
 
 
 def train_curriculum(
@@ -273,7 +287,7 @@ def train_curriculum(
         stage = stages[stage_index]
         args_iter = [
             (i, population[i], world_seed, str(level_path), max_steps,
-             stage.spawn_xy, stage.granted_keys)
+             stage.spawn_xy, stage.granted_keys, stage.checkpoint_x)
             for i in range(pop_size)
         ]
         results = list(map_fn(evaluate_curriculum, args_iter))
