@@ -325,3 +325,51 @@ def test_build_spawn_curriculum_maze_unchanged_without_waypoints():
     stages = build_spawn_curriculum(resolve_level_paths(["maze"])[0])
     assert [s.label for s in stages] == [
         "near_goal", "before_key1", "before_key0", "start"]
+
+
+def _maze_dict_start_gated(checkpoints=None):
+    """The real maze level as a dict, flagged start_gated (optionally with
+    explicit checkpoints). Exercises the forward path without flipping
+    the on-disk maze.json."""
+    import json
+    from blueball.ai.episodes import resolve_level_paths
+    d = json.loads(Path(resolve_level_paths(["maze"])[0]).read_text())
+    d["start_gated"] = True
+    if checkpoints is not None:
+        d["curriculum_checkpoints"] = checkpoints
+    else:
+        d.pop("curriculum_checkpoints", None)
+    return d
+
+
+def test_build_spawn_curriculum_forward_stages_for_start_gated():
+    from blueball.ai.curriculum import build_spawn_curriculum
+    d = _maze_dict_start_gated([300.0, 1056.0, 2432.0])
+    stages = build_spawn_curriculum(d)
+    start_xy = (float(d["spawn"][0]), float(d["spawn"][1]))
+    assert len(stages) == 4                       # 3 checkpoints + final goal
+    assert all(s.spawn_xy == start_xy for s in stages)   # all spawn at true start
+    assert all(s.granted_keys == 0 for s in stages)
+    assert [s.checkpoint_x for s in stages] == [300.0, 1056.0, 2432.0, None]
+    assert stages[-1].label == "to_goal"
+    assert stages[0].checkpoint_x == 300.0        # isolates the spike_wall [96..224]
+
+
+def test_build_spawn_curriculum_forward_fallback_uses_keys():
+    from blueball.ai.curriculum import build_spawn_curriculum
+    d = _maze_dict_start_gated(checkpoints=None)   # no explicit checkpoints
+    stages = build_spawn_curriculum(d)
+    # maze keys are at x=1056, 2432 -> two checkpoint stages + final goal
+    assert [s.checkpoint_x for s in stages] == [1056.0, 2432.0, None]
+
+
+def test_loader_reads_start_gated_and_checkpoints():
+    from blueball.collision import register as register_collisions
+    from blueball.levels.loader import load_level
+    from blueball.world import World
+    d = _maze_dict_start_gated([300.0, 1056.0])
+    world = World(seed=0)
+    register_collisions(world.space, world_ref=world)
+    meta = load_level(d, world)
+    assert meta.start_gated is True
+    assert meta.curriculum_checkpoints == (300.0, 1056.0)

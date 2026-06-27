@@ -24,6 +24,11 @@ class LevelMeta:
     starting_abilities: frozenset[Ability] = frozenset()
     # Optional terrain-aware reverse-curriculum spawn waypoints; absent → empty.
     curriculum_spawns: tuple[dict, ...] = ()
+    # Start-gated (forward curriculum): difficulty is at the start, so training
+    # spawns at the true start and advances a finish line goal-ward. Optional
+    # explicit finish-line x's; absent → derived from key positions.
+    start_gated: bool = False
+    curriculum_checkpoints: tuple[float, ...] = ()
 
 
 def _hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
@@ -96,6 +101,8 @@ def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
     )
     # Optional terrain-aware reverse-curriculum spawn override; absent → empty.
     curriculum_spawns = tuple(data.get("curriculum_spawns", []))
+    start_gated = bool(data.get("start_gated", False))
+    curriculum_checkpoints = tuple(float(x) for x in data.get("curriculum_checkpoints", []))
     spawn = tuple(data["spawn"])
     return LevelMeta(
         name=data["name"],
@@ -105,4 +112,6 @@ def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
         total_width=x,
         starting_abilities=starting_abilities,
         curriculum_spawns=curriculum_spawns,
+        start_gated=start_gated,
+        curriculum_checkpoints=curriculum_checkpoints,
     )

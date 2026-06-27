@@ -89,6 +89,29 @@ def _stages_from_waypoints(waypoints, start_xy) -> list[CurriculumStage]:
     return stages
 
 
+def _forward_stages(meta, world) -> list[CurriculumStage]:
+    """Start-first (forward) curriculum: every stage spawns at the true start
+    (so the opening hazard is always trained); the finish-line checkpoint
+    advances goal-ward across the list. granted_keys is 0 everywhere — the agent
+    spawns at the start and collects keys by traversing forward. The final stage
+    has checkpoint_x=None, so it is the real task (start -> real goal)."""
+    start_xy = (float(meta.spawn[0]), float(meta.spawn[1]))
+    if meta.curriculum_checkpoints:
+        checkpoints = [float(x) for x in meta.curriculum_checkpoints]
+    else:
+        checkpoints = sorted(
+            float(e.position[0]) for e in world.entities
+            if type(e).__name__ == _KEY_NAME)
+    stages = [
+        CurriculumStage(spawn_xy=start_xy, granted_keys=0,
+                        label=f"to_cp{i}", checkpoint_x=cp)
+        for i, cp in enumerate(checkpoints)
+    ]
+    stages.append(CurriculumStage(spawn_xy=start_xy, granted_keys=0,
+                                  label="to_goal", checkpoint_x=None))
+    return stages
+
+
 def build_spawn_curriculum(level: Union[str, Path, dict]) -> list[CurriculumStage]:
     """Derive the ordered (easiest -> hardest) reverse-curriculum stages from a
     level's real entity positions. Spawn x recedes start-ward across the list:
@@ -104,6 +127,11 @@ def build_spawn_curriculum(level: Union[str, Path, dict]) -> list[CurriculumStag
     world = World(seed=0)
     register_collisions(world.space, world_ref=world)
     meta = load_level(level, world)
+
+    # Start-gated levels use the forward curriculum (takes precedence over the
+    # reverse waypoint/entity paths below).
+    if meta.start_gated:
+        return _forward_stages(meta, world)
 
     # Terrain-aware override: a level may declare explicit spawn waypoints
     # (vertical levels, where the start-y entity-derived spawns land in a void).
