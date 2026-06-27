@@ -4,6 +4,8 @@
   "ground": "#5a6878",
   "spawn": [80, 540],
   "starting_abilities": ["double_jump"],
+  "start_gated": true,
+  "curriculum_checkpoints": [300, 1056, 1700, 2432, 3300],
   "chunks": [
     {"type": "flat", "width_tiles": 3},
     {"type": "spike_wall", "width_tiles": 4, "spikes": 4, "orientation": "down", "ceiling_y_offset": 96},

@@ -26,6 +26,18 @@ def _maze_keys(world):
     return sorted(keys, key=lambda k: k[1])
 
 
+def _maze_reverse_dict():
+    """The maze level as a dict with the start_gated flag stripped, so it
+    exercises the entity-derived REVERSE curriculum on real maze geometry
+    regardless of what maze.json declares on disk."""
+    import json
+    from blueball.ai.episodes import resolve_level_paths
+    d = json.loads(Path(resolve_level_paths(["maze"])[0]).read_text())
+    d.pop("start_gated", None)
+    d.pop("curriculum_checkpoints", None)
+    return d
+
+
 def test_granted_keys_before_ors_keys_behind_spawn():
     from blueball.ai.curriculum import granted_keys_before
     keys = [(0, 1000.0), (3, 2000.0)]
@@ -43,7 +55,7 @@ def test_build_spawn_curriculum_maze_orders_and_grants():
     for kid, _ in keys:
         all_bits |= (1 << kid)
 
-    stages = build_spawn_curriculum(path)
+    stages = build_spawn_curriculum(_maze_reverse_dict())
 
     # one near_goal + one per key + one start
     assert len(stages) == len(keys) + 2
@@ -220,7 +232,7 @@ def test_train_curriculum_writes_run_json(tmp_path):
     meta = json.loads((run_dir / "run.json").read_text())
     assert meta["mode"] == "curriculum"
     cur = meta["curriculum"]
-    assert isinstance(cur["stages"], list) and cur["stages"][-1] == "start"
+    assert isinstance(cur["stages"], list) and cur["stages"][-1] == "to_goal"
     assert len(cur["trajectory"]) == len(cur["stages"])
     assert "reached_gen" in cur["trajectory"][0] and "cleared_gen" in cur["trajectory"][0]
 
@@ -244,7 +256,7 @@ def test_train_curriculum_marks_cracked_when_all_stages_clear(tmp_path, monkeypa
     cur = json.loads((run_dir / "run.json").read_text())["curriculum"]
     assert cur["cracked"] is True
     assert cur["final_stage_index"] == n - 1
-    assert cur["final_stage_label"] == "start"
+    assert cur["final_stage_label"] == "to_goal"
     assert cur["trajectory"][-1]["cleared_gen"] is not None
 
 
@@ -278,7 +290,7 @@ def test_train_maze_curriculum_cli_writes_run(tmp_path):
     assert (runs[0] / "final_best.npy").exists()
     meta = json.loads((runs[0] / "run.json").read_text())
     assert meta["mode"] == "curriculum"
-    assert meta["curriculum"]["stages"][-1] == "start"
+    assert meta["curriculum"]["stages"][-1] == "to_goal"
     assert "reached_goal" in r.stdout
 
 
@@ -322,7 +334,7 @@ def test_build_spawn_curriculum_uses_declared_waypoints():
 def test_build_spawn_curriculum_maze_unchanged_without_waypoints():
     from blueball.ai.curriculum import build_spawn_curriculum
     from blueball.ai.episodes import resolve_level_paths
-    stages = build_spawn_curriculum(resolve_level_paths(["maze"])[0])
+    stages = build_spawn_curriculum(_maze_reverse_dict())
     assert [s.label for s in stages] == [
         "near_goal", "before_key1", "before_key0", "start"]
 
@@ -373,3 +385,27 @@ def test_loader_reads_start_gated_and_checkpoints():
     meta = load_level(d, world)
     assert meta.start_gated is True
     assert meta.curriculum_checkpoints == (300.0, 1056.0)
+
+
+def test_maze_file_is_start_gated_forward():
+    """The on-disk maze now trains forward: first checkpoint clears the opening
+    spike_wall (x=[96..224]); all stages spawn at the true start; final stage
+    runs to the real goal."""
+    from blueball.ai.curriculum import build_spawn_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    stages = build_spawn_curriculum(resolve_level_paths(["maze"])[0])
+    assert [s.checkpoint_x for s in stages] == [300.0, 1056.0, 1700.0, 2432.0, 3300.0, None]
+    assert all(s.spawn_xy[0] == 80.0 for s in stages)
+    assert stages[-1].label == "to_goal"
+
+
+def test_train_curriculum_runs_forward_on_maze():
+    """A tiny forward-curriculum run on the real maze completes and finishes on a
+    forward stage label."""
+    from blueball.ai.curriculum import train_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    path = resolve_level_paths(["maze"])[0]
+    result = train_curriculum(level_path=path, pop_size=6, generations=3,
+                              ga_seed=0, world_seed=1, max_steps=400)
+    last = result.history[-1]
+    assert last["stage_label"].startswith("to_")   # forward label, not "start"/"near_goal"
