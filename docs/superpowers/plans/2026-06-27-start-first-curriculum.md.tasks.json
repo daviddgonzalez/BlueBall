@@ -4,20 +4,20 @@
     {
       "id": 1,
       "subject": "Task 1: checkpoint_x + checkpoint-aware evaluate_curriculum",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** The evaluator can terminate an episode early when the ball crosses a moving finish line, reporting that crossing as the stage-advancement signal; with no checkpoint it behaves exactly as today.\n\n**Files:** src/blueball/ai/curriculum.py, src/blueball/cli.py, tests/test_ai_curriculum.py, tests/test_climb_fitness.py\n\n```json:metadata\n{\"files\": [\"src/blueball/ai/curriculum.py\", \"src/blueball/cli.py\", \"tests/test_ai_curriculum.py\", \"tests/test_climb_fitness.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python -m pytest tests/test_ai_curriculum.py tests/test_climb_fitness.py -q\", \"acceptanceCriteria\": [\"CurriculumStage.checkpoint_x defaults None\", \"evaluate_curriculum 8-tuple terminates+reports reached at checkpoint\", \"checkpoint_x None unchanged\", \"all tuple callers updated\", \"full suite green\"]}\n```"
     },
     {
       "id": 2,
       "subject": "Task 2: Forward-curriculum build path + LevelMeta fields",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [1],
       "description": "**Goal:** A level can declare start_gated: true (with optional curriculum_checkpoints), and build_spawn_curriculum emits forward stages — all spawning at the true start, ascending checkpoints, final stage running to the real goal.\n\n**Files:** src/blueball/levels/loader.py, src/blueball/ai/curriculum.py, tests/test_ai_curriculum.py\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/loader.py\", \"src/blueball/ai/curriculum.py\", \"tests/test_ai_curriculum.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python -m pytest tests/test_ai_curriculum.py -q\", \"acceptanceCriteria\": [\"LevelMeta start_gated + curriculum_checkpoints populated\", \"forward stages spawn at start, granted 0, ascending checkpoint_x, final None\", \"keys fallback when checkpoints omitted\", \"reverse path unaffected\", \"full suite green\"]}\n```"
     },
     {
       "id": 3,
       "subject": "Task 3: Flip maze.json to start-gated + migrate reverse tests",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [2],
       "description": "**Goal:** The maze trains forward by default (the A/B-proven direction), and the reverse code path keeps a regression guard via a flag-stripped maze dict.\n\n**Files:** src/blueball/levels/maze.json, tests/test_ai_curriculum.py\n\n```json:metadata\n{\"files\": [\"src/blueball/levels/maze.json\", \"tests/test_ai_curriculum.py\"], \"verifyCommand\": \"SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python -m pytest -q\", \"acceptanceCriteria\": [\"maze.json start_gated + 5 checkpoints\", \"build_spawn_curriculum(maze) 6 forward stages first cp 300 last None spawn 80\", \"reverse tests migrated to stripped dict still assert receding\", \"forward smoke run advances stages\", \"full suite green\"]}\n```"
     }
