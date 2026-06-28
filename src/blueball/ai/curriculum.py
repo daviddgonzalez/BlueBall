@@ -54,6 +54,11 @@ class CurriculumStage:
     granted_keys: int
     label: str   # "near_goal" | "before_key<id>" | "start" | "to_cp<i>" | "to_goal"
     checkpoint_x: float | None = None
+    # Height finish line (vertical climbs): the stage ends and counts as reached
+    # the frame the ball climbs to/above this y (screen-up is -y, so reached when
+    # position.y <= checkpoint_y). None => no height gate. Mutually exclusive with
+    # checkpoint_x in practice (a level stages by x OR by height, not both).
+    checkpoint_y: float | None = None
 
 
 def granted_keys_before(keys: list[tuple[int, float]], spawn_x: float) -> int:
@@ -96,6 +101,19 @@ def _forward_stages(meta, world) -> list[CurriculumStage]:
     spawns at the start and collects keys by traversing forward. The final stage
     has checkpoint_x=None, so it is the real task (start -> real goal)."""
     start_xy = (float(meta.spawn[0]), float(meta.spawn[1]))
+    # Vertical (climb) levels stage by HEIGHT: every stage spawns at the true
+    # start and the height finish line advances upward toward the goal.
+    if meta.curriculum_checkpoints_y:
+        ys = [float(y) for y in meta.curriculum_checkpoints_y]
+        stages = [
+            CurriculumStage(spawn_xy=start_xy, granted_keys=0,
+                            label=f"to_cy{i}", checkpoint_y=cy)
+            for i, cy in enumerate(ys)
+        ]
+        stages.append(CurriculumStage(spawn_xy=start_xy, granted_keys=0,
+                                      label="to_goal"))
+        return stages
+
     if meta.curriculum_checkpoints:
         checkpoints = [float(x) for x in meta.curriculum_checkpoints]
     else:
@@ -203,8 +221,13 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
 
     Mirrors trainer.evaluate's drift-free substep loop, but spawns at the stage
     override with granted keys and additionally returns whether the goal was
-    reached (the success signal the adaptive curriculum loop consumes)."""
-    idx, genome, world_seed, level_path, max_steps, spawn_xy, granted_keys, checkpoint_x = args
+    reached (the success signal the adaptive curriculum loop consumes).
+
+    The args tuple is backward-compatible: a legacy 8-tuple (ending in
+    checkpoint_x) implies checkpoint_y=None; a 9-tuple carries a height finish
+    line as the 9th element (vertical climbs)."""
+    idx, genome, world_seed, level_path, max_steps, spawn_xy, granted_keys, checkpoint_x, *rest = args
+    checkpoint_y = rest[0] if rest else None
 
     world = World(seed=int(world_seed))
     register_collisions(world.space, world_ref=world)
@@ -237,6 +260,11 @@ def evaluate_curriculum(args: tuple) -> tuple[int, float, bool]:
         if player.body.position.y < min_y:
             min_y = player.body.position.y
         if checkpoint_x is not None and player.body.position.x >= checkpoint_x:
+            reached_checkpoint = True
+            break
+        # Height finish line: reached the frame the ball climbs to/above it
+        # (screen-up is -y, so "above" means position.y <= checkpoint_y).
+        if checkpoint_y is not None and player.body.position.y <= checkpoint_y:
             reached_checkpoint = True
             break
         if player.dead or player.reached_goal:
@@ -315,7 +343,8 @@ def train_curriculum(
         stage = stages[stage_index]
         args_iter = [
             (i, population[i], world_seed, str(level_path), max_steps,
-             stage.spawn_xy, stage.granted_keys, stage.checkpoint_x)
+             stage.spawn_xy, stage.granted_keys, stage.checkpoint_x,
+             stage.checkpoint_y)
             for i in range(pop_size)
         ]
         results = list(map_fn(evaluate_curriculum, args_iter))
@@ -325,9 +354,10 @@ def train_curriculum(
 
         gen_best_idx = int(np.argmax(fitnesses))
         gen_best = float(fitnesses[gen_best_idx])
+        gen_elite = population[gen_best_idx]   # this generation's best (at the current stage)
         if gen_best > best_fitness:
             best_fitness = gen_best
-            best_genome = population[gen_best_idx].copy()
+            best_genome = gen_elite.copy()
 
         elite_cleared = reached[gen_best_idx]
         history.append({
@@ -340,7 +370,12 @@ def train_curriculum(
         })
 
         if writer is not None:
-            writer.save_generation(gen, best_genome)
+            # Snapshot THIS generation's elite (the best solver at the current,
+            # possibly-hardest-reached stage), not the running global-best — the
+            # global-best is biased toward easy early stages, so the genome that
+            # actually solves furthest from the true start lives in a per-gen
+            # elite. Lets the post-hoc true-start scan recover the best genome.
+            writer.save_generation(gen, gen_elite)
 
         # Adaptive advancement: recede one stage once the elite clears this one.
         if elite_cleared:

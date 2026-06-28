@@ -4,6 +4,8 @@
   "ground": "#3a3a52",
   "spawn": [80, 540],
   "starting_abilities": ["double_jump"],
+  "start_gated": true,
+  "curriculum_checkpoints_y": [300, 80, -150, -380, -610, -840, -1070, -1300, -1530, -1760, -1970],
   "curriculum_spawns": [
     {"x": 1800, "y": -1970, "keys": [], "label": "near_goal"},
     {"x": 1800, "y": -1200, "keys": [], "label": "stage_3"},

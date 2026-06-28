@@ -409,3 +409,97 @@ def test_train_curriculum_runs_forward_on_maze():
                               ga_seed=0, world_seed=1, max_steps=400)
     last = result.history[-1]
     assert last["stage_label"].startswith("to_")   # forward label, not "start"/"near_goal"
+
+
+# --- Forward HEIGHT-checkpoint curriculum (vertical climbs) ---------------- #
+def _climb_dict(checkpoints_y=None):
+    """A minimal start_gated level whose difficulty is a vertical climb, so the
+    forward curriculum should stage by HEIGHT (y) rather than horizontal x."""
+    d = {
+        "name": "Climb Test",
+        "background": "#000000",
+        "ground": "#111111",
+        "spawn": [80, 540],
+        "starting_abilities": ["double_jump"],
+        "start_gated": True,
+        "chunks": [
+            {"type": "flat", "width_tiles": 3},
+            {"type": "goal", "y_offset": 1200},
+        ],
+    }
+    if checkpoints_y is not None:
+        d["curriculum_checkpoints_y"] = checkpoints_y
+    return d
+
+
+def test_curriculum_stage_checkpoint_y_defaults_none():
+    from blueball.ai.curriculum import CurriculumStage
+    s = CurriculumStage(spawn_xy=(0.0, 0.0), granted_keys=0, label="x")
+    assert s.checkpoint_y is None
+
+
+def test_evaluate_curriculum_checkpoint_y_crossing_reports_reached():
+    """A height checkpoint at/below the spawn (already 'climbed past') is crossed
+    on frame 1 -> reached=True. Mirrors the x-checkpoint crossing test."""
+    from blueball.ai.curriculum import evaluate_curriculum
+    from blueball.ai.episodes import resolve_level_paths
+    from blueball.ai.genome import random_genome
+    path = resolve_level_paths(["maze"])[0]
+    g = random_genome(np.random.default_rng(0))
+    spawn = (80.0, 540.0)
+    # checkpoint_y just BELOW spawn (larger y = lower on screen) => the ball is
+    # already above it on frame 1 => reached immediately. 9-tuple: checkpoint_x
+    # is None, checkpoint_y is the 9th element.
+    _, fit, reached = evaluate_curriculum(
+        (0, g, 1, path, 500, spawn, 0, None, spawn[1] + 1.0))
+    assert reached is True
+    assert isinstance(fit, float) and np.isfinite(fit)
+
+
+def test_build_spawn_curriculum_forward_y_stages_for_climb():
+    """A start_gated level declaring curriculum_checkpoints_y builds HEIGHT
+    stages: every stage spawns at the true start, checkpoint_y advances upward,
+    checkpoint_x is None, and the final stage runs to the real goal."""
+    from blueball.ai.curriculum import build_spawn_curriculum
+    stages = build_spawn_curriculum(_climb_dict([300.0, 0.0, -600.0]))
+    assert [s.checkpoint_y for s in stages] == [300.0, 0.0, -600.0, None]
+    assert all(s.checkpoint_x is None for s in stages)
+    assert all(s.spawn_xy == (80.0, 540.0) for s in stages)
+    assert stages[-1].label == "to_goal"
+
+
+def test_loader_reads_curriculum_checkpoints_y():
+    from blueball.collision import register as register_collisions
+    from blueball.levels.loader import load_level
+    from blueball.world import World
+    world = World(seed=0)
+    register_collisions(world.space, world_ref=world)
+    meta = load_level(_climb_dict([300.0, -600.0]), world)
+    assert meta.curriculum_checkpoints_y == (300.0, -600.0)
+
+
+def test_train_curriculum_snapshots_per_gen_elite_not_global_best(tmp_path, monkeypatch):
+    """Per-gen snapshots must be each GENERATION's elite (best at the current
+    stage), not the frozen running global-best. The curriculum's global-best is
+    biased toward easy early stages, so the genome that actually solves furthest
+    from the true start lives in a per-gen elite. With fitness == idx (constant
+    across gens), the global-best genome is frozen at gen 0, but each generation's
+    elite is a different bred genome -> a later snapshot must differ from
+    final_best (which IS the global-best)."""
+    import numpy as np
+    import blueball.ai.curriculum as curr
+    from blueball.ai.episodes import resolve_level_paths
+    path = resolve_level_paths(["maze"])[0]
+
+    def fake_eval(args):
+        return args[0], float(args[0]), False  # fitness == idx; nobody clears
+
+    monkeypatch.setattr(curr, "evaluate_curriculum", fake_eval)
+    run_dir = tmp_path / "elite_run"
+    curr.train_curriculum(level_path=path, pop_size=6, generations=3, ga_seed=0,
+                          world_seed=1, max_steps=10, save_dir=run_dir)
+    final_best = np.load(run_dir / "final_best.npy")
+    gen0 = np.load(run_dir / "best_gen000.npy")
+    gen2 = np.load(run_dir / "best_gen002.npy")
+    assert np.array_equal(gen0, final_best)         # gen-0 elite == global best
+    assert not np.array_equal(gen2, final_best)     # later snapshot is its own gen's elite

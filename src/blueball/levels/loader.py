@@ -29,6 +29,10 @@ class LevelMeta:
     # explicit finish-line x's; absent → derived from key positions.
     start_gated: bool = False
     curriculum_checkpoints: tuple[float, ...] = ()
+    # Vertical (climb) variant of the forward curriculum: finish lines are
+    # HEIGHTS (y, screen-up is -y), advancing upward toward a goal far above the
+    # spawn. Present → the forward curriculum stages by height instead of x.
+    curriculum_checkpoints_y: tuple[float, ...] = ()
 
 
 def _hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
@@ -103,6 +107,7 @@ def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
     curriculum_spawns = tuple(data.get("curriculum_spawns", []))
     start_gated = bool(data.get("start_gated", False))
     curriculum_checkpoints = tuple(float(x) for x in data.get("curriculum_checkpoints", []))
+    curriculum_checkpoints_y = tuple(float(y) for y in data.get("curriculum_checkpoints_y", []))
     spawn = tuple(data["spawn"])
     return LevelMeta(
         name=data["name"],
@@ -114,4 +119,5 @@ def load_level(source: Union[str, Path, dict], world) -> LevelMeta:
         curriculum_spawns=curriculum_spawns,
         start_gated=start_gated,
         curriculum_checkpoints=curriculum_checkpoints,
+        curriculum_checkpoints_y=curriculum_checkpoints_y,
     )

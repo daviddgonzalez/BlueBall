@@ -3,6 +3,9 @@
   "background": "#1f2540",
   "ground": "#444a5c",
   "spawn": [80, 540],
+  "starting_abilities": ["double_jump"],
+  "start_gated": true,
+  "curriculum_checkpoints": [500, 1000, 1500, 2000, 2500, 2780, 2860],
   "curriculum_spawns": [
     {"x": 2740, "y": 50,  "keys": [0, 1], "label": "near_goal"},
     {"x": 1744, "y": 220, "keys": [0],    "label": "before_key1"},

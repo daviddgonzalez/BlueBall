@@ -221,7 +221,7 @@ _RACE_GHOST_DIR = Path(__file__).resolve().parent / "assets" / "race_ghosts"
 RACE_GHOST_GENOMES = {
     "tutorial_hill": "generalist.npy",
     "speed_run": "generalist.npy",
-    "maze": "generalist.npy",
+    "maze": "maze.npy",
     "lava_rising": "generalist.npy",
     "vertical_climb": "vertical_climb.npy",
 }
