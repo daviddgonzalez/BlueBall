@@ -9,6 +9,7 @@ import math
 import pymunk
 
 from . import config
+from . import pymunk_compat  # noqa: F401  (pymunk 6.x shim for the web build)
 
 CT_PLAYER = 1
 CT_SPIKE = 2

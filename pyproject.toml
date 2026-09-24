@@ -16,6 +16,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "pygbag==0.9.3",
 ]
 
 [tool.setuptools.packages.find]
